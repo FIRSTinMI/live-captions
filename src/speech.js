@@ -1,5 +1,6 @@
 const recorder = require('node-record-lpcm16');
 const Lib = require('@google-cloud/speech');
+const Filter = require('bad-words'), filter = new Filter();
 
 class Speech {
     constructor(config, program_folder, clients) {
@@ -46,6 +47,9 @@ class Speech {
                 if (frame.text.split(' ').length - lastFrame.text.split(' ').length < 0 && !frame.isFinal && !lastFrame.isFinal) {
                     return;
                 }
+
+                // Trim whitespace and censor bad words
+                frame.text = filter.clean(frame.text.trim());
 
                 lastFrame = frame;
                 let msg = JSON.stringify(frame);

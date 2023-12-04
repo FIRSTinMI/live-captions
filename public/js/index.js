@@ -90,10 +90,10 @@ socket.addEventListener("message", (evt) => {
     finalMessageOverwritten = true;
     clearTimeout(currentTimeout);
     lc.style.display = 'inline-block';
-    text.innerText = transcript + capitalize(frame.text.trim());
+    text.innerText = transcript + capitalize(frame.text);
     if (frame.isFinal) {
         finalMessageOverwritten = false;
-        transcript += capitalize(frame.text.trim()) + '. '
+        transcript += capitalize(frame.text) + '. '
         currentTimeout = setTimeout(() => {
             text.innerText = '';
             transcript = '';
