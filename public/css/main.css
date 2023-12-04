@@ -1,10 +1,10 @@
-html,
 body {
     height: 100%;
     background-color: magenta;
     color: #000000;
     font-family: 'Roboto', 'Calibri', sans-serif;
     line-height: 1.5;
+    margin: 0;
 }
 
 #lc {

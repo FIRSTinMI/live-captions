@@ -12,13 +12,13 @@
                 <div class="col s12">
                     <ul class="tabs">
                         <li class="tab col s3"><a class="active" href="#display">Display</a></li>
-                        <li class="tab col s3"><a href="#sound">Sound</a></li>
+                        <li class="tab col s3"><a href="#server">Server</a></li>
                     </ul>
                 </div>
                 <div id="display" class="col s12">
                     <form>
                         <div class="row">
-                            <div class="input-field col s12 m6">
+                            <div class="input-field col s12 m4">
                                 <select id="position">
                                     <option value="0">Bottom</option>
                                     <option value="1">Top</option>
@@ -27,13 +27,18 @@
                                 </select>
                                 <label for="position">Position</label>
                             </div>
-                            <div class="input-field col s12 m6">
+                            <div class="input-field col s12 m4">
                                 <select id="align">
                                     <option value="left">Left</option>
                                     <option value="center">Center</option>
                                     <option value="right">Right</option>
                                 </select>
                                 <label for="align">Alignment</label>
+                            </div>
+                            <div class="s12 m4 input-field">
+                                <input id="chromaKey" type="text">
+                                <label for="chromaKey">Chroma Key</label>
+                                <span class="supporting-text">Hex Color</span>
                             </div>
                         </div>
                         <div class="row">
@@ -55,7 +60,29 @@
                         </div>
                     </form>
                 </div>
-                <div id="sound" class="col s12">Test 2</div>
+                <div id="server" class="col s12">
+                    <p>Any changes to these settings will require manually restarting the server</p>
+                    <form>
+                        <div class="row">
+                            <div class="s12 m6 input-field">
+                                <input id="port" type="number">
+                                <label for="port">Port</label>
+                                <span class="supporting-text">Port for webserver</span>
+                            </div>
+                            <div class="s12 m6 input-field">
+                                <input id="samplerate" type="number">
+                                <label for="samplerate">Sample Rate</label>
+                                <span class="supporting-text">Microphone sample rate in Hz</span>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="input-field col s12">
+                                <textarea id="google" class="materialize-textarea"></textarea>
+                                <label for="google">Google API Authentication</label>
+                            </div>
+                        </div>
+                    </form>
+                </div>
             </div>
         </div>
         <script src="https://cdn.jsdelivr.net/npm/@materializecss/materialize@2.0.3-alpha/dist/js/materialize.min.js"></script>

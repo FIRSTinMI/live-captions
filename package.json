@@ -1,16 +1,18 @@
 {
     "name": "live-captions",
-    "version": "1.0.0",
-    "main": "server.js",
-    "bin": "server.js",
+    "version": "1.1.0",
+    "main": "./src/index.js",
+    "bin": "./src/index.js",
     "scripts": {
-        "start": "node server.js"
+        "start": "node ./src/index.js"
     },
     "author": "",
     "license": "ISC",
     "dependencies": {
         "@google-cloud/speech": "^6.1.0",
+        "bad-words": "^3.0.4",
         "configuration": "^4.1.5",
+        "decompress": "^4.2.1",
         "express": "^4.18.2",
         "express-ws": "^5.0.2",
         "node-record-lpcm16": "^1.0.1"

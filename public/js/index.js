@@ -40,6 +40,7 @@ function updateConfig() {
                     lc.style.transform = 'translateX(-50%)';
                     break;
             }
+            document.body.style.backgroundColor = json.display.chromaKey;
             text.style.fontSize = json.display.size + 'px';
             text.style.lineHeight = (parseFloat(json.display.size) + 6) + 'px';
             lc.style.maxHeight = (json.display.lines * (parseFloat(json.display.size) + 6)) + 'px';
@@ -61,6 +62,9 @@ socket.addEventListener("open", (event) => {
             lc.style.display = 'none';
         }
     }, 5e3);
+    setInterval(() => {
+        socket.send('heartbeat');
+    }, 60e3);
 });
 
 function capitalize(text) {
