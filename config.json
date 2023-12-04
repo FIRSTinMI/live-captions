@@ -1,0 +1,22 @@
+{
+    "display": {
+        "position": "0",
+        "size": "24",
+        "lines": "3",
+        "chromaKey": "#ff00ff",
+        "timeout": "10",
+        "align": "left"
+    },
+    "server": {
+        "port": 3000,
+        "sampleRate": 16000
+    },
+    "google": {
+        "projectId": "captions-407102",
+        "scopes": "https://www.googleapis.com/auth/cloud-platform",
+        "credentials": {
+            "client_email": "captions@captions-407102.iam.gserviceaccount.com",
+            "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQDHFNLQmDxu8Idp\nG48TQHk4RpenK41njCK06l7bKUdWWDylmDgul4xeuDIZL4OTwNLz91FsBquxLAJf\nvxypkLYLqAf12CaDev9GsTnoHHNS73s6LIdQET+h09LU7NbtE9IHGlyr5fmLoZUV\ny6xaSlYkTFD6E/ACdx6+zew/tmvuy0PP4hzPa8Y1oKorYMWjpCd/fu0fwvS/gyM0\n0w9i9UR99L9NFqfBFIGYtflc50EIQugCduFUEYpewQpJ1D1lWdwotOT350WPIAqn\nOp0qOh8aXh+7mzX79T/zf/T03L9omnRkwHenIsKSTKCiJ3L2/JVVaFhqjVp54xBZ\n4Mp80VZ9AgMBAAECggEAFIya9SKdrFLiG1CXrGRNjuhEe6I0eqF9rKB7kZI5dZlu\niyZC+FY2zEkljLF5mqz+6WVYL3chzkwtY44xynPwQpRB3BfHY+90farKACI9qiwj\nk13oyrQ5Ff5sJwPabIbM+WQ4eBrpLwdLAQCwxfIh4aXJ/wJDVjHPB+FwFySAkBmW\n2LOKJubGAaOTA7z1C4lIA+V+XmUxo7gS3MIEBmoKyUYaNU0WNWE+mvQoO+98/9S7\nqsTUXbKNxQcpNyNGRYcwD+UJDCzwi2jPWf9P5NMeKiH6ta+F8wfx5+2QknjjmRw7\njp089Ath1sfXfKFLfFhTwocaVgXQmlwZAKhBljf7yQKBgQD2rAD/sfj4C81MCPEl\nS7v2WlX4Zn8+mYzYhijbLZSObDyPOD8tsd0LB4Lx/hvceWIQXFArb9xAr7zUx1S6\nFQWJYGVbnV4mEzFqkrE6Z+SVfK4I5yy7o0fyNy4MC9YBF/6lW0RQl4o5M9RNzQ0s\n4i2ukbY8vr+xyO5LUepREEvPGQKBgQDOnBomJv9K11pNKNK6H9R0bHc77hAZ+2Y4\nLu39SB35/s1VWedmIuDDzqMpH3lvsNy3sLqAjOW7ruypTHouM858xDN1hAzWZUds\njfNSk3IoK2yaC4NVeb8aEMSrXcYwjd1DAQQN9c1tSurKCihbRKiZoGI8UzdSa8Vn\nk7oa6VEDBQKBgBpZy42FHJya3iaGOgSK75xkkBSGFofAbXxf8JNhbiI8y8dc8drW\nyk84UTO6uo015lTrF6FcRMIgQ+LTHGj4f+vqAUnlKL6WhEvnOcmMea3CcPEAiRXO\nXowwetnMleLuBkTx1/1oAtsTf1WEVyj5THn+lOIuWloKpfIj4Q0h2YdZAoGBAM0n\nPePSZz62Vck2FwCPqJMuPLr6aWyTL+3r047jdDiPZO4yRk4ppctoPKURxrA8Cv4u\n8xHAVkGlsQNumAeWk5tZ6sruoxykFmbZENpW5Ey0ybKwaemO6U4FhnOuuqPtyd3F\nfXQrNZ8ne7nAmk/9/fgFxGWoL8+cibiOfIZKVJHNAoGBAOqRSLj9XNOfai4H+Xbd\nxwRZjQbuMoZcHBZ93w6u+4SFC7YGBfdH6ezOK7TAq9ym5akvi/GghYz+Fdal3tUl\njrPNiCnr7SFTiosyhDdWfV5Kc4HXQxBjZ8CFyTXlOl7PgoXLjsRTBwvIXC8kn1WD\n6AaYRl5VxMRwx9Bws1ivKP6I\n-----END PRIVATE KEY-----\n"
+        }
+    }
+}

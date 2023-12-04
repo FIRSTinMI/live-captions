@@ -1,0 +1,64 @@
+<html>
+    <head>
+        <meta charset="utf-8">
+        <title>Live Captioning - Settings</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@materializecss/materialize@2.0.3-alpha/dist/css/materialize.min.css">
+    </head>
+
+    <body>
+        <div class="container">
+            <div class="row">
+                <div class="col s12">
+                    <ul class="tabs">
+                        <li class="tab col s3"><a class="active" href="#display">Display</a></li>
+                        <li class="tab col s3"><a href="#sound">Sound</a></li>
+                    </ul>
+                </div>
+                <div id="display" class="col s12">
+                    <form>
+                        <div class="row">
+                            <div class="input-field col s12 m6">
+                                <select id="position">
+                                    <option value="0">Bottom</option>
+                                    <option value="1">Top</option>
+                                    <option value="2">Bottom with space for audience display</option>
+                                    <option value="3">Top with space for audience display</option>
+                                </select>
+                                <label for="position">Position</label>
+                            </div>
+                            <div class="input-field col s12 m6">
+                                <select id="align">
+                                    <option value="left">Left</option>
+                                    <option value="center">Center</option>
+                                    <option value="right">Right</option>
+                                </select>
+                                <label for="align">Alignment</label>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="s12 m4 input-field">
+                                <input id="size" type="number">
+                                <label for="size">Text Size</label>
+                                <span class="supporting-text">in pixels</span>
+                            </div>
+                            <div class="s12 m4 input-field">
+                                <input id="lines" type="number">
+                                <label for="lines">Max Lines</label>
+                                <span class="supporting-text">Maximum number of lines to display at once</span>
+                            </div>
+                            <div class="s12 m4 input-field">
+                                <input id="timeout" type="number">
+                                <label for="timeout">Timeout</label>
+                                <span class="supporting-text">Seconds to wait before closing captions</span>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div id="sound" class="col s12">Test 2</div>
+            </div>
+        </div>
+        <script src="https://cdn.jsdelivr.net/npm/@materializecss/materialize@2.0.3-alpha/dist/js/materialize.min.js"></script>
+        <script src="js/settings.js"></script>
+    </body>
+</html>
