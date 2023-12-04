@@ -48,25 +48,6 @@ function updateConfig() {
         });
 }
 
-// Open connection
-const socket = new WebSocket("ws://localhost:3000/ws/");
-
-// Connection opened
-socket.addEventListener("open", (event) => {
-    console.log('Connected');
-    lc.style.display = 'inline-block';
-    text.innerText = 'Connected';
-    setTimeout(() => {
-        if (!finalMessageOverwritten) {
-            text.innerText = '';
-            lc.style.display = 'none';
-        }
-    }, 5e3);
-    setInterval(() => {
-        socket.send('heartbeat');
-    }, 60e3);
-});
-
 function capitalize(text) {
     const arr = text.split(".");
 
@@ -77,30 +58,61 @@ function capitalize(text) {
     return arr.join(".");
 }
 
-// Listen for messages
-let finalMessageOverwritten = false;
-let transcript = '';
-let currentTimeout;
-socket.addEventListener("message", (evt) => {
-    let frame = JSON.parse(evt.data);
-    console.log(frame);
-    if (frame.type == 'config') return updateConfig();
-    if (frame.text == '') return;
+function connectToSocket() {
+    // Open connection
+    const socket = new WebSocket(`ws://${window.location.host}/ws/`);
 
-    finalMessageOverwritten = true;
-    clearTimeout(currentTimeout);
-    lc.style.display = 'inline-block';
-    text.innerText = transcript + capitalize(frame.text);
-    if (frame.isFinal) {
-        finalMessageOverwritten = false;
-        transcript += capitalize(frame.text) + '. '
-        currentTimeout = setTimeout(() => {
-            text.innerText = '';
-            transcript = '';
-            lc.style.display = 'none';
-        }, timeout);
-    }
-});
+    // Connection opened
+    socket.addEventListener('open', (evt) => {
+        console.log('Connected');
+        lc.style.display = 'inline-block';
+        text.innerText = 'Connected';
+        setTimeout(() => {
+            if (!connectedMessageOverwritten) {
+                text.innerText = '';
+                lc.style.display = 'none';
+            }
+        }, 5e3);
+        setInterval(() => {
+            socket.send('heartbeat');
+        }, 60e3);
+    });
+
+    socket.addEventListener('close', () => {
+        console.log('Socket lost connection, retying in 5 seconds');
+        setTimeout(connectToSocket, 5e3);
+    });
+
+    socket.addEventListener('error', (err) => {
+        console.error(err);
+    });
+
+    // Listen for messages
+    let connectedMessageOverwritten = false;
+    let transcript = '';
+    let currentTimeout;
+    socket.addEventListener('message', (evt) => {
+        let frame = JSON.parse(evt.data);
+        console.log(frame);
+        if (frame.type == 'config') return updateConfig();
+        if (frame.text == '') return;
+
+        connectedMessageOverwritten = true;
+        clearTimeout(currentTimeout);
+        lc.style.display = 'inline-block';
+        text.innerText = transcript + capitalize(frame.text);
+        if (frame.isFinal) {
+            transcript += capitalize(frame.text) + '. '
+            text.innerText = transcript;
+            currentTimeout = setTimeout(() => {
+                text.innerText = '';
+                transcript = '';
+                lc.style.display = 'none';
+            }, timeout);
+        }
+    });
+}
+
 
 const observer = new MutationObserver((mutationList, observer) => {
     lc.scrollTop = lc.scrollHeight;
@@ -108,3 +120,4 @@ const observer = new MutationObserver((mutationList, observer) => {
 observer.observe(lc, { attributes: true, childList: true, subtree: true });
 
 updateConfig();
+connectToSocket();

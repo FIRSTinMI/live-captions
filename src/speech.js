@@ -1,4 +1,4 @@
-const recorder = require('node-record-lpcm16');
+const recorder = require('@filip96/node-record-lpcm16');
 const Lib = require('@google-cloud/speech');
 const Filter = require('bad-words'), filter = new Filter();
 
@@ -41,6 +41,8 @@ class Speech {
                     confidence: data.results[0].alternatives[0].confidence
                 }
 
+                if (frame.text.trim() === '') return;
+
                 // If this frame has fewer words and is not final let's not send the update
                 // because otherwise the words kind of flicker as it detects
                 // and if the last frame was final then this is a new sentence and obviously will have fewer words
@@ -49,7 +51,13 @@ class Speech {
                 }
 
                 // Trim whitespace and censor bad words
-                frame.text = filter.clean(frame.text.trim());
+                try {
+                    frame.text = filter.clean(frame.text.trim());
+                } catch (err) {
+                    console.error(err);
+                    console.error(frame.text);
+                    return;
+                }
 
                 lastFrame = frame;
                 let msg = JSON.stringify(frame);

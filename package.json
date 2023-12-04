@@ -9,13 +9,13 @@
     "author": "",
     "license": "ISC",
     "dependencies": {
+        "@filip96/node-record-lpcm16": "^1.0.2",
         "@google-cloud/speech": "^6.1.0",
         "bad-words": "^3.0.4",
         "configuration": "^4.1.5",
         "decompress": "^4.2.1",
         "express": "^4.18.2",
-        "express-ws": "^5.0.2",
-        "@filip96/node-record-lpcm16": "^1.0.2"
+        "express-ws": "^5.0.2"
     },
     "devDependencies": {
         "pkg": "^5.8.1"

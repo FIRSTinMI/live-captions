@@ -1,6 +1,6 @@
 const fs = require('fs');
 const https = require('https');
-const decompress = require("decompress");
+const decompress = require('decompress');
 const Config = require('./util/config');
 const Speech = require('./speech');
 const server = require('./server');
