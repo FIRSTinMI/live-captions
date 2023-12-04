@@ -14,11 +14,11 @@ class Config {
         if (!fs.existsSync(this.file)) {
             fs.writeFileSync(this.file, JSON.stringify({
                 display: {
-                    position: 0,
-                    size: 24,
-                    lines: 2,
+                    position: '0',
+                    size: '24',
+                    lines: '2',
                     chromaKey: '#ff00ff',
-                    timeout: 5,
+                    timeout: '5',
                     align: 'left'
                 },
                 server: {

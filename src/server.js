@@ -1,9 +1,10 @@
+const path = require('path');
 const express = require('express');
 const app = express();
 const expressWs = require('express-ws')(app);
 
 function server(config, clients) {
-    app.use(express.static('public'));
+    app.use(express.static(path.join(__dirname, 'public')));
 
     app.get('/config', (req, res) => {
         res.send(config.config);

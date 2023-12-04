@@ -24,7 +24,7 @@
         "targets": [
             "node18-windows-x64"
         ],
-        "assets": "./public/*",
+        "assets": "./src/public/**/*",
         "outputPath": "dist"
     }
 }
