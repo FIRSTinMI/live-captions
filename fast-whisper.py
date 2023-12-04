@@ -10,7 +10,7 @@ import socket
 HOST = '127.0.0.1'  # The server's hostname or IP address
 PORT = 65432  # The port used by the server
 
-MODEL = 'large-v3';
+MODEL = 'medium.en';
 
 def send(message):
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
