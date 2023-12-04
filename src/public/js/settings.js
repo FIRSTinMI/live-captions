@@ -14,7 +14,9 @@ fetch('/config')
         document.getElementById('port').value = json.server.port;
         document.getElementById('samplerate').value = json.server.sampleRate;
         document.getElementById('google').value = JSON.stringify(json.google, null, 4);
+        document.getElementById('filter').value = json.server.filter.join('\n');
         M.Forms.InitTextarea(document.querySelector('#google'));
+        M.Forms.InitTextarea(document.querySelector('#filter'));
         M.FormSelect.init(document.querySelectorAll('select'), {});
     });
 
@@ -34,3 +36,10 @@ bindToInput('#timeout', 'display.timeout');
 bindToInput('#port', 'server.port');
 bindToInput('#samplerate', 'server.sampleRate');
 bindToInput('#google', 'google');
+bindToInput('#filter', 'server.filter');
+
+for (let btn of document.querySelectorAll('.apply-btn')) {
+    btn.addEventListener('click', () => {
+        fetch('/restart', { method: 'POST' });
+    });
+}

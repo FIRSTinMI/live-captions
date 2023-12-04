@@ -14,7 +14,7 @@ function updateConfig() {
             lc.style.removeProperty('right');
             lc.style.removeProperty('transform');
 
-            switch (json.display.position) {
+            switch (json.display.position.toString()) {
                 case '0':
                     lc.style.bottom = '0';
                     break;
@@ -102,7 +102,7 @@ function connectToSocket() {
         lc.style.display = 'inline-block';
         text.innerText = transcript + capitalize(frame.text);
         if (frame.isFinal) {
-            transcript += capitalize(frame.text) + '. '
+            transcript += capitalize(frame.text) + '.\n'
             text.innerText = transcript;
             currentTimeout = setTimeout(() => {
                 text.innerText = '';

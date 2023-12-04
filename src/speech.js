@@ -17,6 +17,19 @@ class Speech {
             },
             interimResults: true,
         };
+
+        // Process filter
+        let removeWords = [];
+        let addWords = [];
+        for (let word of this.config.config.server.filter) {
+            if (word.startsWith('+')) {
+                addWords.push(word.substr(1));
+            } else {
+                removeWords.push(word.substr(1));
+            }
+        }
+        filter.addWords(...addWords);
+        filter.removeWords(...removeWords);
     }
 
     startStreaming() {
@@ -27,11 +40,13 @@ class Speech {
             confidence: 0
         };
 
-        const recognizeStream = this.speech
+        this.recognizeStream = this.speech
             .streamingRecognize(this.request)
             .on('error', (err) => {
+                // Error 11 is maxing out the 305 second limit, so we just restart
+                // TODO: automatically stop and start streaming when there's silence/talking
+                if (err.code == 11) return this.startStreaming();
                 console.error(err);
-                if (err.code == 11) this.startStreaming();
             })
             .on('data', data => {
                 let frame = {
@@ -66,18 +81,17 @@ class Speech {
                 }
             });
 
-        recorder
-            .record({
-                sampleRateHertz: this.config.config.sampleRate,
-                threshold: 0,
-                verbose: false,
-                recorder: 'sox',
-                silence: '10.0',
-                cmd: this.program_folder + '/sox-14.4.1/sox.exe'
-            })
-            .stream()
+        this.recorder = recorder.record({
+            sampleRateHertz: this.config.config.sampleRate,
+            threshold: 0,
+            verbose: false,
+            recorder: 'sox',
+            silence: '10.0',
+            cmd: this.program_folder + '/sox-14.4.1/sox.exe'
+        });
+        this.recorder.stream()
             .on('error', console.error)
-            .pipe(recognizeStream);
+            .pipe(this.recognizeStream);
     }
 }
 

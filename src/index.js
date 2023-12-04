@@ -3,12 +3,21 @@ const https = require('https');
 const decompress = require('decompress');
 const Config = require('./util/config');
 const Speech = require('./speech');
-const server = require('./server');
+const Server = require('./server');
 const PROGRAM_FOLDER = process.env.APPDATA + '/live-captions';
 
+let server, speech;
 let clients = [];
 
-(async () => {
+async function start() {
+    // Kill server and speech if they're already running
+    if (server !== undefined) {
+        server.close();
+    }
+    if (speech !== undefined) {
+        speech.recorder.stop();
+    }
+
     // Create program folder
     if (!fs.existsSync(PROGRAM_FOLDER)) {
         fs.mkdirSync(PROGRAM_FOLDER);
@@ -37,9 +46,11 @@ let clients = [];
     const config = new Config(PROGRAM_FOLDER + '/config.json');
 
     // Start web server
-    server(config, clients);
+    server = Server(config, clients, start);
 
     // Start speech recognition
-    const speech = new Speech(config, PROGRAM_FOLDER, clients);
+    speech = new Speech(config, PROGRAM_FOLDER, clients);
     speech.startStreaming();
-})();
+};
+
+start();

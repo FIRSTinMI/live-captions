@@ -23,7 +23,10 @@ class Config {
                 },
                 server: {
                     port: 3000,
-                    sampleRate: 16000
+                    sampleRate: 16000,
+                    filter: [
+                        '-balls'
+                    ]
                 },
                 google: {
                     projectId: '',
