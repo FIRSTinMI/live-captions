@@ -1,0 +1,31 @@
+html,
+body {
+    height: 100%;
+    background-color: magenta;
+    color: #000000;
+    font-family: 'Roboto', 'Calibri', sans-serif;
+    line-height: 1.5;
+    text-align: left;
+}
+
+#lc {
+    text-align: left;
+    width: auto;
+    background: #000000;
+    color: #FFFFFF;
+    padding: 15px;
+    border-radius: 15px;
+    margin: 10px;
+    position: absolute;
+    bottom: 0;
+    overflow-y: scroll;
+    max-height: 5.8em;
+}
+
+#lc span {
+    font-size: 1.4em;
+}
+
+#lc::-webkit-scrollbar {
+    width: 0;
+}
