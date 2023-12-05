@@ -17,13 +17,18 @@ class Config {
                     position: '0',
                     size: '24',
                     lines: '2',
-                    chromaKey: '#ff00ff',
+                    chromaKey: '#FF00FF',
                     timeout: '5',
                     align: 'left'
                 },
                 server: {
                     port: 3000,
-                    sampleRate: 16000,
+                    device1_sampleRate: 16000,
+                    device1: 'null',
+                    device1_color: '#EF5350',
+                    device2_sampleRate: 16000,
+                    device2: 'null',
+                    device2_color: '#42A5F5',
                     filter: [
                         '-balls'
                     ]

@@ -3,15 +3,16 @@ const Lib = require('@google-cloud/speech');
 const Filter = require('bad-words'), filter = new Filter();
 
 class Speech {
-    constructor(config, program_folder, clients) {
+    constructor(config, program_folder, clients, device = 1) {
         this.config = config;
         this.program_folder = program_folder;
         this.clients = clients;
+        this.device = device;
         this.speech = new Lib.SpeechClient(config.config.google);
         this.request = {
             config: {
                 encoding: 'LINEAR16',
-                sampleRateHertz: config.config.server.sampleRate,
+                sampleRateHertz: config.config.server[`device${this.device}_sampleRate`],
                 languageCode: 'en-US',
                 model: 'latest_long'
             },
@@ -50,6 +51,7 @@ class Speech {
             })
             .on('data', data => {
                 let frame = {
+                    device: this.device,
                     type: 'words',
                     isFinal: data.results[0].isFinal,
                     text: data.results[0].alternatives[0].transcript,
@@ -82,12 +84,13 @@ class Speech {
             });
 
         this.recorder = recorder.record({
-            sampleRateHertz: this.config.config.sampleRate,
+            sampleRateHertz: this.config.config[`device${this.device}_sampleRate`],
             threshold: 0,
             verbose: false,
             recorder: 'sox',
             silence: '10.0',
-            cmd: this.program_folder + '/sox-14.4.1/sox.exe'
+            cmd: this.program_folder + '/sox-14.4.1/sox.exe',
+            device: (this.config.config[`device${this.device}`] == 'null') ? '' : this.config.config[`device${this.device}`]
         });
         this.recorder.stream()
             .on('error', console.error)

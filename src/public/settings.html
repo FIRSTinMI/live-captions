@@ -65,10 +65,41 @@
 
                 <div id="transcription" class="col s12">
                     <form>
+                        <p>Device 1</p>
                         <div class="row">
-                            <div class="s12 input-field">
-                                <input id="samplerate" type="number">
-                                <label for="samplerate">Sample Rate</label>
+                            <div class="input-field col s12 m6">
+                                <select id="device1">
+                                    <option value="null">Default</option>
+                                </select>
+                                <label for="device1">Device</label>
+                            </div>
+                            <div class="s12 m3 input-field">
+                                <input id="device1_color" type="text">
+                                <label for="device1_color">Color</label>
+                                <span class="supporting-text">Hex Color</span>
+                            </div>
+                            <div class="s12 m3 input-field">
+                                <input id="device1_samplerate" type="number">
+                                <label for="device1_samplerate">Sample Rate</label>
+                                <span class="supporting-text">Microphone sample rate in Hz</span>
+                            </div>
+                        </div>
+                        <p>Device 2</p>
+                        <div class="row">
+                            <div class="input-field col s12 m6">
+                                <select id="device2">
+                                    <option value="null">Disabled</option>
+                                </select>
+                                <label for="device2">Device</label>
+                            </div>
+                            <div class="s12 m3 input-field">
+                                <input id="device2_color" type="text">
+                                <label for="device2_color">Color</label>
+                                <span class="supporting-text">Hex Color</span>
+                            </div>
+                            <div class="s12 m3 input-field">
+                                <input id="device2_samplerate" type="number">
+                                <label for="device2_samplerate">Sample Rate</label>
                                 <span class="supporting-text">Microphone sample rate in Hz</span>
                             </div>
                         </div>

@@ -1,9 +1,10 @@
 const path = require('path');
+const getDeviceList = require('./util/audioDevices');
 const express = require('express');
 const app = express();
 const expressWs = require('express-ws')(app);
 
-function server(config, clients, restart) {
+function server(config, clients, restart, program_folder) {
     app.use(express.static(path.join(__dirname, 'public')));
 
     app.get('/config', (req, res) => {
@@ -32,6 +33,10 @@ function server(config, clients, restart) {
     app.post('/restart', (req, res) => {
         res.send();
         restart();
+    });
+
+    app.get('/devices', async (req, res) => {
+        res.send(await getDeviceList(program_folder));
     });
 
     app.ws('/ws/', (ws, req) => {
