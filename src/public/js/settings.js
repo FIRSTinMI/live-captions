@@ -15,10 +15,12 @@ fetch('/config')
                     document.getElementById('device1').appendChild(e)
                 }
                 if (devices.length > 1) {
-                    let e = document.createElement('option');
-                    e.innerText = device;
-                    e.value = device.substr(0, 31);
-                    document.getElementById('device2').appendChild(e)
+                    for (let device of devices) {
+                        let e = document.createElement('option');
+                        e.innerText = device;
+                        e.value = device.substr(0, 31);
+                        document.getElementById('device2').appendChild(e)
+                    }
                 }
                 document.getElementById('position').value = json.display.position;
                 document.getElementById('align').value = json.display.align;
