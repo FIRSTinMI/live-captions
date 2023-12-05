@@ -3,6 +3,7 @@ const text = document.getElementById('lc-text')
 
 let timeout = 10e3;
 let deviceColor = ['#ffffff', '#ffffff'];
+let device2 = 'null';
 
 function updateConfig() {
     fetch('/config')
@@ -47,6 +48,7 @@ function updateConfig() {
             lc.style.maxHeight = (json.display.lines * (parseFloat(json.display.size) + 6)) + 'px';
             timeout = json.display.timeout * 1000;
             deviceColor = [json.server.device1_color, json.server.device2_color];
+            device2 = json.server.device2;
         });
 }
 
@@ -59,6 +61,11 @@ function capitalize(text) {
 
     return arr.join(".");
 }
+
+let connectedMessageOverwritten = false;
+let transcript = '';
+let currentTimeout, currentSpan;
+let currentDevice = 1;
 
 function connectToSocket() {
     // Open connection
@@ -90,45 +97,42 @@ function connectToSocket() {
     });
 
     // Listen for messages
-    let connectedMessageOverwritten = false;
-    let transcript = '';
-    let currentTimeout, currentSpan;
-    let currentDevice = 1;
-    socket.addEventListener('message', (evt) => {
-        let frame = JSON.parse(evt.data);
-        console.log(frame);
-        if (frame.type == 'config') return updateConfig();
-        if (frame.text == '') return;
+    socket.addEventListener('message', (evt) => handleCaptionFrame(JSON.parse(evt.data)));
+}
 
-        if (!connectedMessageOverwritten) text.innerText = "";
-        connectedMessageOverwritten = true;
-        clearTimeout(currentTimeout);
-        lc.style.display = 'inline-block';
+function handleCaptionFrame(frame) {
+    console.log(frame);
+    if (frame.type == 'config') return updateConfig();
+    if (frame.text == '') return;
 
-        if (frame.device === currentDevice && currentSpan != undefined) {
-            // If the device hasn't changed and an exist span is usable, just append to that
-            currentSpan.innerText = transcript + capitalize(frame.text)
-        } else {
-            // Otherwise create a new span with the correct color
-            currentSpan = document.createElement('span');
-            currentSpan.style.color = deviceColor[frame.device - 1];
-            text.appendChild(currentSpan);
-            currentSpan.innerText = capitalize(frame.text) + ((frame.isFinal) ? '.\n' : '');
-        }
-        currentDevice = frame.device;
+    if (!connectedMessageOverwritten) text.innerText = "";
+    connectedMessageOverwritten = true;
+    clearTimeout(currentTimeout);
+    lc.style.display = 'inline-block';
 
-        if (frame.isFinal) {
-            // If the sentence is finished we can commit it to the transcript
-            transcript += capitalize(frame.text) + '.\n'
+    if (frame.device === currentDevice && currentSpan != undefined) {
+        // If the device hasn't changed and an exist span is usable, just append to that
+        currentSpan.innerText = transcript + capitalize(frame.text)
+    } else {
+        // Otherwise create a new span with the correct color
+        currentSpan = document.createElement('span');
+        currentSpan.style.color = (device2 == 'null') ? '#ffffff' : deviceColor[frame.device - 1];
+        text.appendChild(currentSpan);
+        currentSpan.innerText = capitalize(frame.text) + ((frame.isFinal) ? '.\n' : '');
+    }
+    currentDevice = frame.device;
 
-            currentTimeout = setTimeout(() => {
-                text.innerHTML = '';
-                transcript = '';
-                lc.style.display = 'none';
-                currentSpan = undefined;
-            }, timeout);
-        }
-    });
+    if (frame.isFinal) {
+        // If the sentence is finished we can commit it to the transcript
+        transcript += capitalize(frame.text) + '.\n'
+
+        currentTimeout = setTimeout(() => {
+            text.innerHTML = '';
+            transcript = '';
+            lc.style.display = 'none';
+            currentSpan = undefined;
+        }, timeout);
+    }
 }
 
 
