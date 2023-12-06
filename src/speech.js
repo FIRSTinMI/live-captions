@@ -90,7 +90,7 @@ class Speech {
             recorder: 'sox',
             silence: '10.0',
             cmd: this.program_folder + '/sox-14.4.1/sox.exe',
-            device: (this.config.config[`device${this.device}`] == 'null') ? '' : this.config.config[`device${this.device}`]
+            device: (this.config.config.server[`device${this.device}`] == 'null') ? '' : this.config.config.server[`device${this.device}`]
         });
         this.recorder.stream()
             .on('error', console.error)

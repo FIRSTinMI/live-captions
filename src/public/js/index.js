@@ -112,13 +112,15 @@ function handleCaptionFrame(frame) {
 
     if (frame.device === currentDevice && currentSpan != undefined) {
         // If the device hasn't changed and an exist span is usable, just append to that
-        currentSpan.innerText = transcript + capitalize(frame.text)
+        currentSpan.innerText = transcript + capitalize(frame.text) + ((frame.isFinal) ? '.\n' : '');
     } else {
         // Otherwise create a new span with the correct color
         currentSpan = document.createElement('span');
         currentSpan.style.color = (device2 == 'null') ? '#ffffff' : deviceColor[frame.device - 1];
         text.appendChild(currentSpan);
         currentSpan.innerText = capitalize(frame.text) + ((frame.isFinal) ? '.\n' : '');
+        // Clear the transcript
+        transcript = '';
     }
     currentDevice = frame.device;
 
