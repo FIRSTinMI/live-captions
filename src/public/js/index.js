@@ -64,6 +64,7 @@ function capitalize(text) {
 
 let connectedMessageOverwritten = false;
 let transcript = '';
+let lastFrameWasFinal = false;
 let currentTimeout, currentSpan;
 let currentDevice = 1;
 
@@ -110,9 +111,16 @@ function handleCaptionFrame(frame) {
     clearTimeout(currentTimeout);
     lc.style.display = 'inline-block';
 
+    // Sometimes the API sends duplicate isFinal frames
+    if (frame.isFinal && lastFrameWasFinal) {
+        return;
+    } else {
+        lastFrameWasFinal = false;
+    }
+
     if (frame.device === currentDevice && currentSpan != undefined) {
         // If the device hasn't changed and an exist span is usable, just append to that
-        currentSpan.innerText = transcript + capitalize(frame.text) + ((frame.isFinal) ? '.\n' : '');
+        if (!frame.isFinal) currentSpan.innerText = transcript + capitalize(frame.text);
     } else {
         // Otherwise create a new span with the correct color
         currentSpan = document.createElement('span');
@@ -125,8 +133,11 @@ function handleCaptionFrame(frame) {
     currentDevice = frame.device;
 
     if (frame.isFinal) {
+        lastFrameWasFinal = true;
+
         // If the sentence is finished we can commit it to the transcript
         transcript += capitalize(frame.text) + '.\n'
+        currentSpan.innerText = transcript
 
         currentTimeout = setTimeout(() => {
             text.innerHTML = '';
