@@ -123,10 +123,10 @@ function handleCaptionFrame(frame) {
         if (!frame.isFinal) currentSpan.innerText = transcript + capitalize(frame.text);
     } else {
         // Otherwise create a new span with the correct color
-        currentSpan = document.createElement('span');
+        currentSpan = document.querySelector(`#lc > span[data-device="${frame.device}"]`);
         currentSpan.style.color = (device2 == 'null') ? '#ffffff' : deviceColor[frame.device - 1];
-        text.appendChild(currentSpan);
-        currentSpan.innerText = capitalize(frame.text) + ((frame.isFinal) ? '.\n' : '');
+        // text.appendChild(currentSpan);
+        currentSpan.innerText += capitalize(frame.text) + ((frame.isFinal) ? '.\n' : '');
         // Clear the transcript
         transcript = '';
     }

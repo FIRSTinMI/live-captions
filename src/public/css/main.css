@@ -15,7 +15,13 @@ body {
     border-radius: 15px;
     margin: 10px;
     position: absolute;
+    transition: height 0.5s ease 0s;
+}
+
+#lc > span {
     overflow-y: scroll;
+    scroll-behavior: smooth;
+    max-height: 10px;
 }
 
 #lc::-webkit-scrollbar {
