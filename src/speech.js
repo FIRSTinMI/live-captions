@@ -52,6 +52,7 @@ class Speech {
         };
 
         const asio = this.rtAudio.getDevices().filter(d => d.id.toString() === this.config.config.server[`device${this.device}`])[0]
+        if (!asio) return;
         console.log(`Connecting to ASIO device ${asio.name} with ${asio.inputChannels} channels, listening on channel ${this.config.config.server[`device${this.device}_channel`]}`)
 
         // Update sample rate from xair
