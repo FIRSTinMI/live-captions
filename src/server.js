@@ -1,5 +1,4 @@
 const path = require('path');
-const getDeviceList = require('./util/audioDevices');
 const express = require('express');
 const app = express();
 const expressWs = require('express-ws')(app);
