@@ -4,7 +4,7 @@ const Filter = require('bad-words'), filter = new Filter();
 const { RtAudioFormat } = require("audify");
 
 class Speech {
-    constructor(config, rtAudio, program_folder, clients, device = 1) {
+    constructor(config, rtAudio, program_folder, clients, model, device = 1) {
         this.config = config;
         this.program_folder = program_folder;
         this.clients = clients;
@@ -21,6 +21,7 @@ class Speech {
         };
         this.rtAudio = rtAudio;
         this.dead = false;
+        this.model = model;
 
         // Process filter
         let removeWords = [];
@@ -52,6 +53,9 @@ class Speech {
         };
 
         const asio = this.rtAudio.getDevices().filter(d => d.id.toString() === this.config.config.server[`device${this.device}`])[0]
+
+        if (!asio) return;
+
         console.log(`Connecting to ASIO device ${asio.name} with ${asio.inputChannels} channels, listening on channel ${this.config.config.server[`device${this.device}_channel`]}`)
 
         // Update sample rate from xair
@@ -116,7 +120,8 @@ class Speech {
             (pcm) => {
                 try {
                     if (this.dead) return;
-                    this.recognizeStream.write(pcm)
+                    // this.recognizeStream.write(pcm)
+                    this.model.transcribe(pcm).then(console.log)
                 } catch(e) {
                     console.log(e)
                 }

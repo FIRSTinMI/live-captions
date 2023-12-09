@@ -2,6 +2,7 @@ const fs = require('fs');
 const Config = require('./util/config');
 const Speech = require('./speech');
 const Server = require('./server');
+const Model = require('./model');
 const PROGRAM_FOLDER = process.env.APPDATA + '/live-captions';
 const { RtAudio, RtAudioApi } = require("audify");
 
@@ -29,6 +30,9 @@ async function start() {
     // Generate/load config
     const config = new Config(PROGRAM_FOLDER + '/config.json');
 
+    // Speech model
+    const model = new Model(); 
+
     // Create a asio interface
     const rtAudio = new RtAudio(RtAudioApi.WINDOWS_WASAPI);
     const rtAudio2 = new RtAudio(RtAudioApi.WINDOWS_WASAPI);
@@ -38,12 +42,12 @@ async function start() {
 
     // Start speech recognition
     if (config.config.server.device1 != 'null') {
-        speech = new Speech(config, rtAudio, PROGRAM_FOLDER, clients);
+        speech = new Speech(config, rtAudio, PROGRAM_FOLDER, clients, model);
         speech.startStreaming();
     }
 
     if (config.config.server.device2 != 'null') {
-        speech2 = new Speech(config, rtAudio2, PROGRAM_FOLDER, clients, 2);
+        speech2 = new Speech(config, rtAudio2, PROGRAM_FOLDER, clients, model, 2);
         speech2.startStreaming();
     }
 };
