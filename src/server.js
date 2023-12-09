@@ -4,7 +4,7 @@ const express = require('express');
 const app = express();
 const expressWs = require('express-ws')(app);
 
-function server(config, clients, restart, program_folder) {
+function server(config, clients, restart, program_folder, rtAudio) {
     app.use(express.static(path.join(__dirname, 'public')));
 
     app.get('/config', (req, res) => {
@@ -36,7 +36,7 @@ function server(config, clients, restart, program_folder) {
     });
 
     app.get('/devices', async (req, res) => {
-        res.send(await getDeviceList(program_folder));
+        res.send(rtAudio.getDevices());
     });
 
     app.ws('/ws/', (ws, req) => {

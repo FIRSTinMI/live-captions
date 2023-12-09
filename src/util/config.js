@@ -15,7 +15,7 @@ class Config {
             fs.writeFileSync(this.file, JSON.stringify({
                 display: {
                     position: '0',
-                    size: '24',
+                    size: '36',
                     lines: '2',
                     chromaKey: '#FF00FF',
                     timeout: '5',
@@ -23,10 +23,10 @@ class Config {
                 },
                 server: {
                     port: 3000,
-                    device1_sampleRate: 16000,
+                    device1_channel: 1,
                     device1: 'null',
                     device1_color: '#EF5350',
-                    device2_sampleRate: 16000,
+                    device2_channel: 2,
                     device2: 'null',
                     device2_color: '#42A5F5',
                     filter: [

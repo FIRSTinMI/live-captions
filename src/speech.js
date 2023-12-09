@@ -1,9 +1,10 @@
-const recorder = require('@filip96/node-record-lpcm16');
+//const recorder = require('@filip96/node-record-lpcm16');
 const Lib = require('@google-cloud/speech');
 const Filter = require('bad-words'), filter = new Filter();
+const { RtAudioFormat } = require("audify");
 
 class Speech {
-    constructor(config, program_folder, clients, device = 1) {
+    constructor(config, rtAudio, program_folder, clients, device = 1) {
         this.config = config;
         this.program_folder = program_folder;
         this.clients = clients;
@@ -12,12 +13,14 @@ class Speech {
         this.request = {
             config: {
                 encoding: 'LINEAR16',
-                sampleRateHertz: config.config.server[`device${this.device}_sampleRate`],
+                sampleRateHertz: 16000,
                 languageCode: 'en-US',
                 model: 'latest_long'
             },
             interimResults: true,
         };
+        this.rtAudio = rtAudio;
+        this.dead = false;
 
         // Process filter
         let removeWords = [];
@@ -33,6 +36,13 @@ class Speech {
         filter.removeWords(...removeWords);
     }
 
+    stop() {
+        this.dead = true;
+        this.rtAudio.setInputCallback(() => {});
+        this.rtAudio.closeStream();
+        this.speech.close()
+    }
+
     startStreaming() {
         let lastFrame = {
             type: 'words',
@@ -41,12 +51,21 @@ class Speech {
             confidence: 0
         };
 
+        const asio = this.rtAudio.getDevices().filter(d => d.id.toString() === this.config.config.server[`device${this.device}`])[0]
+        console.log(`Connecting to ASIO device ${asio.name} with ${asio.inputChannels} channels, listening on channel ${this.config.config.server[`device${this.device}_channel`]}`)
+
+        // Update sample rate from xair
+        this.request.config.sampleRateHertz = asio.preferredSampleRate;
+
         this.recognizeStream = this.speech
             .streamingRecognize(this.request)
             .on('error', (err) => {
                 // Error 11 is maxing out the 305 second limit, so we just restart
                 // TODO: automatically stop and start streaming when there's silence/talking
-                if (err.code == 11) return this.startStreaming();
+                if (err.code == 11) {
+                    this.rtAudio.closeStream();
+                    return this.startStreaming();
+                }
                 console.error(err);
             })
             .on('data', data => {
@@ -83,18 +102,31 @@ class Speech {
                 }
             });
 
-        this.recorder = recorder.record({
-            sampleRateHertz: this.config.config[`device${this.device}_sampleRate`],
-            threshold: 0,
-            verbose: false,
-            recorder: 'sox',
-            silence: '10.0',
-            cmd: this.program_folder + '/sox-14.4.1/sox.exe',
-            device: (this.config.config.server[`device${this.device}`] == 'null') ? '' : this.config.config.server[`device${this.device}`]
-        });
-        this.recorder.stream()
-            .on('error', console.error)
-            .pipe(this.recognizeStream);
+        this.rtAudio.openStream(
+            null,
+            {
+              deviceId: asio.id, // Input device id (Get all devices using `getDevices`)
+              nChannels: 1, // Number of channels
+              firstChannel: parseInt(this.config.config.server[`device${this.device}_channel`]), // First channel index on device (default = 0).
+            },
+            RtAudioFormat.RTAUDIO_SINT16, // PCM Format - Signed 16-bit integer
+            asio.preferredSampleRate, // Sampling rate is 48kHz
+            1920, // Frame size is 1920 (40ms)
+            "Filip is cool", // The name of the stream (used for JACK Api)
+            (pcm) => {
+                try {
+                    if (this.dead) return;
+                    this.recognizeStream.write(pcm)
+                } catch(e) {
+                    console.log(e)
+                }
+             } // Input callback function, write every input pcm data to the output buffer
+          );
+          
+          // Start the stream
+          this.rtAudio.start();
+
+          
     }
 }
 
