@@ -1,7 +1,7 @@
-//const recorder = require('@filip96/node-record-lpcm16');
 const Lib = require('@google-cloud/speech');
 const Filter = require('bad-words'), filter = new Filter();
 const { RtAudioFormat } = require("audify");
+const colors = require('@colors/colors');
 
 class Speech {
     constructor(config, rtAudio, program_folder, clients, device = 1) {
@@ -38,7 +38,7 @@ class Speech {
 
     stop() {
         this.dead = true;
-        this.rtAudio.setInputCallback(() => {});
+        this.rtAudio.setInputCallback(() => { });
         this.rtAudio.closeStream();
         this.speech.close()
     }
@@ -63,11 +63,19 @@ class Speech {
             .on('error', (err) => {
                 // Error 11 is maxing out the 305 second limit, so we just restart
                 // TODO: automatically stop and start streaming when there's silence/talking
-                if (err.code == 11) {
+                if (err.code === 11) {
                     this.rtAudio.closeStream();
                     return this.startStreaming();
                 }
+
                 console.error(err);
+
+                if (err.code === 16 ||
+                    err.toString().includes('does not contain a client_email field') ||
+                    err.toString().includes('does not contain a private_key field')) {
+                    console.error('Google API Authentication Failed'.bold.red);
+                    this.rtAudio.stop();
+                }
             })
             .on('data', data => {
                 let frame = {
@@ -106,9 +114,9 @@ class Speech {
         this.rtAudio.openStream(
             null,
             {
-              deviceId: asio.id, // Input device id (Get all devices using `getDevices`)
-              nChannels: 1, // Number of channels
-              firstChannel: parseInt(this.config.config.server[`device${this.device}_channel`]), // First channel index on device (default = 0).
+                deviceId: asio.id, // Input device id (Get all devices using `getDevices`)
+                nChannels: 1, // Number of channels
+                firstChannel: parseInt(this.config.config.server[`device${this.device}_channel`]), // First channel index on device (default = 0).
             },
             RtAudioFormat.RTAUDIO_SINT16, // PCM Format - Signed 16-bit integer
             asio.preferredSampleRate, // Sampling rate is 48kHz
@@ -118,16 +126,16 @@ class Speech {
                 try {
                     if (this.dead) return;
                     this.recognizeStream.write(pcm)
-                } catch(e) {
-                    console.log(e)
+                } catch (err) {
+                    console.log(err)
                 }
-             } // Input callback function, write every input pcm data to the output buffer
-          );
-          
-          // Start the stream
-          this.rtAudio.start();
+            } // Input callback function, write every input pcm data to the output buffer
+        );
 
-          
+        // Start the stream
+        this.rtAudio.start();
+
+
     }
 }
 
