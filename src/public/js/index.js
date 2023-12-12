@@ -1,12 +1,14 @@
 const lc = document.getElementById('lc');
-const text = document.getElementById('lc-text')
 
 let timeout = 10e3;
 let deviceColor = ['#ffffff', '#ffffff'];
 let device2 = 'null';
+let config = {};
+
+const deviceStats = [];
 
 function updateConfig() {
-    fetch('/config')
+    return fetch('/config')
         .then(res => res.json())
         .then(json => {
             // Clear old styles
@@ -43,12 +45,11 @@ function updateConfig() {
                     break;
             }
             document.body.style.backgroundColor = json.display.chromaKey;
-            text.style.fontSize = json.display.size + 'px';
-            text.style.lineHeight = (parseFloat(json.display.size) + 6) + 'px';
             lc.style.maxHeight = (json.display.lines * (parseFloat(json.display.size) + 6)) + 'px';
             timeout = json.display.timeout * 1000;
             deviceColor = [json.server.device1_color, json.server.device2_color];
             device2 = json.server.device2;
+            config = json;
         });
 }
 
@@ -63,10 +64,6 @@ function capitalize(text) {
 }
 
 let connectedMessageOverwritten = false;
-let transcript = '';
-let lastFrameWasFinal = false;
-let currentTimeout, currentSpan;
-let currentDevice = 1;
 
 function connectToSocket() {
     // Open connection
@@ -106,10 +103,24 @@ function handleCaptionFrame(frame) {
     if (frame.type == 'config') return updateConfig();
     if (frame.text == '') return;
 
-    if (!connectedMessageOverwritten) text.innerText = "";
+    const device = frame.device;
+    if (device == 'null') return;
+
+    // Initilize defaults
+    if (!deviceStats[device]) deviceStats[device] = {
+        transcript: '',
+        lastFrameWasFinal: false,
+        currentDiv: undefined,
+        currentTimeout: undefined,
+        color: deviceColor[device - 1]
+    };
+
+    let { transcript, lastFrameWasFinal, currentDiv, currentTimeout, color } = deviceStats[device];
+
+    if (!connectedMessageOverwritten) lc.innerText = "";
     connectedMessageOverwritten = true;
     clearTimeout(currentTimeout);
-    lc.style.display = 'inline-block';
+    lc.style.display = 'flex';
 
     // Sometimes the API sends duplicate isFinal frames
     if (frame.isFinal && lastFrameWasFinal) {
@@ -118,41 +129,61 @@ function handleCaptionFrame(frame) {
         lastFrameWasFinal = false;
     }
 
-    if (frame.device === currentDevice && currentSpan != undefined) {
-        // If the device hasn't changed and an exist span is usable, just append to that
-        if (!frame.isFinal) currentSpan.innerText = transcript + capitalize(frame.text);
+    // Check if we've located the correct span
+    if (currentDiv != undefined) {
+        // Just append to that
+        if (!frame.isFinal) currentDiv.innerText = transcript + capitalize(frame.text);
     } else {
         // Otherwise create a new span with the correct color
-        currentSpan = document.querySelector(`#lc > span[data-device="${frame.device}"]`);
-        currentSpan.style.color = (device2 == 'null') ? '#ffffff' : deviceColor[frame.device - 1];
-        // text.appendChild(currentSpan);
-        currentSpan.innerText += capitalize(frame.text) + ((frame.isFinal) ? '.\n' : '');
-        // Clear the transcript
-        transcript = '';
+        currentDiv = document.createElement('div');
+        currentDiv.style.color = color;
+        currentDiv.style.fontSize = config.display.size + 'px';
+        currentDiv.style.lineHeight = (parseFloat(config.display.size) + 6) + 'px';
+        // currentDiv.style.maxHeight = (parseFloat(config.display.size) + 6) + 'px';
+        lc.appendChild(currentDiv);
+        currentDiv.innerText = capitalize(frame.text) + ((frame.isFinal) ? '.\n' : '');
     }
-    currentDevice = frame.device;
 
     if (frame.isFinal) {
         lastFrameWasFinal = true;
 
         // If the sentence is finished we can commit it to the transcript
         transcript += capitalize(frame.text) + '.\n'
-        currentSpan.innerText = transcript
+        currentDiv.innerText = transcript
 
         currentTimeout = setTimeout(() => {
-            text.innerHTML = '';
-            transcript = '';
-            lc.style.display = 'none';
-            currentSpan = undefined;
+            deviceStats[device].currentDiv.innerHTML = '';
+            deviceStats[device].transcript = '';
+
+            // Iterate over all spans and check transcripts, if we're all empty, hide the container
+            let allEmpty = deviceStats.reduce((acc, val) => {
+                acc = acc && val.transcript == '';
+                return acc;
+            }, true);
+
+            if (allEmpty) {
+                lc.style.display = 'none';
+            }
         }, timeout);
     }
+
+    // Scroll to bottom of container
+    if (currentDiv != undefined) currentDiv.scrollTop = currentDiv.scrollHeight;
+
+    // Update frame stats
+    deviceStats[device] = {
+        transcript,
+        lastFrameWasFinal,
+        currentDiv,
+        currentTimeout
+    };
 }
 
+// const observer = new MutationObserver((mutationList, observer) => {
+//     lc.scrollTop = lc.scrollHeight;
+// });
+// observer.observe(lc, { attributes: true, childList: true, subtree: true });
 
-const observer = new MutationObserver((mutationList, observer) => {
-    lc.scrollTop = lc.scrollHeight;
-});
-observer.observe(lc, { attributes: true, childList: true, subtree: true });
-
-updateConfig();
-connectToSocket();
+updateConfig().then(() => {
+    connectToSocket();
+})

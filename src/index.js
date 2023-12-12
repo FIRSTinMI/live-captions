@@ -4,6 +4,7 @@ const Speech = require('./speech');
 const Server = require('./server');
 const PROGRAM_FOLDER = process.env.APPDATA + '/live-captions';
 const { RtAudio, RtAudioApi } = require("audify");
+const { gibberish } = require('./util/developmentGibberish')
 
 let server, speech, speech2;
 let clients = [];
@@ -35,6 +36,10 @@ async function start() {
 
     // Start web server
     server = Server(config, clients, start, PROGRAM_FOLDER, rtAudio);
+
+    // For development testing simulating semi-realistic captions
+    gibberish(clients, 2);
+    return;
 
     // Start speech recognition
     if (config.config.server.device1 != 'null') {
