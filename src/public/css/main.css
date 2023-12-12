@@ -9,19 +9,25 @@ body {
 
 #lc {
     width: auto;
+    max-width: 95vw;
     background: #000000;
     color: #FFFFFF;
     border: 15px solid black;
     border-radius: 15px;
     margin: 10px;
     position: absolute;
-    overflow-y: scroll;
+    transition: height 0.5s ease 0s;
+    flex-direction: column;
+}
+
+#lc>div {
+    overflow-y: hidden;
+    scroll-behavior: smooth;
+    flex-grow: 1;
+    transition: all 1s ease 0s;
+    height: 100%;
 }
 
 #lc::-webkit-scrollbar {
     width: 0;
-}
-
-#lc-text span {
-    display: block;
 }
