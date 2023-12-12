@@ -38,8 +38,8 @@ async function start() {
     server = Server(config, clients, start, PROGRAM_FOLDER, rtAudio);
 
     // For development testing simulating semi-realistic captions
-    gibberish(clients, 2);
-    return;
+    // gibberish(clients, 2);
+    // return;
 
     // Start speech recognition
     if (config.config.server.device1 != 'null') {
