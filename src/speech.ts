@@ -1,15 +1,26 @@
-//const recorder = require('@filip96/node-record-lpcm16');
-const Lib = require('@google-cloud/speech');
-const Filter = require('bad-words'), filter = new Filter();
-const { RtAudioFormat } = require("audify");
+import { SpeechClient } from "@google-cloud/speech";
+import ConfigManager from "./util/config_manager";
+import { RtAudio, RtAudioFormat } from 'audify';
+import WebSocket from "ws";
+import BadWords from 'bad-words'
+import { DeviceConfig } from "./types/Config";
 
 class Speech {
-    constructor(config, rtAudio, program_folder, clients, device = 1) {
+
+    private config: ConfigManager;
+    private device: DeviceConfig;
+    private clients: WebSocket[];
+    private speech: SpeechClient;
+    private request: any;
+    private rtAudio: RtAudio;
+    private dead: boolean = false;
+    private filter = new BadWords();
+
+    constructor(config: ConfigManager, device: DeviceConfig, rtAudio: RtAudio, clients: WebSocket[]) {
         this.config = config;
-        this.program_folder = program_folder;
-        this.clients = clients;
         this.device = device;
-        this.speech = new Lib.SpeechClient(config.config.google);
+        this.clients = clients;
+        this.speech = new SpeechClient(config.config.google);
         this.request = {
             config: {
                 encoding: 'LINEAR16',
@@ -20,7 +31,6 @@ class Speech {
             interimResults: true,
         };
         this.rtAudio = rtAudio;
-        this.dead = false;
 
         // Process filter
         let removeWords = [];
@@ -32,13 +42,13 @@ class Speech {
                 removeWords.push(word.substr(1));
             }
         }
-        filter.addWords(...addWords);
-        filter.removeWords(...removeWords);
+        this.filter.addWords(...addWords);
+        this.filter.removeWords(...removeWords);
     }
 
     stop() {
         this.dead = true;
-        this.rtAudio.setInputCallback(() => {});
+        this.rtAudio.setInputCallback(() => { });
         this.rtAudio.closeStream();
         this.speech.close()
     }
@@ -51,18 +61,22 @@ class Speech {
             confidence: 0
         };
 
-        const asio = this.rtAudio.getDevices().filter(d => d.id.toString() === this.config.config.server[`device${this.device}`])[0]
-        if (!asio) return;
-        console.log(`Connecting to ASIO device ${asio.name} with ${asio.inputChannels} channels, listening on channel ${this.config.config.server[`device${this.device}_channel`]}`)
+        // Find the device we're listening to based on what was selected in the UI
+        const rtDevice = this.rtAudio.getDevices().filter(d => d.id === this.device.id)[0]
+
+        if (!rtDevice) return;
+
+        console.log(`Connecting to device ${rtDevice.name} with ${rtDevice.inputChannels} channels, listening on channel ${this.device.channel}`)
 
         // Update sample rate from xair
-        this.request.config.sampleRateHertz = asio.preferredSampleRate;
+        this.request.config.sampleRateHertz = rtDevice.preferredSampleRate;
 
-        this.recognizeStream = this.speech
+        const recognizeStream = this.speech
             .streamingRecognize(this.request)
             .on('error', (err) => {
                 // Error 11 is maxing out the 305 second limit, so we just restart
                 // TODO: automatically stop and start streaming when there's silence/talking
+                // @ts-ignore
                 if (err.code == 11) {
                     this.rtAudio.closeStream();
                     return this.startStreaming();
@@ -89,7 +103,7 @@ class Speech {
 
                 // Trim whitespace and censor bad words
                 try {
-                    frame.text = filter.clean(frame.text.trim());
+                    frame.text = this.filter.clean(frame.text.trim());
                 } catch (err) {
                     console.error(err);
                     console.error(frame.text);
@@ -106,29 +120,28 @@ class Speech {
         this.rtAudio.openStream(
             null,
             {
-              deviceId: asio.id, // Input device id (Get all devices using `getDevices`)
-              nChannels: 1, // Number of channels
-              firstChannel: parseInt(this.config.config.server[`device${this.device}_channel`]), // First channel index on device (default = 0).
+                deviceId: rtDevice.id, // Input device id (Get all devices using `getDevices`)
+                nChannels: 1, // Number of channels
+                firstChannel: parseInt(this.device.channel.toString()), // First channel index on device (default = 0).
             },
             RtAudioFormat.RTAUDIO_SINT16, // PCM Format - Signed 16-bit integer
-            asio.preferredSampleRate, // Sampling rate is 48kHz
+            rtDevice.preferredSampleRate, // Sampling rate is 48kHz
             1920, // Frame size is 1920 (40ms)
             "Filip is cool", // The name of the stream (used for JACK Api)
             (pcm) => {
                 try {
                     if (this.dead) return;
-                    this.recognizeStream.write(pcm)
-                } catch(e) {
+                    recognizeStream.write(pcm)
+                } catch (e) {
                     console.log(e)
                 }
-             } // Input callback function, write every input pcm data to the output buffer
-          );
-          
-          // Start the stream
-          this.rtAudio.start();
+            }, // Input callback function, write every input pcm data to the output buffer
+            () => { }
+        );
 
-          
+        // Start the stream
+        this.rtAudio.start();
     }
 }
 
-module.exports = Speech;
+export default Speech;
