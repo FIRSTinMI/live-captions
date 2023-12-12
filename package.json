@@ -4,8 +4,8 @@
     "main": "./build/index.js",
     "bin": "./build/index.js",
     "scripts": {
-        "start": "tsc && node ./build/index.js",
-        "start-gibberish": "tsc && node ./build/index.js --gibberish",
+        "start": "npx tsc && node ./build/index.js",
+        "start-gibberish": "npx tsc && node ./build/index.js --gibberish",
         "dist": "tsc && pkg ."
     },
     "author": "",
@@ -13,16 +13,11 @@
     "dependencies": {
         "@colors/colors": "^1.6.0",
         "@google-cloud/speech": "^6.1.0",
-        "@xenova/transformers": "^2.10.1",
         "audify": "^1.8.2",
         "bad-words": "^3.0.4",
         "body-parser": "^1.20.2",
-        "configuration": "^4.1.5",
-        "csv-parse": "^5.5.2",
-        "decompress": "^4.2.1",
         "express": "^4.18.2",
-        "express-ws": "^5.0.2",
-        "wavefile": "^11.0.0"
+        "express-ws": "^5.0.2"
     },
     "devDependencies": {
         "@types/bad-words": "^3.0.3",
