@@ -7,9 +7,11 @@ import color from 'colorts';
 import { RtAudio } from 'audify';
 import { Server as HttpServer, IncomingMessage, ServerResponse } from 'http';
 import { ConfigManager } from './util/configManager';
+import { Speech } from './speech';
 
 export class Server {
     public clients: ws[];
+    public settingsClients: ws[] = [];
     private config: ConfigManager;
     private app: expressWs.Application;
     private instance: HttpServer<typeof IncomingMessage, typeof ServerResponse> | undefined;
@@ -67,17 +69,19 @@ export class Server {
         });
 
         this.app.ws('/ws/', (ws, req) => {
-            this.clients.push(ws);
 
             ws.on('message', (msg) => {
                 console.log(msg);
+                if (msg.toString() === 'display') {
+                    this.clients.push(ws);
+                } else if (msg.toString() === 'settings') {
+                    this.settingsClients.push(ws);
+                }
             });
 
             ws.on('close', () => {
                 this.clients.splice(this.clients.indexOf(ws), 1);
             });
-
-            console.log('new connection to websocket');
         });
     }
 

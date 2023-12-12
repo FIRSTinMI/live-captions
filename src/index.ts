@@ -50,6 +50,18 @@ function start() {
     server = new Server(config, clients, rtAudio, start);
     server.start();
 
+    setInterval(() => {
+        for (let client of server.settingsClients) {
+            client.send(JSON.stringify({
+                type: 'volumes',
+                devices: speechServices.map((s: Speech) => ({
+                    id: s.inputConfig.id,
+                    volume: s.volume
+                }))
+            }));
+        }
+    }, 500);
+
     // For development testing simulating semi-realistic captions
     if (process.argv.includes('--gibberish')) {
         require('./util/developmentGibberish').gibberish(clients, 2);

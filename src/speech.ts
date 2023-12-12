@@ -11,9 +11,9 @@ import { SingleBar } from "cli-progress";
 
 export class Speech {
     private config: ConfigManager;
-    private inputConfig: InputConfig;
+    public inputConfig: InputConfig;
     private clients: WebSocket[];
-    private speech: SpeechClient;
+    private speech?: SpeechClient;
     private request: any = {
         config: {
             encoding: 'LINEAR16',
@@ -35,12 +35,17 @@ export class Speech {
         confidence: 0
     };
     private volumeBar: SingleBar | undefined = undefined;
+    public volume: number = 0;
 
     constructor(config: ConfigManager, clients: WebSocket[], input: InputConfig, volumeBar?: SingleBar) {
         this.config = config;
         this.inputConfig = input;
         this.clients = clients;
-        this.speech = new SpeechClient(config.server.google);
+        if (config.server.google.credentials.client_email === '' || config.server.google.credentials.private_key === '') {
+            console.error(color('Google API Authentication Failed').bold.red.toString());
+        } else {
+            this.speech = new SpeechClient(config.server.google);
+        }
         this.rtAudio = new RtAudio(input.driver);
         this.volumeBar = volumeBar;
 
@@ -62,7 +67,7 @@ export class Speech {
         this.dead = true;
         this.rtAudio.setInputCallback(() => { });
         this.rtAudio.closeStream();
-        this.speech.close()
+        this.speech?.close()
     }
 
     private handleRecognitionEvent(data: SpeechResultData) {
@@ -113,27 +118,29 @@ export class Speech {
         this.inputConfig.sampleRate = asio.preferredSampleRate;
         this.request.config.sampleRateHertz = this.inputConfig.sampleRate;
 
-        this.recognizeStream = this.speech
-            .streamingRecognize(this.request)
-            .on('error', (err: APIError) => {
-                // Error 11 is maxing out the 305 second limit, so we just restart
-                // TODO: automatically stop and start streaming when there's silence/talking
+        if (this.speech) {
+            this.recognizeStream = this.speech
+                .streamingRecognize(this.request)
+                .on('error', (err: APIError) => {
+                    // Error 11 is maxing out the 305 second limit, so we just restart
+                    // TODO: automatically stop and start streaming when there's silence/talking
 
-                if (err.code == 11) {
-                    this.stop();
-                    this.speech = new SpeechClient(this.config.server.google);
-                    this.rtAudio = new RtAudio(this.inputConfig.driver);
-                    return this.startStreaming();
-                } else if (err.code === 16 ||
-                    err.toString().includes('does not contain a client_email field') ||
-                    err.toString().includes('does not contain a private_key field')) {
-                    console.error(color('Google API Authentication Failed').bold.red);
-                    this.stop();
-                } else {
-                    console.error(err);
-                }
-            })
-            .on('data', (data) => this.handleRecognitionEvent(data));
+                    if (err.code == 11) {
+                        this.stop();
+                        this.speech = new SpeechClient(this.config.server.google);
+                        this.rtAudio = new RtAudio(this.inputConfig.driver);
+                        return this.startStreaming();
+                    } else if (err.code === 16 ||
+                        err.toString().includes('does not contain a client_email field') ||
+                        err.toString().includes('does not contain a private_key field')) {
+                        console.error(color('Google API Authentication Failed').bold.red.toString());
+                        this.stop();
+                    } else {
+                        console.error(err);
+                    }
+                })
+                .on('data', (data) => this.handleRecognitionEvent(data));
+        }
 
         const inputParameters: RtAudioStreamParameters = {
             deviceId: asio.id, // Input device id (Get all devices using `getDevices`)
@@ -161,11 +168,12 @@ export class Speech {
                     let max = Math.max(...data)
                     let min = Math.min(...data)
                     this.volumeBar?.update((max - min) * 2000);
+                    this.volume = (max - min) * 1000;
 
                     if ((max - min) * 100 >= this.inputConfig.threshold) {
-                        this.recognizeStream.write(pcm);
+                        this.recognizeStream?.write(pcm);
                     } else {
-                        this.recognizeStream.write(silence);
+                        this.recognizeStream?.write(silence);
                     }
                 } catch (err) {
                     console.log(err)

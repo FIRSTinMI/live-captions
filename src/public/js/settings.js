@@ -166,3 +166,31 @@ for (let btn of document.querySelectorAll('.apply-btn')) {
         });
     });
 }
+
+function connectToSocket() {
+    // Open connection
+    const socket = new WebSocket(`ws://${window.location.host}/ws/`);
+
+    // Connection opened
+    socket.addEventListener('open', (evt) => {
+        console.log('Connected');
+        socket.send('settings');
+        setInterval(() => {
+            socket.send('heartbeat');
+        }, 60e3);
+    });
+
+    socket.addEventListener('close', () => {
+        console.log('Socket lost connection, retying in 5 seconds');
+        setTimeout(connectToSocket, 5e3);
+    });
+
+    socket.addEventListener('error', (err) => {
+        console.error(err);
+    });
+
+    // Listen for messages
+    socket.addEventListener('message', (evt) => {
+        const json = JSON.parse(evt.data);
+    });
+}

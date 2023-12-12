@@ -67,6 +67,7 @@ function connectToSocket() {
     // Connection opened
     socket.addEventListener('open', (evt) => {
         console.log('Connected');
+        socket.send('display');
         setInterval(() => {
             socket.send('heartbeat');
         }, 60e3);
