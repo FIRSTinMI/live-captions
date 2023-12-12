@@ -117,13 +117,6 @@ function handleCaptionFrame(frame) {
     clearTimeout(currentTimeout);
     lc.style.display = 'flex';
 
-    // Sometimes the API sends duplicate isFinal frames
-    if (frame.isFinal && lastFrameWasFinal) {
-        return;
-    } else {
-        lastFrameWasFinal = false;
-    }
-
     // Check if we've located the correct span
     if (currentDiv != undefined) {
         // Just append to that

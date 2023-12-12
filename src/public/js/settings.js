@@ -116,7 +116,7 @@ function addRow(device = null) {
     row.removeAttribute('style');
 
     // Add listener to remove button
-    row.querySelector('[data-action="remove"]').addEventListener('click', container.removeChild);
+    row.querySelector('[data-action="remove"]').addEventListener('click', () => container.removeChild(row));
 }
 
 function addRowUi() {
@@ -130,7 +130,7 @@ for (let btn of document.querySelectorAll('.apply-btn')) {
             toSave.push({
                 // Get values
                 id: toSave.length,
-                device: row.querySelector('select').value,
+                device: parseInt(row.querySelector('select').value),
                 speaker: row.querySelector('[data-role="name"]').value,
                 channel: parseInt(row.querySelector('[data-role="channel"]').value),
                 color: row.querySelector('[data-role="color"]').value,

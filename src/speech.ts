@@ -1,5 +1,5 @@
 import { SpeechClient } from "@google-cloud/speech";
-import { RtAudio, RtAudioErrorType, RtAudioFormat, RtAudioStreamParameters } from 'audify';
+import { RtAudio, RtAudioErrorType, RtAudioFormat, RtAudioStreamFlags, RtAudioStreamParameters } from 'audify';
 import WebSocket from "ws";
 import BadWords from 'bad-words'
 import { ConfigManager } from "./util/configManager";
@@ -62,7 +62,7 @@ export class Speech {
         this.speech.close()
     }
 
-    private handleWebSocketMessage(data: SpeechResultData) {
+    private handleRecognitionEvent(data: SpeechResultData) {
         let frame: Frame = {
             device: this.inputConfig.id,
             type: 'words',
@@ -72,25 +72,24 @@ export class Speech {
             speaker: this.inputConfig.speaker
         }
 
+        // Sometimes the API sends duplicate isFinal frames
+        if (frame.isFinal && this.lastFrame.isFinal) return;
+
+        // Or an empty text...
         if (frame.text.trim() === '') return;
+
+        // Or the same frame twice
+        if (frame.text === this.lastFrame.text && !frame.isFinal) return;
 
         // If this frame has fewer words and is not final let's not send the update
         // because otherwise the words kind of flicker as it detects
         // and if the last frame was final then this is a new sentence and obviously will have fewer words
-        if (frame.text.split(' ').length - this.lastFrame.text.split(' ').length < 0 && !frame.isFinal && !this.lastFrame.isFinal) {
-            return;
-        }
-
-        // Trim whitespace and censor bad words
-        try {
-            frame.text = this.filter.clean(frame.text.trim());
-        } catch (err) {
-            console.error(err);
-            console.error(frame.text);
-            return;
-        }
+        if (frame.text.split(' ').length - this.lastFrame.text.split(' ').length < 0 && !frame.isFinal && !this.lastFrame.isFinal) return;
 
         this.lastFrame = frame;
+
+        // Trim whitespace and censor bad words
+        frame.text = this.filter.clean(frame.text.trim());
         let msg = JSON.stringify(frame);
         for (let ws of this.clients) {
             ws.send(msg);
@@ -102,9 +101,7 @@ export class Speech {
         const asio = this.rtAudio.getDevices().filter(d => d.id === this.inputConfig.device)[0]
         if (!asio) return;
         console.log(
-            `Connecting to ASIO device ${color(asio.name).bold.blue} 
-            with ${color(asio.inputChannels.toString()).bold.blue} channels, 
-            listening on channel ${color(this.inputConfig.channel.toString()).bold.blue}`
+            `Connecting to ASIO device ${color(asio.name).bold.blue} with ${color(asio.inputChannels.toString()).bold.blue} channels, listening on channel ${color(this.inputConfig.channel.toString()).bold.blue}`
         );
 
         // Update sample rate from xair
@@ -131,7 +128,7 @@ export class Speech {
                     console.error(err);
                 }
             })
-            .on('data', this.handleWebSocketMessage);
+            .on('data', (data) => this.handleRecognitionEvent(data));
 
         const inputParameters: RtAudioStreamParameters = {
             deviceId: asio.id, // Input device id (Get all devices using `getDevices`)
@@ -155,7 +152,7 @@ export class Speech {
                 }
             }, // Input callback function, write every input pcm data to the output buffer,
             null,
-            undefined,
+            RtAudioStreamFlags.RTAUDIO_ALSA_USE_DEFAULT,
             (err: RtAudioErrorType) => {
                 console.error(err);
             }
