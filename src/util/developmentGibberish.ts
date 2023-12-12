@@ -1,4 +1,5 @@
-import WebSocket from 'ws';
+import { Frame } from '../types/Frame';
+import ws from 'ws';
 
 function randomText() {
     return Math.random().toString(36).substring(7);
@@ -8,15 +9,15 @@ function fiftyPercentChance() {
     return Math.random() > 0.5;
 }
 
-export function gibberish(clients: WebSocket[], numDevices: number) {
-    let frames: any[] = [];
+export function gibberish(clients: ws[], numDevices: number) {
+    let frames: Frame[] = [];
     // Create a frame for each device
     for (let i = 0; i < numDevices; i++) {
         frames.push({
             device: i + 1,
             type: 'words',
             isFinal: false,
-            text: "",
+            text: '',
             confidence: 1
         })
     }
@@ -26,25 +27,25 @@ export function gibberish(clients: WebSocket[], numDevices: number) {
         frames = frames.map(frame => {
             // If the last time this was a final frame, we need to reset it
             if (frame.isFinal) {
-                frame.text = "";
+                frame.text = '';
                 frame.skip = 0;
             }
 
             // Skip a few frames to make it more realistic
-            if (frame.skip < 5) {
+            if (frame.skip && frame.skip < 5) {
                 frame.isFinal = false;
                 frame.skip++;
                 return frame;
             }
 
-            frame.text = frame.text + " " + randomText();
+            frame.text = frame.text + ' ' + randomText();
             frame.isFinal = fiftyPercentChance();
             return frame;
         });
 
-        clients.forEach((client: WebSocket) => {
+        clients.forEach(client => {
             frames.forEach(frame => {
-                if (frame.text === "") return;
+                if (frame.text === '') return;
                 client.send(JSON.stringify(frame));
             });
         })

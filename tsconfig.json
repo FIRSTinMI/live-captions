@@ -4,7 +4,7 @@
         "module": "commonjs",
         "rootDir": "./src",
         "allowJs": true,
-        "checkJs": true,
+        "checkJs": false,
         "outDir": "./build",
         "esModuleInterop": true,
         "forceConsistentCasingInFileNames": true,

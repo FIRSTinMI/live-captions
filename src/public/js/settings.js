@@ -1,112 +1,146 @@
-let totalDevices = 0;
 let physicalDevices = [];
-const alternatingColors = ["#42A5F5", "#EF5350"];
+let config = {};
+const defaultColors = ["#42A5F5", "#EF5350", "#FFC107", "#D500F9", "#8BC34A", "#FFFFFF"];
 
 document.addEventListener('DOMContentLoaded', function () {
     M.Tabs.init(document.querySelector('.tabs'), {});
 });
 
-function bindToInput(query, setting) {
-    let elm = document.querySelector(query);
+const configPromise = fetch('/config')
+    .then(res => res.json())
+    .then(json => {
+        config = json;
+        // Update settings values
+        document.getElementById('display-position').value = json.display.position;
+        document.getElementById('display-align').value = json.display.align;
+        document.getElementById('display-chromaKey').value = json.display.chromaKey;
+        document.getElementById('display-size').value = json.display.size;
+        document.getElementById('display-lines').value = json.display.lines;
+        document.getElementById('display-timeout').value = json.display.timeout;
+        document.getElementById('server-port').value = json.server.port;
+        document.getElementById('server-google').value = JSON.stringify(json.server.google, null, 4);
+        document.getElementById('transcription-filter').value = json.transcription.filter.join('\n');
+
+        M.FormSelect.init(document.forms[0].querySelectorAll('select'), {});
+        document.querySelectorAll('textarea').forEach(M.Forms.textareaAutoResize);
+    });
+
+// Fetch devices, add rows and populate dropdown
+fetch('/devices')
+    .then(res => res.json())
+    .then(async devices => {
+        physicalDevices = devices
+        // Iterate over devices and create rows
+        await configPromise;
+        for (let device of config.transcription.inputs) {
+            addRow(device);
+        }
+    });
+
+// This handles sending all settings except devices
+function bindToInput(elm) {
     elm.addEventListener('change', (evt) => {
-        fetch(`/config/${encodeURIComponent(setting)}?value=${encodeURIComponent(elm.value)}`, { method: 'POST' });
+        const setting = encodeURIComponent(elm.id.replace('-', '.'));
+        let body;
+        if (elm.id === 'transcription-filter') {
+            body = JSON.stringify(elm.value.split('\n'));
+        } else if (elm.type === 'textarea') {
+            body = elm.value;
+        } else {
+            return fetch(`/config/${setting}${(body) ? '' : `?value=${encodeURIComponent(elm.value)}`}`, { method: 'POST' });
+        }
+
+        fetch(`/config/${setting}${(body) ? '' : `?value=${encodeURIComponent(elm.value)}`}`,
+            {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: body
+            });
     });
 }
 
-function addRow(device, index) {
-    // Find tempalte row
-    const row = $('[data-role="template"]').clone();
-    row.attr('data-role', 'device-row');
+for (let elm of document.querySelectorAll('input, select, textarea')) {
+    if (elm.hasAttribute('data-role')) continue; // Skip any elms relating to devices
+    bindToInput(elm);
+}
+
+const container = document.getElementById('devices-container');
+
+function addRow(device = null) {
+    const index = container.childElementCount;
+    if (device === null) {
+        device = {
+            id: '',
+            speaker: '',
+            color: defaultColors[(index >= defaultColors.length) ? defaultColors.length - 1 : index],
+            channel: 0
+        };
+    }
+
+    // Find template row
+    const row = document.querySelector('[data-role="template"]').cloneNode(true);
+    row.setAttribute('data-role', 'device-row');
+    row.setAttribute('data-index', index);
 
     // Update IDs and set values
-    row.find('#template_device').attr('id', `device.${index}.id`).val(device.id);
-    row.find('[for="template_device"]').attr('for', `device.${index}.id`);
-    row.find('#template_color').attr('id', `device.${index}.color`).val(device.color);
-    row.find('[for="template_color"]').attr('for', `device.${index}.color`);
-    row.find('#template_channel').attr('id', `device.${index}.channel`).val(device.channel);
-    row.find('[for="template_channel"]').attr('for', `device.${index}.channel`);
+    row.querySelector('#template-name').value = device.speaker;
+    row.querySelector('#template-name').setAttribute('id', `device-${index}-name`);
+    row.querySelector('[for="template-name"]').setAttribute('for', `device-${index}-name`);
 
-    // Append row to table
-    row.insertBefore('[data-action="add"]');
-    row.show();
+    row.querySelector('#template-device').setAttribute('id', `device-${index}-id`);
+    row.querySelector('[for="template-device"]').setAttribute('for', `device-${index}-id`);
+
+    row.querySelector('#template-color').value = device.color;
+    row.querySelector('#template-color').setAttribute('id', `device-${index}-color`)
+    row.querySelector('[for="template-color"]').setAttribute('for', `device-${index}-color`);
+
+    row.querySelector('#template-channel').value = device.channel;
+    row.querySelector('#template-channel').setAttribute('id', `device-${index}-channel`);
+    row.querySelector('[for="template-channel"]').setAttribute('for', `device-${index}-channel`);
 
     // Add options to dropdown
-    const dropdown = row.find('[data-role="id"]');
-    physicalDevices.forEach((device) => {
-        $('<option></option>').val(device.id).html(device.name).appendTo(dropdown);
-    });
-    M.FormSelect.init(dropdown, {});
+    const dropdown = row.querySelector('[data-role="id"]');
+    for (let physicalDevice of physicalDevices) {
+        const option = document.createElement('option');
+        option.value = physicalDevice.id;
+        option.innerText = physicalDevice.name;
+        dropdown.appendChild(option);
+    }
+    dropdown.value = device.device;
 
+    // Append row to table
+    container.appendChild(row);
+    M.FormSelect.init(dropdown, {});
+    row.removeAttribute('style');
 
     // Add listener to remove button
-    row.find('[data-action="remove"]').on("click", () => {
-        row.remove();
-        totalDevices--;
-    });
-
-    totalDevices++;
+    row.querySelector('[data-action="remove"]').addEventListener('click', container.removeChild);
 }
 
 function addRowUi() {
-    addRow({ id: '', color: alternatingColors[(totalDevices + 1) % 2], channel: 0 }, totalDevices + 1);
+    addRow();
 }
 
-fetch('/config')
-    .then(res => res.json())
-    .then(json => {
-        // Update settings values
-        document.getElementById('position').value = json.display.position;
-        document.getElementById('align').value = json.display.align;
-        document.getElementById('chromaKey').value = json.display.chromaKey;
-        document.getElementById('size').value = json.display.size;
-        document.getElementById('lines').value = json.display.lines;
-        document.getElementById('timeout').value = json.display.timeout;
-        document.getElementById('port').value = json.server.port;
-        document.getElementById('google').value = JSON.stringify(json.google, null, 4);
-        document.getElementById('filter').value = json.server.filter.join('\n');
-        M.Forms.InitTextarea(document.querySelector('#google'));
-        M.Forms.InitTextarea(document.querySelector('#filter'));
-
-        // Fetch devices, add rows and populate dropdown
-        fetch('/devices')
-            .then(res => res.json())
-            .then(devices => {
-                physicalDevices = devices
-                // Iterate over devices and create rows
-                if (!json.server.devices) json.server.devices = [];
-                json.server.devices.forEach((device, index) => {
-                    addRow(device, index);
-                });
-            });
-    });
-
-bindToInput('#position', 'display.position');
-bindToInput('#align', 'display.align');
-bindToInput('#chromaKey', 'display.chromaKey');
-bindToInput('#size', 'display.size');
-bindToInput('#lines', 'display.lines');
-bindToInput('#timeout', 'display.timeout');
-bindToInput('#port', 'server.port');
-bindToInput('#google', 'google');
-bindToInput('#filter', 'server.filter');
-
 for (let btn of document.querySelectorAll('.apply-btn')) {
-
     btn.addEventListener('click', () => {
-        // Find device list
-        const toSave = $("#transcription").find('[data-role="device-row"]').map((index, row) => {
-            return {
+        const toSave = []
+        for (let row of document.getElementById('devices-container').children) {
+            toSave.push({
                 // Get values
-                id: $(row).find('[data-role="id"]').val(),
-                color: $(row).find('[data-role="color"]').val(),
-                channel: parseInt($(row).find('[data-role="channel"]').val()),
-                name: $(row).find('[data-role="name"]').val()
-            }
-        });
+                id: toSave.length,
+                device: row.querySelector('select').value,
+                speaker: row.querySelector('[data-role="name"]').value,
+                channel: parseInt(row.querySelector('[data-role="channel"]').value),
+                color: row.querySelector('[data-role="color"]').value,
+                driver: 7
+            });
+        }
 
-        fetch('/config/devices', {
+        fetch('/config/transcription.inputs', {
             method: 'POST',
-            body: JSON.stringify(toSave.toArray()),
+            body: JSON.stringify(toSave),
             headers: {
                 'Content-Type': 'application/json'
             }

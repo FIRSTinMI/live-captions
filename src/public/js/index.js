@@ -1,8 +1,6 @@
 const lc = document.getElementById('lc');
 
 let timeout = 10e3;
-let deviceColor = ['#ffffff', '#ffffff'];
-let device2 = 'null';
 let config = {};
 
 const deviceStats = [];
@@ -19,16 +17,16 @@ function updateConfig() {
             lc.style.removeProperty('transform');
 
             switch (json.display.position.toString()) {
-                case '0':
+                case 0:
                     lc.style.bottom = '0';
                     break;
-                case '1':
+                case 1:
                     lc.style.top = '0';
                     break;
-                case '2':
+                case 2:
                     lc.style.bottom = '128px';
                     break;
-                case '3':
+                case 3:
                     lc.style.top = '128px';
                     break;
             }
@@ -45,10 +43,8 @@ function updateConfig() {
                     break;
             }
             document.body.style.backgroundColor = json.display.chromaKey;
-            lc.style.maxHeight = (json.display.lines * (parseFloat(json.display.size) + 6)) + 'px';
+            lc.style.maxHeight = (json.display.lines * (json.display.size + 6)) + 'px';
             timeout = json.display.timeout * 1000;
-            deviceColor = [json.server.device1_color, json.server.device2_color];
-            device2 = json.server.device2;
             config = json;
         });
 }
@@ -73,10 +69,10 @@ function connectToSocket() {
     socket.addEventListener('open', (evt) => {
         console.log('Connected');
         lc.style.display = 'inline-block';
-        text.innerText = 'Connected';
+        lc.innerText = 'Connected';
         setTimeout(() => {
             if (!connectedMessageOverwritten) {
-                text.innerText = '';
+                lc.innerText = '';
                 lc.style.display = 'none';
             }
         }, 5e3);
@@ -98,13 +94,23 @@ function connectToSocket() {
     socket.addEventListener('message', (evt) => handleCaptionFrame(JSON.parse(evt.data)));
 }
 
+/*
+{
+    device: number,
+    type: 'words',
+    isFinal: boolean,
+    text: string,
+    confidence: number,
+    skip?: number
+}
+*/
+
 function handleCaptionFrame(frame) {
     console.log(frame);
     if (frame.type == 'config') return updateConfig();
     if (frame.text == '') return;
 
     const device = frame.device;
-    if (device == 'null') return;
 
     // Initilize defaults
     if (!deviceStats[device]) deviceStats[device] = {
@@ -112,7 +118,7 @@ function handleCaptionFrame(frame) {
         lastFrameWasFinal: false,
         currentDiv: undefined,
         currentTimeout: undefined,
-        color: deviceColor[device - 1]
+        color: config.transcription.find((input) => (input.id === device)).color
     };
 
     let { transcript, lastFrameWasFinal, currentDiv, currentTimeout, color } = deviceStats[device];
@@ -138,7 +144,7 @@ function handleCaptionFrame(frame) {
         currentDiv = document.createElement('div');
         currentDiv.style.color = color;
         currentDiv.style.fontSize = config.display.size + 'px';
-        currentDiv.style.lineHeight = (parseFloat(config.display.size) + 6) + 'px';
+        currentDiv.style.lineHeight = (config.display.size + 6) + 'px';
         // currentDiv.style.maxHeight = (parseFloat(config.display.size) + 6) + 'px';
         lc.appendChild(currentDiv);
         currentDiv.innerText = capitalize(frame.text) + ((frame.isFinal) ? '.\n' : '');

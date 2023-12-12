@@ -1,39 +1,43 @@
-export type DeviceConfig = {
-    name: string,
-    id: number,
-    channel: number,
-    driver: number,
-    color: string
-}
+import { RtAudioApi } from "audify"
 
-export type DisplayConfig = {
-    position: string,
-    size: string,
-    lines: string,
+export interface DisplayConfig {
+    position: number,
+    size: number,
+    lines: number,
     chromaKey: string,
-    timeout: string,
-    align: string
+    timeout: number,
+    align: 'left' | 'center' | 'right'
 }
 
-export type ServerConfig = {
-    port: number,
-    devices: DeviceConfig[],
-    filter: string[]
-}
-
-export type GoogleConfig = {
-    projectId: string,
-    scopes: string,
-    credentials: {
-        client_email: string,
-        private_key: string
+export interface ServerConfig {
+    port: number
+    google: {
+        projectId: string,
+        scopes: string,
+        credentials: {
+            client_email: string,
+            private_key: string
+        }
     }
 }
 
-type Config = {
-    display: DisplayConfig,
-    server: ServerConfig,
-    google: GoogleConfig
+export interface TranscriptionConfig {
+    filter: string[],
+    inputs: InputConfig[]
 }
 
-export default Config;
+export interface InputConfig {
+    id: number,
+    device: number,
+    speaker?: string,
+    channel: number,
+    sampleRate: number,
+    color: string,
+    driver: RtAudioApi.WINDOWS_ASIO | RtAudioApi.WINDOWS_DS | RtAudioApi.WINDOWS_WASAPI
+}
+
+export interface JSONConfig {
+    display: DisplayConfig,
+    server: ServerConfig,
+    transcription: TranscriptionConfig
+}

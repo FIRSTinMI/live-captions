@@ -1,30 +1,32 @@
-import { server as Server } from './server';
+import { existsSync, mkdirSync } from 'fs';
 import { RtAudio, RtAudioApi } from 'audify';
-import WebSocket from 'ws';
-import Speech from './speech';
-import * as http from 'http';
-import * as fs from 'fs';
-import ConfigManager from './util/config_manager';
+import { Server } from './server';
 import { gibberish } from './util/developmentGibberish';
+import ws from 'ws';
+import { Speech } from './speech';
+import { ConfigManager } from './util/configManager';
+import { InputConfig } from './types/Config';
 
 const PROGRAM_FOLDER = process.env.APPDATA + '/live-captions';
-let server: http.Server;
-let clients: WebSocket[] = [];
-let speeches: Speech[] = [];
 
-async function start() {
+let server: Server;
+let speechServices: Speech[] = [];
+let clients: ws[] = [];
+
+function start() {
     // Kill server and speeches if they're already running
-    if (server !== undefined) {
-        server.close();
+    if (server) {
+        server.stop();
     }
-    speeches.forEach(speech => {
+    for (let speech of speechServices) {
         speech.stop();
-    });
-    speeches = [];
+    }
+    speechServices = [];
+    clients = [];
 
     // Create program folder
-    if (!fs.existsSync(PROGRAM_FOLDER)) {
-        fs.mkdirSync(PROGRAM_FOLDER);
+    if (!existsSync(PROGRAM_FOLDER)) {
+        mkdirSync(PROGRAM_FOLDER);
         console.log('Created ' + PROGRAM_FOLDER);
     }
 
@@ -35,7 +37,8 @@ async function start() {
     const rtAudio = new RtAudio(RtAudioApi.WINDOWS_WASAPI);
 
     // Start web server
-    server = Server(config, clients, start, rtAudio);
+    server = new Server(config, clients, rtAudio, start);
+    server.start();
 
     // For development testing simulating semi-realistic captions
     if (process.argv.includes('--gibberish')) {
@@ -44,13 +47,11 @@ async function start() {
     }
 
     // Start speech recognition
-    if (!Array.isArray(config.config.server.devices)) return;
-    for (let device of config.config.server.devices) {
-        console.log(device)
-        const rtAudio = new RtAudio(RtAudioApi.WINDOWS_WASAPI);
-        const speech = new Speech(config, device, rtAudio, clients);
+    for (let input of <InputConfig[]>config.transcription.inputs) {
+        console.log(input)
+        const speech = new Speech(config, clients, input);
         speech.startStreaming();
-        speeches.push(speech);
+        speechServices.push(speech);
     }
 };
 

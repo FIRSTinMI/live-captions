@@ -1,64 +1,93 @@
-import express from 'express';
-import expressWs from "express-ws";
-import WebSocket from "ws";
 import path from 'path';
-import ConfigManager from "./util/config_manager";
-import { RtAudio } from 'audify';
+import express from 'express';
+import expressWs from 'express-ws';
+import ws from 'ws';
 import bodyParser from 'body-parser';
+import color from 'colorts';
+import { RtAudio } from 'audify';
+import { Server as HttpServer, IncomingMessage, ServerResponse } from 'http';
+import { ConfigManager } from './util/configManager';
 
-const app = expressWs(express()).app;
+export class Server {
+    public clients: ws[];
+    private config: ConfigManager;
+    private app: expressWs.Application;
+    private instance: HttpServer<typeof IncomingMessage, typeof ServerResponse> | undefined;
 
-export function server(config: ConfigManager, clients: WebSocket[], restart: () => void, rtAudio: RtAudio) {
-    app.use(express.static(path.join(__dirname, '../src/public')));
 
-    app.use(bodyParser.json());
+    constructor(config: ConfigManager, clients: ws[], rtAudio: RtAudio, restart: () => void) {
+        this.config = config;
+        this.clients = clients;
 
-    app.get('/config', (req, res) => {
-        res.send(config.config);
-    });
-    app.post('/config/:setting', (req, res) => {
-        console.log(req.params.setting + ': ' + (req.query.value || req.body));
-        if (req.params.setting === 'devices') {
-            config.config.server.devices = req.body;
-            config.save();
-        } else if (req.params.setting === 'google' && typeof req.query.value === 'string') {
-            config.config.google = JSON.parse(req.query.value);
-            config.save();
-        } else if (req.params.setting === 'server.filter' && typeof req.query.value === 'string') {
-            config.config.server.filter = req.query.value.split('\n');
-            config.save();
-        } else {
-            let setting = req.params.setting.split('.');
-            // @ts-ignore
-            config.config[setting[0]][setting[1]] = req.query.value;
-            config.save();
-            for (let ws of clients) {
-                ws.send(JSON.stringify({ type: 'config' }));
-            }
-        }
-        res.send();
-    });
+        this.app = expressWs(express()).app;
 
-    app.post('/restart', (req, res) => {
-        res.send();
-        restart();
-    });
+        this.app.use(express.static(path.join(__dirname, '../src/public')));
+        this.app.use('/dist', express.static(path.join(__dirname, '../node_modules/@materializecss/materialize/dist')));
 
-    app.get('/devices', async (req, res) => {
-        res.send(rtAudio.getDevices());
-    });
+        this.app.use(bodyParser.json());
 
-    app.ws('/ws/', (ws, req) => {
-        clients.push(ws);
-
-        ws.on('message', (msg) => {
-            console.log(msg);
+        this.app.get('/config', (req, res) => {
+            res.send(config.get());
         });
 
-        console.log('new connection to websocket');
-    });
+        this.app.post('/config/:setting', (req, res) => {
+            console.log(req.params.setting + ': ' + (req.body || req.query.value));
 
-    return app.listen(config.config.server.port, () => {
-        console.log(`Open captions http://127.0.0.1:${config.config.server.port}\nOpen settings http://127.0.0.1:${config.config.server.port}/settings.html`);
-    });
+            if (req.params.setting === 'transcription.inputs') {
+                config.transcription.inputs = req.body;
+                config.save();
+            } else if (req.params.setting === 'server.google') {
+                config.server.google = req.body;
+                config.save();
+            } else if (req.params.setting === 'transcription.filter') {
+                config.transcription.filter = req.body;
+                config.save();
+            } else {
+                try {
+                    config.set(req.params.setting, req.query.value);
+                } catch (err) {
+                    return res.status(500).send({ type: 'error', msg: err })
+                }
+                config.save();
+                for (let ws of this.clients) {
+                    ws.send(JSON.stringify({ type: 'config' }));
+                }
+            }
+            res.send();
+        });
+
+        this.app.post('/restart', (req, res) => {
+            res.send();
+            restart();
+        });
+
+        this.app.get('/devices', async (req, res) => {
+            res.send(rtAudio.getDevices());
+        });
+
+        this.app.ws('/ws/', (ws, req) => {
+            this.clients.push(ws);
+
+            ws.on('message', (msg) => {
+                console.log(msg);
+            });
+
+            ws.on('close', () => {
+                this.clients.splice(this.clients.indexOf(ws), 1);
+            });
+
+            console.log('new connection to websocket');
+        });
+    }
+
+    start() {
+        this.instance = this.app.listen(this.config.server.port, () => {
+            console.log(`Open captions ${color(`http://127.0.0.1:${this.config.server.port}`).bold.underline.blue}`);
+            console.log(`Open settings ${color(`http://127.0.0.1:${this.config.server.port}/settings.html`).bold.underline.blue}`);
+        });
+    }
+
+    stop() {
+        this.instance?.close();
+    }
 }
