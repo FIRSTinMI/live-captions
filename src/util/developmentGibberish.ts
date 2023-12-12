@@ -1,3 +1,5 @@
+import WebSocket from 'ws';
+
 function randomText() {
     return Math.random().toString(36).substring(7);
 }
@@ -6,8 +8,8 @@ function fiftyPercentChance() {
     return Math.random() > 0.5;
 }
 
-function gibberish(clients, numDevices) {
-    let frames = [];
+export function gibberish(clients: WebSocket[], numDevices: number) {
+    let frames: any[] = [];
     // Create a frame for each device
     for (let i = 0; i < numDevices; i++) {
         frames.push({
@@ -40,7 +42,7 @@ function gibberish(clients, numDevices) {
             return frame;
         });
 
-        clients.forEach(client => {
+        clients.forEach((client: WebSocket) => {
             frames.forEach(frame => {
                 if (frame.text === "") return;
                 client.send(JSON.stringify(frame));
@@ -49,8 +51,4 @@ function gibberish(clients, numDevices) {
     }, 1000);
 
     return;
-}
-
-module.exports = {
-    gibberish
 }
