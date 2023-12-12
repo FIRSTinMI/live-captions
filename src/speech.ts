@@ -7,6 +7,7 @@ import { InputConfig } from "./types/Config";
 import { Frame } from "./types/Frame";
 import { APIError, SpeechResultData } from "./types/GoogleAPI";
 import color from "colorts";
+import { SingleBar } from "cli-progress";
 
 export class Speech {
     private config: ConfigManager;
@@ -32,14 +33,16 @@ export class Speech {
         isFinal: false,
         text: '',
         confidence: 0
-    };;
+    };
+    private volumeBar: SingleBar | undefined = undefined;
 
-    constructor(config: ConfigManager, clients: WebSocket[], input: InputConfig) {
+    constructor(config: ConfigManager, clients: WebSocket[], input: InputConfig, volumeBar?: SingleBar) {
         this.config = config;
         this.inputConfig = input;
         this.clients = clients;
         this.speech = new SpeechClient(config.server.google);
         this.rtAudio = new RtAudio(input.driver);
+        this.volumeBar = volumeBar;
 
         // Process filter
         let removeWords = [];
@@ -97,6 +100,7 @@ export class Speech {
     }
 
     startStreaming() {
+        this.dead = false;
         // Find the device we're listening to based on what was selected in the UI
         const asio = this.rtAudio.getDevices().filter(d => d.id === this.inputConfig.device)[0]
         if (!asio) return;
@@ -116,8 +120,9 @@ export class Speech {
                 // TODO: automatically stop and start streaming when there's silence/talking
 
                 if (err.code == 11) {
-                    this.rtAudio.closeStream();
-                    this.speech.close();
+                    this.stop();
+                    this.speech = new SpeechClient(this.config.server.google);
+                    this.rtAudio = new RtAudio(this.inputConfig.driver);
                     return this.startStreaming();
                 } else if (err.code === 16 ||
                     err.toString().includes('does not contain a client_email field') ||
@@ -136,6 +141,8 @@ export class Speech {
             firstChannel: this.inputConfig.channel, // First channel index on device (default = 0).
         };
 
+        const silence = Buffer.alloc(1920 * 2); // Twice the frame size because 16 bit
+
         this.rtAudio.openStream(
             null,
             inputParameters,
@@ -146,7 +153,20 @@ export class Speech {
             (pcm: Buffer) => {
                 try {
                     if (this.dead) return;
-                    this.recognizeStream.write(pcm)
+                    let data = Array.from(
+                        { length: pcm.length / 2 },
+                        (v, i) => pcm.readInt16LE(i * 2) / (2 ** 15)
+                    );
+
+                    let max = Math.max(...data)
+                    let min = Math.min(...data)
+                    this.volumeBar?.update((max - min) * 2000);
+
+                    if ((max - min) * 100 >= this.inputConfig.threshold) {
+                        this.recognizeStream.write(pcm);
+                    } else {
+                        this.recognizeStream.write(silence);
+                    }
                 } catch (err) {
                     console.log(err)
                 }

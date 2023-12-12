@@ -75,7 +75,8 @@ function addRow(device = null) {
             id: '',
             speaker: '',
             color: defaultColors[(index >= defaultColors.length) ? defaultColors.length - 1 : index],
-            channel: 0
+            channel: 0,
+            threshold: 10
         };
     }
 
@@ -93,12 +94,18 @@ function addRow(device = null) {
     row.querySelector('[for="template-device"]').setAttribute('for', `device-${index}-id`);
 
     row.querySelector('#template-color').value = device.color;
+    applyColorToInput(row.querySelector('#template-color'));
+    row.querySelector('#template-color').addEventListener('change', (evt) => applyColorToInput(evt.target));
     row.querySelector('#template-color').setAttribute('id', `device-${index}-color`)
     row.querySelector('[for="template-color"]').setAttribute('for', `device-${index}-color`);
 
     row.querySelector('#template-channel').value = device.channel;
     row.querySelector('#template-channel').setAttribute('id', `device-${index}-channel`);
     row.querySelector('[for="template-channel"]').setAttribute('for', `device-${index}-channel`);
+
+    row.querySelector('#template-threshold').value = device.threshold;
+    row.querySelector('#template-threshold').setAttribute('id', `device-${index}-threshold`);
+    row.querySelector('[for="template-threshold"]').setAttribute('for', `device-${index}-threshold`);
 
     // Add options to dropdown
     const dropdown = row.querySelector('[data-role="id"]');
@@ -119,6 +126,13 @@ function addRow(device = null) {
     row.querySelector('[data-action="remove"]').addEventListener('click', () => container.removeChild(row));
 }
 
+function applyColorToInput(elm) {
+    if (elm.value.match(/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/)) {
+        return elm.style.color = elm.value;
+    }
+    elm.style.color = '#FFFFFF';
+}
+
 function addRowUi() {
     addRow();
 }
@@ -134,7 +148,8 @@ for (let btn of document.querySelectorAll('.apply-btn')) {
                 speaker: row.querySelector('[data-role="name"]').value,
                 channel: parseInt(row.querySelector('[data-role="channel"]').value),
                 color: row.querySelector('[data-role="color"]').value,
-                driver: 7
+                driver: 7,
+                threshold: parseInt(row.querySelector('[data-role="threshold"]').value)
             });
         }
 

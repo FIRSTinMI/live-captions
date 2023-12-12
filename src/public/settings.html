@@ -4,6 +4,25 @@
         <title>Live Captioning - Settings</title>
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <link rel="stylesheet" href="/dist/css/materialize.min.css">
+        <style>
+            .container {
+                margin: 0 auto;
+                max-width: 1280px;
+                width: 100%;
+            }
+
+            @media only screen and (min-width: 601px) {
+                .container {
+                    width: 95%;
+                }
+            }
+
+            @media only screen and (min-width: 993px) {
+                .container {
+                    width: 80%;
+                }
+            }
+        </style>
     </head>
 
     <body>
@@ -67,7 +86,7 @@
                     <form>
                         <h4>Devices</h4>
                         <div class="row" data-role="template" style="display:none">
-                            <div class="input-field col s12 m3">
+                            <div class="input-field col s12 m2">
                                 <input id="template-name" type="text" data-role="name">
                                 <label for="template-name">Name</label>
                                 <span class="supporting-text">Speaker Name</span>
@@ -78,15 +97,20 @@
                                 </select>
                                 <label for="template-device">Device</label>
                             </div>
-                            <div class="input-field col s12 m2">
-                                <input id="template-color" type="text" data-role="color">
-                                <label for="template-color">Color</label>
+                            <div class="input-field col s12 m1">
+                                <input id="template-color" type="text" data-role="color" style="background: black;">
+                                <label for="template-color" style="color: white;">Color</label>
                                 <span class="supporting-text">Hex Color</span>
                             </div>
                             <div class="input-field col s12 m2">
                                 <input id="template-channel" type="number" data-role="channel" min="0">
                                 <label for="template-channel">Channel Number</label>
                                 <span class="supporting-text">Channel # to monitor</span>
+                            </div>
+                            <div class="input-field col s12 m2">
+                                <input id="template-threshold" type="number" data-role="threshold" min="0" max="100">
+                                <label for="template-threshold">Threshold</label>
+                                <span class="supporting-text">Sensitivity for muting</span>
                             </div>
                             <div class="col s12 m1 valign-wrapper">
                                 <a class="waves-effect waves-light red btn center-align" data-action="remove">Remove</a>

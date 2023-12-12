@@ -33,7 +33,8 @@ export interface InputConfig {
     channel: number,
     sampleRate: number,
     color: string,
-    driver: RtAudioApi.WINDOWS_ASIO | RtAudioApi.WINDOWS_DS | RtAudioApi.WINDOWS_WASAPI
+    driver: RtAudioApi.WINDOWS_ASIO | RtAudioApi.WINDOWS_DS | RtAudioApi.WINDOWS_WASAPI,
+    threshold: number
 }
 
 export interface JSONConfig {

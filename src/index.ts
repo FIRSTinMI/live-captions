@@ -5,12 +5,23 @@ import ws from 'ws';
 import { Speech } from './speech';
 import { ConfigManager } from './util/configManager';
 import { InputConfig } from './types/Config';
+import { MultiBar, Presets } from 'cli-progress';
 
 const PROGRAM_FOLDER = process.env.APPDATA + '/live-captions';
 
 let server: Server;
 let speechServices: Speech[] = [];
 let clients: ws[] = [];
+
+let multibar: MultiBar;
+
+if (process.argv.includes('--volume-bar')) {
+    multibar = new MultiBar({
+        clearOnComplete: false,
+        hideCursor: true,
+        format: '{name} | {bar} {percentage}',
+    }, Presets.shades_grey);
+}
 
 function start() {
     // Kill server and speeches if they're already running
@@ -47,8 +58,8 @@ function start() {
 
     // Start speech recognition
     for (let input of <InputConfig[]>config.transcription.inputs) {
-        console.log(input)
-        const speech = new Speech(config, clients, input);
+        const bar = (multibar) ? multibar.create(2000, 0, { name: input.speaker }) : undefined;
+        const speech = new Speech(config, clients, input, bar);
         speech.startStreaming();
         speechServices.push(speech);
     }
