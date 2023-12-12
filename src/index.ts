@@ -1,7 +1,6 @@
 import { existsSync, mkdirSync } from 'fs';
 import { RtAudio, RtAudioApi } from 'audify';
 import { Server } from './server';
-import { gibberish } from './util/developmentGibberish';
 import ws from 'ws';
 import { Speech } from './speech';
 import { ConfigManager } from './util/configManager';
@@ -42,7 +41,7 @@ function start() {
 
     // For development testing simulating semi-realistic captions
     if (process.argv.includes('--gibberish')) {
-        gibberish(clients, 2);
+        require('./util/developmentGibberish').gibberish(clients, 2);
         return;
     }
 

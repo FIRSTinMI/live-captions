@@ -31,7 +31,8 @@ export class Server {
         });
 
         this.app.post('/config/:setting', (req, res) => {
-            console.log(req.params.setting + ': ' + (req.body || req.query.value));
+            console.log(`${req.params.setting}: ${req.query.value}`);
+            console.log(req.body);
 
             if (req.params.setting === 'transcription.inputs') {
                 config.transcription.inputs = req.body;
@@ -49,11 +50,11 @@ export class Server {
                     return res.status(500).send({ type: 'error', msg: err })
                 }
                 config.save();
-                for (let ws of this.clients) {
-                    ws.send(JSON.stringify({ type: 'config' }));
-                }
             }
             res.send();
+            for (let ws of this.clients) {
+                ws.send(JSON.stringify({ type: 'config' }));
+            }
         });
 
         this.app.post('/restart', (req, res) => {

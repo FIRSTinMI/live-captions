@@ -1,55 +1,50 @@
 import { Frame } from '../types/Frame';
 import ws from 'ws';
+import { LoremIpsum } from "lorem-ipsum";
 
-function randomText() {
-    return Math.random().toString(36).substring(7);
+const lorem = new LoremIpsum({
+    sentencesPerParagraph: {
+        max: 8,
+        min: 4
+    },
+    wordsPerSentence: {
+        max: 16,
+        min: 4
+    }
+});
+
+function dispatchSentence(clients: ws[], frame: Frame, wordsLeft: string[], resolve: any) {
+    if (wordsLeft.length < 1) {
+        frame.isFinal = true;
+    } else {
+        frame.text += ' ' + wordsLeft[0];
+        frame.text = frame.text.trim();
+        wordsLeft = wordsLeft.slice(1);
+    }
+
+    for (let client of clients) {
+        client.send(JSON.stringify(frame));
+    }
+
+    if (frame.isFinal) return resolve();
+    setTimeout(() => dispatchSentence(clients, frame, wordsLeft, resolve), Math.round((Math.random() * 1000) + 100));
 }
 
-function fiftyPercentChance() {
-    return Math.random() > 0.5;
-}
-
-export function gibberish(clients: ws[], numDevices: number) {
-    let frames: Frame[] = [];
-    // Create a frame for each device
-    for (let i = 0; i < numDevices; i++) {
-        frames.push({
-            device: i + 1,
+async function startGibberishLoop(clients: ws[], i: number) {
+    await new Promise((resolve, reject) => {
+        dispatchSentence(clients, {
+            device: i,
             type: 'words',
             isFinal: false,
             text: '',
             confidence: 1
-        })
+        }, lorem.generateSentences(1).replace('.', '').split(' '), resolve);
+    });
+    setTimeout(() => startGibberishLoop(clients, i), Math.round((Math.random() * 10000) + 1000));
+}
+
+export function gibberish(clients: ws[], numDevices: number) {
+    for (let i = 0; i < numDevices; i++) {
+        startGibberishLoop(clients, i)
     }
-
-    setInterval(() => {
-        // Randomize frames
-        frames = frames.map(frame => {
-            // If the last time this was a final frame, we need to reset it
-            if (frame.isFinal) {
-                frame.text = '';
-                frame.skip = 0;
-            }
-
-            // Skip a few frames to make it more realistic
-            if (frame.skip && frame.skip < 5) {
-                frame.isFinal = false;
-                frame.skip++;
-                return frame;
-            }
-
-            frame.text = frame.text + ' ' + randomText();
-            frame.isFinal = fiftyPercentChance();
-            return frame;
-        });
-
-        clients.forEach(client => {
-            frames.forEach(frame => {
-                if (frame.text === '') return;
-                client.send(JSON.stringify(frame));
-            });
-        })
-    }, 1000);
-
-    return;
 }

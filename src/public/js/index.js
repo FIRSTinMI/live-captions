@@ -59,7 +59,6 @@ function capitalize(text) {
     return arr.join(".");
 }
 
-let connectedMessageOverwritten = false;
 
 function connectToSocket() {
     // Open connection
@@ -68,14 +67,6 @@ function connectToSocket() {
     // Connection opened
     socket.addEventListener('open', (evt) => {
         console.log('Connected');
-        lc.style.display = 'inline-block';
-        lc.innerText = 'Connected';
-        setTimeout(() => {
-            if (!connectedMessageOverwritten) {
-                lc.innerText = '';
-                lc.style.display = 'none';
-            }
-        }, 5e3);
         setInterval(() => {
             socket.send('heartbeat');
         }, 60e3);
@@ -118,13 +109,11 @@ function handleCaptionFrame(frame) {
         lastFrameWasFinal: false,
         currentDiv: undefined,
         currentTimeout: undefined,
-        color: config.transcription.find((input) => (input.id === device)).color
+        color: config.transcription.inputs.find((input) => (input.id === device)).color
     };
 
     let { transcript, lastFrameWasFinal, currentDiv, currentTimeout, color } = deviceStats[device];
 
-    if (!connectedMessageOverwritten) lc.innerText = "";
-    connectedMessageOverwritten = true;
     clearTimeout(currentTimeout);
     lc.style.display = 'flex';
 
