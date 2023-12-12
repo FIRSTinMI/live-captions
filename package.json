@@ -11,6 +11,7 @@
     "author": "",
     "license": "ISC",
     "dependencies": {
+        "@colors/colors": "^1.6.0",
         "@google-cloud/speech": "^6.1.0",
         "@xenova/transformers": "^2.10.1",
         "audify": "^1.8.2",

@@ -5,6 +5,9 @@ import WebSocket from "ws";
 import BadWords from 'bad-words'
 import { DeviceConfig } from "./types/Config";
 
+// @ts-ignore
+require('@colors/colors');
+
 class Speech {
 
     private config: ConfigManager;
@@ -76,12 +79,21 @@ class Speech {
             .on('error', (err) => {
                 // Error 11 is maxing out the 305 second limit, so we just restart
                 // TODO: automatically stop and start streaming when there's silence/talking
+
                 // @ts-ignore
                 if (err.code == 11) {
                     this.rtAudio.closeStream();
                     return this.startStreaming();
+                    // @ts-ignore
+                } else if (err.code === 16 ||
+                    err.toString().includes('does not contain a client_email field') ||
+                    err.toString().includes('does not contain a private_key field')) {
+                        // @ts-ignore
+                    console.error('Google API Authentication Failed'.bold.red);
+                    this.rtAudio.stop();
+                } else {
+                    console.error(err);
                 }
-                console.error(err);
             })
             .on('data', data => {
                 let frame = {
