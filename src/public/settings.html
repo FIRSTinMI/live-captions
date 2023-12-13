@@ -1,189 +1,192 @@
 <html>
-    <head>
-        <meta charset="utf-8">
-        <title>Live Captioning - Settings</title>
-        <meta name="viewport" content="width=device-width, initial-scale=1">
-        <link rel="stylesheet" href="/dist/css/materialize.min.css">
-        <style>
+
+<head>
+    <meta charset="utf-8">
+    <title>Live Captioning - Settings</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="/dist/css/materialize.min.css">
+    <style>
+        .container {
+            margin: 0 auto;
+            max-width: 1280px;
+            width: 100%;
+        }
+
+        @media only screen and (min-width: 601px) {
             .container {
-                margin: 0 auto;
-                max-width: 1280px;
-                width: 100%;
+                width: 95%;
             }
+        }
 
-            @media only screen and (min-width: 601px) {
-                .container {
-                    width: 95%;
-                }
+        @media only screen and (min-width: 993px) {
+            .container {
+                width: 80%;
             }
+        }
 
-            @media only screen and (min-width: 993px) {
-                .container {
-                    width: 80%;
-                }
-            }
+        .volume-indicator {
+            height: 10px;
+            background: rgb(0 0 0 / 20%);
+        }
 
-            .volume-indicator {
-                height: 10px;
-                background: rgb(0 0 0 / 20%);
-            }
+        .volume-bar {
+            height: 100%;
+            background: #B71C1C;
+            width: 0%;
+        }
 
-            .volume-bar {
-                height: 100%;
-                background: #B71C1C;
-                width: 0%;
-            }
+        .threshold-indicator {
+            height: 18px;
+            width: 3px;
+            background: black;
+            z-index: 10;
+            position: relative;
+            top: -14px;
+        }
+    </style>
+</head>
 
-            .threshold-indicator {
-                height: 18px;
-                width: 3px;
-                background: black;
-                z-index: 10;
-                position: relative;
-                top: -14px;
-            }
-        </style>
-    </head>
+<body>
+    <div class="container">
+        <div class="row">
+            <div class="col s12">
+                <ul class="tabs">
+                    <li class="tab col s4"><a class="active" href="#display">Display</a></li>
+                    <li class="tab col s4"><a href="#transcription" id="transcription-tab">Transcription</a></li>
+                    <li class="tab col s4"><a href="#server">Server</a></li>
+                </ul>
+            </div>
 
-    <body>
-        <div class="container">
-            <div class="row">
-                <div class="col s12">
-                    <ul class="tabs">
-                        <li class="tab col s4"><a class="active" href="#display">Display</a></li>
-                        <li class="tab col s4"><a href="#transcription" id="transcription-tab">Transcription</a></li>
-                        <li class="tab col s4"><a href="#server">Server</a></li>
-                    </ul>
-                </div>
+            <div id="display" class="col s12">
+                <form>
+                    <div class="row">
+                        <div class="input-field col s12 m4">
+                            <select id="display-position">
+                                <option value="0">Bottom</option>
+                                <option value="1">Top</option>
+                                <option value="2">Bottom with space for audience display</option>
+                                <option value="3">Top with space for audience display</option>
+                            </select>
+                            <label for="display-position">Position</label>
+                        </div>
+                        <div class="input-field col s12 m4">
+                            <select id="display-align">
+                                <option value="left">Left</option>
+                                <option value="center">Center</option>
+                                <option value="right">Right</option>
+                            </select>
+                            <label for="display-align">Alignment</label>
+                        </div>
+                        <div class="input-field col s12 m4">
+                            <input id="display-chromaKey" type="text">
+                            <label for="display-chromaKey">Chroma Key</label>
+                            <span class="supporting-text">Hex Color</span>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="input-field col s12 m4">
+                            <input id="display-size" type="number">
+                            <label for="display-size">Text Size</label>
+                            <span class="supporting-text">in pixels</span>
+                        </div>
+                        <div class="input-field col s12 m4">
+                            <input id="display-lines" type="number">
+                            <label for="display-lines">Max Lines</label>
+                            <span class="supporting-text">Maximum number of lines to display at once</span>
+                        </div>
+                        <div class="input-field col s12 m4">
+                            <input id="display-timeout" type="number">
+                            <label for="display-timeout">Timeout</label>
+                            <span class="supporting-text">Seconds to wait before closing captions</span>
+                        </div>
+                    </div>
+                </form>
+            </div>
 
-                <div id="display" class="col s12">
-                    <form>
-                        <div class="row">
-                            <div class="input-field col s12 m4">
-                                <select id="display-position">
-                                    <option value="0">Bottom</option>
-                                    <option value="1">Top</option>
-                                    <option value="2">Bottom with space for audience display</option>
-                                    <option value="3">Top with space for audience display</option>
-                                </select>
-                                <label for="display-position">Position</label>
+            <div id="transcription" class="col s12">
+                <form>
+                    <div class="row mb-2">
+                        <div class="col s10">
+                            <h4>Devices</h4>
+                        </div>
+                        <div class="col s2 valign-wrapper">
+                            <a class="waves-effect waves-light green btn" data-action="add" onclick="addRowUi();"
+                                style="margin-left:auto;">Add
+                                Device</a>
+                        </div>
+                    </div>
+                    <div data-role="template" style="display:none">
+                        <div class="row mb-2">
+                            <div class="input-field col s12 m3">
+                                <input id="template-name" type="text" data-role="name">
+                                <label for="template-name">Name</label>
+                                <span class="supporting-text">Speaker Name</span>
                             </div>
                             <div class="input-field col s12 m4">
-                                <select id="display-align">
-                                    <option value="left">Left</option>
-                                    <option value="center">Center</option>
-                                    <option value="right">Right</option>
+                                <select id="template-device" data-role="id">
+                                    <option value="null">Default</option>
                                 </select>
-                                <label for="display-align">Alignment</label>
+                                <label for="template-device">Device</label>
                             </div>
-                            <div class="input-field col s12 m4">
-                                <input id="display-chromaKey" type="text">
-                                <label for="display-chromaKey">Chroma Key</label>
+                            <div class="input-field col s12 m2">
+                                <input id="template-color" type="text" data-role="color" style="background: black;">
+                                <label for="template-color" style="color: white;">Color</label>
                                 <span class="supporting-text">Hex Color</span>
                             </div>
-                        </div>
-                        <div class="row">
-                            <div class="input-field col s12 m4">
-                                <input id="display-size" type="number">
-                                <label for="display-size">Text Size</label>
-                                <span class="supporting-text">in pixels</span>
+                            <div class="input-field col s12 m2">
+                                <input id="template-channel" type="number" data-role="channel" min="0">
+                                <label for="template-channel">Channel Number</label>
+                                <span class="supporting-text">Channel # to monitor</span>
                             </div>
-                            <div class="input-field col s12 m4">
-                                <input id="display-lines" type="number">
-                                <label for="display-lines">Max Lines</label>
-                                <span class="supporting-text">Maximum number of lines to display at once</span>
-                            </div>
-                            <div class="input-field col s12 m4">
-                                <input id="display-timeout" type="number">
-                                <label for="display-timeout">Timeout</label>
-                                <span class="supporting-text">Seconds to wait before closing captions</span>
+                            <div class="col s12 m1 valign-wrapper">
+                                <a class="waves-effect waves-light red btn center-align" data-action="remove">Remove</a>
                             </div>
                         </div>
-                    </form>
-                </div>
+                        <span class="supporting-text">Noise Gate Threshold</span>
+                        <div class="volume-indicator mb-4" data-role="volume">
+                            <div class="volume-bar"></div>
+                            <input id="template-threshold" data-role="threshold" type="range"
+                                style="width:100%;margin-top:-7px" min="0" max="100" />
+                        </div>
+                    </div>
+                    <div class="row mb-2">
+                        <div class="col s12" id="devices-container">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="input-field col s12">
+                            <textarea id="transcription-filter" class="materialize-textarea"></textarea>
+                            <label for="transcription-filter">Profanity Filter</label>
+                            <span class="supporting-text">One word per line, +word adds word to the filter, -word
+                                removes it</span>
+                        </div>
+                    </div>
+                </form>
+                <a class="btn apply-btn">Apply</a>
+            </div>
 
-                <div id="transcription" class="col s12">
-                    <form>
-                        <h4>Devices</h4>
-                        <div data-role="template" style="display:none">
-                            <div class="row mb-2">
-                                <div class="input-field col s12 m2">
-                                    <input id="template-name" type="text" data-role="name">
-                                    <label for="template-name">Name</label>
-                                    <span class="supporting-text">Speaker Name</span>
-                                </div>
-                                <div class="input-field col s12 m4">
-                                    <select id="template-device" data-role="id">
-                                        <option value="null">Default</option>
-                                    </select>
-                                    <label for="template-device">Device</label>
-                                </div>
-                                <div class="input-field col s12 m1">
-                                    <input id="template-color" type="text" data-role="color" style="background: black;">
-                                    <label for="template-color" style="color: white;">Color</label>
-                                    <span class="supporting-text">Hex Color</span>
-                                </div>
-                                <div class="input-field col s12 m2">
-                                    <input id="template-channel" type="number" data-role="channel" min="0">
-                                    <label for="template-channel">Channel Number</label>
-                                    <span class="supporting-text">Channel # to monitor</span>
-                                </div>
-                                <div class="input-field col s12 m2">
-                                    <input id="template-threshold" type="number" data-role="threshold" min="0" max="100">
-                                    <label for="template-threshold">Threshold</label>
-                                    <span class="supporting-text">Sensitivity for muting</span>
-                                </div>
-                                <div class="col s12 m1 valign-wrapper">
-                                    <a class="waves-effect waves-light red btn center-align" data-action="remove">Remove</a>
-                                </div>
-                            </div>
-                            <div class="volume-indicator mb-2" data-role="volume">
-                                <div class="volume-bar"></div>
-                                <div class="threshold-indicator"></div>
-                            </div>
+            <div id="server" class="col s12">
+                <form>
+                    <div class="row">
+                        <div class="s12 input-field">
+                            <input id="server-port" type="number">
+                            <label for="server-port">Port</label>
+                            <span class="supporting-text">Port for webserver</span>
                         </div>
-                        <div class="row mb-2">
-                            <div class="col s12">
-                                <a class="waves-effect waves-light green btn" data-action="add" style="float:right;" onclick="addRowUi();">Add Device</a>
-                            </div>
+                    </div>
+                    <div class="row">
+                        <div class="input-field col s12">
+                            <textarea id="server-google" class="materialize-textarea"></textarea>
+                            <label for="server-google">Google API Authentication</label>
                         </div>
-                        <div class="row mb-2">
-                            <div class="col s12" id="devices-container">
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="input-field col s12">
-                                <textarea id="transcription-filter" class="materialize-textarea"></textarea>
-                                <label for="transcription-filter">Profanity Filter</label>
-                                <span class="supporting-text">One word per line, +word adds word to the filter, -word
-                                    removes it</span>
-                            </div>
-                        </div>
-                    </form>
-                    <a class="btn apply-btn">Apply</a>
-                </div>
-
-                <div id="server" class="col s12">
-                    <form>
-                        <div class="row">
-                            <div class="s12 input-field">
-                                <input id="server-port" type="number">
-                                <label for="server-port">Port</label>
-                                <span class="supporting-text">Port for webserver</span>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="input-field col s12">
-                                <textarea id="server-google" class="materialize-textarea"></textarea>
-                                <label for="server-google">Google API Authentication</label>
-                            </div>
-                        </div>
-                    </form>
-                    <a class="btn apply-btn">Apply</a>
-                </div>
+                    </div>
+                </form>
+                <a class="btn apply-btn">Apply</a>
             </div>
         </div>
-        <script src="/dist/js/materialize.min.js"></script>
-        <script src="/js/settings.js"></script>
-    </body>
+    </div>
+    <script src="/dist/js/materialize.min.js"></script>
+    <script src="/js/settings.js"></script>
+</body>
+
 </html>

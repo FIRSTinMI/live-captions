@@ -103,13 +103,8 @@ function addRow(device = null) {
     row.querySelector('#template-channel').setAttribute('id', `device-${index}-channel`);
     row.querySelector('[for="template-channel"]').setAttribute('for', `device-${index}-channel`);
 
-    row.querySelector('#template-threshold').addEventListener('change', (evt) => {
-        row.querySelector('.threshold-indicator').style.left = `${evt.target.value}%`;
-    });
     row.querySelector('#template-threshold').value = device.threshold;
     row.querySelector('#template-threshold').setAttribute('id', `device-${index}-threshold`);
-    row.querySelector('[for="template-threshold"]').setAttribute('for', `device-${index}-threshold`);
-    row.querySelector('.threshold-indicator').style.left = `${device.threshold}%`;
 
     row.querySelector('[data-role="volume"]').setAttribute('id', `device-${index}-volume`);
 
