@@ -4,7 +4,7 @@ import expressWs from 'express-ws';
 import ws from 'ws';
 import bodyParser from 'body-parser';
 import color from 'colorts';
-import { RtAudio } from 'audify';
+import { RtAudio, RtAudioApi } from 'audify';
 import { Server as HttpServer, IncomingMessage, ServerResponse } from 'http';
 import { ConfigManager } from './util/configManager';
 import { Speech } from './speech';
@@ -15,11 +15,13 @@ export class Server {
     private config: ConfigManager;
     private app: expressWs.Application;
     private instance: HttpServer<typeof IncomingMessage, typeof ServerResponse> | undefined;
+    private speechServices: Speech[];
 
 
-    constructor(config: ConfigManager, clients: ws[], rtAudio: RtAudio, restart: () => void) {
+    constructor(config: ConfigManager, clients: ws[], rtAudio: RtAudio, restart: () => void, speechServices: Speech[]) {
         this.config = config;
         this.clients = clients;
+        this.speechServices = speechServices;
 
         this.app = expressWs(express()).app;
 
@@ -80,6 +82,21 @@ export class Server {
                     this.settingsClients.push(ws);
                     type = 2;
                 }
+                try {
+                    let json = JSON.parse(msg.toString());
+                    if (json.type === 'volumeRequest') {
+                        speechServices.push(new Speech(config, clients, {
+                            id: json.index,
+                            device: json.device,
+                            channel: json.channel,
+                            sampleRate: 0,
+                            color: '#FFFFFF',
+                            threshold: 10,
+                            driver: RtAudioApi.WINDOWS_WASAPI,
+                            speaker: ''
+                        }));
+                    }
+                } catch (err) { }
             });
 
             ws.on('close', () => {

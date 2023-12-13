@@ -90,16 +90,18 @@ function addRow(device = null) {
     row.querySelector('#template-name').setAttribute('id', `device-${index}-name`);
     row.querySelector('[for="template-name"]').setAttribute('for', `device-${index}-name`);
 
+    row.querySelector('#template-device').addEventListener('change', () => requestVolumeForDevice(index));
     row.querySelector('#template-device').setAttribute('id', `device-${index}-id`);
     row.querySelector('[for="template-device"]').setAttribute('for', `device-${index}-id`);
 
     row.querySelector('#template-color').value = device.color;
     applyColorToInput(row.querySelector('#template-color'));
-    row.querySelector('#template-color').addEventListener('change', (evt) => applyColorToInput(evt.target));
+    row.querySelector('#template-color').addEventListener('keyup', (evt) => applyColorToInput(evt.target));
     row.querySelector('#template-color').setAttribute('id', `device-${index}-color`)
     row.querySelector('[for="template-color"]').setAttribute('for', `device-${index}-color`);
 
     row.querySelector('#template-channel').value = device.channel;
+    row.querySelector('#template-channel').addEventListener('change', () => requestVolumeForChannel(index));
     row.querySelector('#template-channel').setAttribute('id', `device-${index}-channel`);
     row.querySelector('[for="template-channel"]').setAttribute('for', `device-${index}-channel`);
 
@@ -132,6 +134,12 @@ function applyColorToInput(elm) {
         return elm.style.color = elm.value;
     }
     elm.style.color = '#FFFFFF';
+}
+
+function requestVolumeForDevice(index) {
+    const device = parseInt(document.getElementById(`device-${index}-id`).value);
+    const channel = parseInt(document.getElementById(`device-${index}-channel`).value);
+    socket.send(JSON.stringify({ type: 'volumeRequest', device, channel, index }));
 }
 
 function addRowUi() {
@@ -169,9 +177,11 @@ for (let btn of document.querySelectorAll('.apply-btn')) {
     });
 }
 
+let socket;
+
 function connectToSocket() {
     // Open connection
-    const socket = new WebSocket(`ws://${window.location.host}/ws/`);
+    socket = new WebSocket(`ws://${window.location.host}/ws/`);
 
     // Connection opened
     socket.addEventListener('open', (evt) => {

@@ -36,7 +36,7 @@ function start() {
     const rtAudio = new RtAudio(RtAudioApi.WINDOWS_WASAPI);
 
     // Start web server
-    server = new Server(config, clients, rtAudio, start);
+    server = new Server(config, clients, rtAudio, start, speechServices);
     server.start();
 
     setInterval(() => {
