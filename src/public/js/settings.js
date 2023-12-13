@@ -103,9 +103,15 @@ function addRow(device = null) {
     row.querySelector('#template-channel').setAttribute('id', `device-${index}-channel`);
     row.querySelector('[for="template-channel"]').setAttribute('for', `device-${index}-channel`);
 
+    row.querySelector('#template-threshold').addEventListener('change', (evt) => {
+        row.querySelector('.threshold-indicator').style.left = `${evt.target.value}%`;
+    });
     row.querySelector('#template-threshold').value = device.threshold;
     row.querySelector('#template-threshold').setAttribute('id', `device-${index}-threshold`);
     row.querySelector('[for="template-threshold"]').setAttribute('for', `device-${index}-threshold`);
+    row.querySelector('.threshold-indicator').style.left = `${device.threshold}%`;
+
+    row.querySelector('[data-role="volume"]').setAttribute('id', `device-${index}-volume`);
 
     // Add options to dropdown
     const dropdown = row.querySelector('[data-role="id"]');
@@ -161,6 +167,7 @@ for (let btn of document.querySelectorAll('.apply-btn')) {
             }
         }).then(() => {
             fetch('/restart', { method: 'POST' }).then(() => {
+                setTimeout(() => connectToSocket(), 500);
                 alert('Settings saved, restarting server.')
             });
         });
@@ -192,5 +199,20 @@ function connectToSocket() {
     // Listen for messages
     socket.addEventListener('message', (evt) => {
         const json = JSON.parse(evt.data);
+        if (json.type === 'volumes') {
+            for (let device of json.devices) {
+                const elm = document.getElementById(`device-${device.id}-volume`);
+                if (elm) {
+                    elm.children[0].style.width = `${device.volume / 20}%`;
+                    if (device.volume / 20 > parseInt(document.getElementById(`device-${device.id}-threshold`).value)) {
+                        elm.children[0].style.backgroundColor = '#4CAF50';
+                    } else {
+                        elm.children[0].style.backgroundColor = '';
+                    }
+                }
+            }
+        }
     });
 }
+
+document.getElementById('transcription-tab').addEventListener('click', () => connectToSocket());

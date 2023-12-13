@@ -56,11 +56,11 @@ function start() {
                 type: 'volumes',
                 devices: speechServices.map((s: Speech) => ({
                     id: s.inputConfig.id,
-                    volume: s.volume
+                    volume: Math.round(s.volume)
                 }))
             }));
         }
-    }, 500);
+    }, 50);
 
     // For development testing simulating semi-realistic captions
     if (process.argv.includes('--gibberish')) {
