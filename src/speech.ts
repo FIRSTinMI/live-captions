@@ -9,6 +9,10 @@ import { APIError, SpeechResultData } from "./types/GoogleAPI";
 import color from "colorts";
 import { SingleBar } from "cli-progress";
 
+// Number of frames after silence is detected to continue streaming
+const THRESHOLD_CUTOFF_SMOOTHING = 10;
+const STOP_STREAMING_CUTTOFF = 600; // about 20 seconds
+
 export class Speech {
     private config: ConfigManager;
     public inputConfig: InputConfig;
@@ -67,7 +71,8 @@ export class Speech {
         this.dead = true;
         this.rtAudio.setInputCallback(() => { });
         this.rtAudio.closeStream();
-        this.speech?.close()
+        this.recognizeStream.destroy();
+        this.speech?.close();
     }
 
     private handleRecognitionEvent(data: SpeechResultData) {
@@ -104,30 +109,17 @@ export class Speech {
         }
     }
 
-    startStreaming() {
-        this.dead = false;
-        // Find the device we're listening to based on what was selected in the UI
-        const asio = this.rtAudio.getDevices().filter(d => d.id === this.inputConfig.device)[0]
-        if (!asio) return;
-        console.log(
-            `Connecting to ASIO device ${color(asio.name).bold.blue} with ${color(asio.inputChannels.toString()).bold.blue} channels, listening on channel ${color(this.inputConfig.channel.toString()).bold.blue}`
-        );
-
-        // Update sample rate from xair
-        // TODO: Use sample rate from config
-        this.inputConfig.sampleRate = asio.preferredSampleRate;
+    private startGoogleStream() {
         this.request.config.sampleRateHertz = this.inputConfig.sampleRate;
 
         if (this.speech) {
+            console.log(color('Starting stream to Google').green.toString());
             this.recognizeStream = this.speech
                 .streamingRecognize(this.request)
                 .on('error', (err: APIError) => {
-                    // Error 11 is maxing out the 305 second limit, so we just restart
-                    // TODO: automatically stop and start streaming when there's silence/talking
-
-                    if (err.code == 11) {
-                        this.stop();
-                        this.speech = new SpeechClient(this.config.server.google);
+                    // Error maxing out the 305 second limit, so we just restart
+                    if (err.toString().includes('305')) {
+                        this.recognizeStream.destroy();
                         this.rtAudio = new RtAudio(this.inputConfig.driver);
                         return this.startStreaming();
                     } else if (err.code === 16 ||
@@ -141,6 +133,21 @@ export class Speech {
                 })
                 .on('data', (data) => this.handleRecognitionEvent(data));
         }
+    }
+
+    public startStreaming() {
+        this.dead = false;
+        // Find the device we're listening to based on what was selected in the UI
+        const asio = this.rtAudio.getDevices().filter(d => d.id === this.inputConfig.device)[0]
+        if (!asio) return;
+        console.log(
+            `Connecting to ASIO device ${color(asio.name).bold.blue} with ${color(asio.inputChannels.toString()).bold.blue} channels, listening on channel ${color(this.inputConfig.channel.toString()).bold.blue}`
+        );
+
+        // Update sample rate from xair
+        // TODO: Use sample rate from config
+        this.inputConfig.sampleRate = asio.preferredSampleRate;
+        this.startGoogleStream();
 
         const inputParameters: RtAudioStreamParameters = {
             deviceId: asio.id, // Input device id (Get all devices using `getDevices`)
@@ -149,6 +156,9 @@ export class Speech {
         };
 
         const silence = Buffer.alloc(1920 * 2); // Twice the frame size because 16 bit
+        let silent = true;
+        let framesSinceChange = 0;
+        let streamingShutoff = false;
 
         this.rtAudio.openStream(
             null,
@@ -171,10 +181,44 @@ export class Speech {
                     this.volume = (max - min) * 1000;
 
                     if ((max - min) * 100 >= this.inputConfig.threshold) {
-                        this.recognizeStream?.write(pcm);
+                        if (silent) {
+                            silent = false;
+                            framesSinceChange = 0;
+                        }
+
+                        // If noise above threshold and streaming is not shutoff then stream audio
+                        if (!streamingShutoff) {
+                            this.recognizeStream?.write(pcm);
+                        }
+
+                        // If streaming is shutoff but activity exists for more than 3 frames restart
+                        if (streamingShutoff && framesSinceChange > 3) {
+                            streamingShutoff = false;
+                            this.startGoogleStream();
+                        }
                     } else {
-                        this.recognizeStream?.write(silence);
+                        if (!streamingShutoff) {
+                            if (!silent) {
+                                silent = true;
+                                framesSinceChange = 0;
+                            }
+
+                            // Keep streaming audio for a certain amount of time after silence is detected
+                            if (framesSinceChange < THRESHOLD_CUTOFF_SMOOTHING) {
+                                this.recognizeStream?.write(pcm);
+                            } else {
+                                this.recognizeStream?.write(silence);
+                            }
+
+                            // Shutoff streaming after certain amount of silence
+                            if (framesSinceChange > STOP_STREAMING_CUTTOFF) {
+                                streamingShutoff = true;
+                                this.recognizeStream.destroy();
+                                console.log(color('Stopping stream to Google').yellow.toString());
+                            }
+                        }
                     }
+                    framesSinceChange++;
                 } catch (err) {
                     console.log(err)
                 }
