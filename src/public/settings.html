@@ -22,6 +22,26 @@
                     width: 80%;
                 }
             }
+
+            .volume-indicator {
+                height: 10px;
+                background: rgb(0 0 0 / 20%);
+            }
+
+            .volume-bar {
+                height: 100%;
+                background: #B71C1C;
+                width: 0%;
+            }
+
+            .threshold-indicator {
+                height: 18px;
+                width: 3px;
+                background: black;
+                z-index: 10;
+                position: relative;
+                top: -14px;
+            }
         </style>
     </head>
 
@@ -31,7 +51,7 @@
                 <div class="col s12">
                     <ul class="tabs">
                         <li class="tab col s4"><a class="active" href="#display">Display</a></li>
-                        <li class="tab col s4"><a href="#transcription">Transcription</a></li>
+                        <li class="tab col s4"><a href="#transcription" id="transcription-tab">Transcription</a></li>
                         <li class="tab col s4"><a href="#server">Server</a></li>
                     </ul>
                 </div>
@@ -85,35 +105,41 @@
                 <div id="transcription" class="col s12">
                     <form>
                         <h4>Devices</h4>
-                        <div class="row" data-role="template" style="display:none">
-                            <div class="input-field col s12 m2">
-                                <input id="template-name" type="text" data-role="name">
-                                <label for="template-name">Name</label>
-                                <span class="supporting-text">Speaker Name</span>
+                        <div data-role="template" style="display:none">
+                            <div class="row mb-2">
+                                <div class="input-field col s12 m2">
+                                    <input id="template-name" type="text" data-role="name">
+                                    <label for="template-name">Name</label>
+                                    <span class="supporting-text">Speaker Name</span>
+                                </div>
+                                <div class="input-field col s12 m4">
+                                    <select id="template-device" data-role="id">
+                                        <option value="null">Default</option>
+                                    </select>
+                                    <label for="template-device">Device</label>
+                                </div>
+                                <div class="input-field col s12 m1">
+                                    <input id="template-color" type="text" data-role="color" style="background: black;">
+                                    <label for="template-color" style="color: white;">Color</label>
+                                    <span class="supporting-text">Hex Color</span>
+                                </div>
+                                <div class="input-field col s12 m2">
+                                    <input id="template-channel" type="number" data-role="channel" min="0">
+                                    <label for="template-channel">Channel Number</label>
+                                    <span class="supporting-text">Channel # to monitor</span>
+                                </div>
+                                <div class="input-field col s12 m2">
+                                    <input id="template-threshold" type="number" data-role="threshold" min="0" max="100">
+                                    <label for="template-threshold">Threshold</label>
+                                    <span class="supporting-text">Sensitivity for muting</span>
+                                </div>
+                                <div class="col s12 m1 valign-wrapper">
+                                    <a class="waves-effect waves-light red btn center-align" data-action="remove">Remove</a>
+                                </div>
                             </div>
-                            <div class="input-field col s12 m4">
-                                <select id="template-device" data-role="id">
-                                    <option value="null">Default</option>
-                                </select>
-                                <label for="template-device">Device</label>
-                            </div>
-                            <div class="input-field col s12 m1">
-                                <input id="template-color" type="text" data-role="color" style="background: black;">
-                                <label for="template-color" style="color: white;">Color</label>
-                                <span class="supporting-text">Hex Color</span>
-                            </div>
-                            <div class="input-field col s12 m2">
-                                <input id="template-channel" type="number" data-role="channel" min="0">
-                                <label for="template-channel">Channel Number</label>
-                                <span class="supporting-text">Channel # to monitor</span>
-                            </div>
-                            <div class="input-field col s12 m2">
-                                <input id="template-threshold" type="number" data-role="threshold" min="0" max="100">
-                                <label for="template-threshold">Threshold</label>
-                                <span class="supporting-text">Sensitivity for muting</span>
-                            </div>
-                            <div class="col s12 m1 valign-wrapper">
-                                <a class="waves-effect waves-light red btn center-align" data-action="remove">Remove</a>
+                            <div class="volume-indicator mb-2" data-role="volume">
+                                <div class="volume-bar"></div>
+                                <div class="threshold-indicator"></div>
                             </div>
                         </div>
                         <div class="row mb-2">
