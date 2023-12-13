@@ -38,10 +38,9 @@ export class Speech {
         text: '',
         confidence: 0
     };
-    private volumeBar: SingleBar | undefined = undefined;
     public volume: number = 0;
 
-    constructor(config: ConfigManager, clients: WebSocket[], input: InputConfig, volumeBar?: SingleBar) {
+    constructor(config: ConfigManager, clients: WebSocket[], input: InputConfig) {
         this.config = config;
         this.inputConfig = input;
         this.clients = clients;
@@ -51,7 +50,6 @@ export class Speech {
             this.speech = new SpeechClient(config.server.google);
         }
         this.rtAudio = new RtAudio(input.driver);
-        this.volumeBar = volumeBar;
 
         // Process filter
         let removeWords = [];
@@ -177,7 +175,6 @@ export class Speech {
 
                     let max = Math.max(...data)
                     let min = Math.min(...data)
-                    this.volumeBar?.update((max - min) * 2000);
                     this.volume = (max - min) * 1000;
 
                     if ((max - min) * 100 >= this.inputConfig.threshold) {
