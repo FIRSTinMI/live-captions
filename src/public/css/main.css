@@ -24,6 +24,7 @@ body {
     overflow-y: hidden;
     scroll-behavior: smooth;
     flex-grow: 1;
+    flex-basis: 50%;
     transition: all 1s ease 0s;
     height: 100%;
 }

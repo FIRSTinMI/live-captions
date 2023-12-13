@@ -116,7 +116,7 @@ function handleCaptionFrame(frame) {
     let { transcript, lastFrameWasFinal, currentDiv, currentTimeout, color } = deviceStats[device];
 
     clearTimeout(currentTimeout);
-    lc.style.display = 'flex';
+    lc.style.display = 'block';
 
     // Check if we've located the correct span
     if (currentDiv != undefined) {
@@ -128,7 +128,7 @@ function handleCaptionFrame(frame) {
         currentDiv.style.color = color;
         currentDiv.style.fontSize = config.display.size + 'px';
         currentDiv.style.lineHeight = (config.display.size + 6) + 'px';
-        // currentDiv.style.maxHeight = (parseFloat(config.display.size) + 6) + 'px';
+        currentDiv.style.maxHeight = (parseFloat(config.display.size) + 6) + 'px';
         lc.appendChild(currentDiv);
         currentDiv.innerText = capitalize(frame.text) + ((frame.isFinal) ? '.\n' : '');
     }
@@ -156,8 +156,13 @@ function handleCaptionFrame(frame) {
         }, timeout);
     }
 
-    // Scroll to bottom of container
-    if (currentDiv != undefined) currentDiv.scrollTop = currentDiv.scrollHeight;
+    // Scroll to bottom of ALL containers and set heights as a percentage of how many are visible
+    const visibleContainers = Array.from(lc.children).reduce((acc, val) => val.innerHTML != '' ? acc + 1 : acc, 0);
+    const percent = 100 / visibleContainers;
+    for (const div of lc.children) {
+        div.scrollTop = div.scrollHeight;
+        div.style.height = percent + '%';
+    }
 
     // Update frame stats
     deviceStats[device] = {

@@ -4,9 +4,9 @@
     "main": "./build/index.js",
     "bin": "./build/index.js",
     "scripts": {
-        "start": "npx tsc && node ./build/index.js",
-        "start-gibberish": "npx tsc && node ./build/index.js --gibberish",
-        "start-volume": "npx tsc && node ./build/index.js --volume-bar",
+        "start": "tsc && node ./build/index.js",
+        "start-gibberish": "tsc && node ./build/index.js --gibberish",
+        "start-volume": "tsc && node ./build/index.js --volume-bar",
         "dist": "tsc && pkg ."
     },
     "author": "",
