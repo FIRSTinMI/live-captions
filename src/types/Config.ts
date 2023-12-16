@@ -23,6 +23,8 @@ export interface ServerConfig {
 
 export interface TranscriptionConfig {
     filter: string[],
+    streamingTimeout: number,
+    streamingRestart: number,
     inputs: InputConfig[]
 }
 

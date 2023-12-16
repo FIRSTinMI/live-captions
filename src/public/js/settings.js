@@ -198,8 +198,8 @@ function connectToSocket() {
             for (let device of json.devices) {
                 const elm = document.getElementById(`device-${device.id}-volume`);
                 if (elm) {
-                    elm.children[0].style.width = `${device.volume / 20}%`;
-                    if (device.volume / 20 > parseInt(document.getElementById(`device-${device.id}-threshold`).value)) {
+                    elm.children[0].style.width = `${device.volume}%`;
+                    if (device.volume > parseInt(document.getElementById(`device-${device.id}-threshold`).value)) {
                         elm.children[0].style.backgroundColor = '#4CAF50';
                     } else {
                         elm.children[0].style.backgroundColor = '';

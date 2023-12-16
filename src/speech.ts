@@ -11,7 +11,6 @@ import { SingleBar } from "cli-progress";
 
 // Number of frames after silence is detected to continue streaming
 const THRESHOLD_CUTOFF_SMOOTHING = 10;
-const STOP_STREAMING_CUTTOFF = 600; // about 20 seconds
 
 export class Speech {
     private config: ConfigManager;
@@ -38,6 +37,7 @@ export class Speech {
         text: '',
         confidence: 0
     };
+    private amplitudeArray: number[] = [0, 0, 0, 0, 0];
     public volume: number = 0;
 
     constructor(config: ConfigManager, clients: WebSocket[], input: InputConfig) {
@@ -158,6 +158,8 @@ export class Speech {
         let framesSinceChange = 0;
         let streamingShutoff = false;
 
+
+        // One frame is 10ms
         this.rtAudio.openStream(
             null,
             inputParameters,
@@ -173,11 +175,12 @@ export class Speech {
                         (v, i) => pcm.readInt16LE(i * 2) / (2 ** 15)
                     );
 
-                    let max = Math.max(...data)
-                    let min = Math.min(...data)
-                    this.volume = (max - min) * 1000;
+                    const amplitude = Math.max(...data) - Math.min(...data);
+                    this.amplitudeArray.shift();
+                    this.amplitudeArray.push(Math.ceil(amplitude * 100));
+                    this.volume = Math.log(this.amplitudeArray.reduce((partialSum, a) => partialSum + a, 0) / this.amplitudeArray.length) * 18.939;
 
-                    if ((max - min) * 100 >= this.inputConfig.threshold) {
+                    if (this.volume >= this.inputConfig.threshold) {
                         if (silent) {
                             silent = false;
                             framesSinceChange = 0;
@@ -189,7 +192,7 @@ export class Speech {
                         }
 
                         // If streaming is shutoff but activity exists for more than 3 frames restart
-                        if (streamingShutoff && framesSinceChange > 3) {
+                        if (streamingShutoff && framesSinceChange > (this.config.transcription.streamingRestart / 10)) {
                             streamingShutoff = false;
                             this.startGoogleStream();
                         }
@@ -208,7 +211,7 @@ export class Speech {
                             }
 
                             // Shutoff streaming after certain amount of silence
-                            if (framesSinceChange > STOP_STREAMING_CUTTOFF) {
+                            if (framesSinceChange > (this.config.transcription.streamingTimeout / 10)) {
                                 streamingShutoff = true;
                                 this.recognizeStream.destroy();
                                 console.log(color('Stopping stream to Google').yellow.toString());
