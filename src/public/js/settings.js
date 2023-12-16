@@ -3,7 +3,11 @@ let config = {};
 const defaultColors = ["#42A5F5", "#EF5350", "#FFC107", "#D500F9", "#8BC34A", "#FFFFFF"];
 
 document.addEventListener('DOMContentLoaded', function () {
-    M.Tabs.init(document.querySelector('.tabs'), {});
+    M.Tabs.init(document.querySelector('.tabs'), {
+        onShow: (elm) => {
+            window.history.replaceState(null, document.title, `/settings.html#${elm.id}`);
+        }
+    });
 });
 
 const configPromise = fetch('/config')
