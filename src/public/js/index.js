@@ -17,17 +17,17 @@ function updateConfig() {
             lc.style.removeProperty('transform');
 
             switch (json.display.position.toString()) {
-                case 0:
+                case '0':
                     lc.style.bottom = '0';
                     break;
-                case 1:
+                case '1':
                     lc.style.top = '0';
                     break;
-                case 2:
-                    lc.style.bottom = '128px';
+                case '2':
+                    lc.style.bottom = '256px';
                     break;
-                case 3:
-                    lc.style.top = '128px';
+                case '3':
+                    lc.style.top = '256px';
                     break;
             }
             switch (json.display.align) {
@@ -44,6 +44,12 @@ function updateConfig() {
             }
             document.body.style.backgroundColor = json.display.chromaKey;
             lc.style.maxHeight = (json.display.lines * (json.display.size + 6)) + 'px';
+            for (let child of lc.children) {
+                child.style.fontSize = config.display.size + 'px';
+                child.style.lineHeight = (config.display.size + 6) + 'px';
+                child.style.maxHeight = (parseFloat(config.display.size) + 6) + 'px';
+            }
+
             timeout = json.display.timeout * 1000;
             config = json;
         });

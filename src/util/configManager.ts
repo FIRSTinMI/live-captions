@@ -34,7 +34,6 @@ export class ConfigManager {
             '+pistols'
         ],
         streamingTimeout: 60e3,
-        streamingRestart: 20,
         inputs: []
     }
 

@@ -7,7 +7,7 @@ import { InputConfig } from "./types/Config";
 import { Frame } from "./types/Frame";
 import { APIError, SpeechResultData } from "./types/GoogleAPI";
 import color from "colorts";
-import { SingleBar } from "cli-progress";
+import Pumpify from "pumpify";
 
 // Number of frames after silence is detected to continue streaming
 const THRESHOLD_CUTOFF_SMOOTHING = 10;
@@ -29,7 +29,7 @@ export class Speech {
     private rtAudio: RtAudio;
     private dead: boolean = false;
     private filter = new BadWords();
-    private recognizeStream: any;
+    private recognizeStream: Pumpify | undefined;
     private lastFrame: Frame = {
         device: 0,
         type: 'words',
@@ -65,12 +65,12 @@ export class Speech {
         this.filter.removeWords(...removeWords);
     }
 
-    public stop() {
+    public stop(closeSpeech: boolean = true) {
         this.dead = true;
         this.rtAudio.setInputCallback(() => { });
         this.rtAudio.closeStream();
-        this.recognizeStream.destroy();
-        this.speech?.close();
+        this.recognizeStream?.destroy();
+        if (closeSpeech) this.speech?.close();
     }
 
     private handleRecognitionEvent(data: SpeechResultData) {
@@ -111,13 +111,13 @@ export class Speech {
         this.request.config.sampleRateHertz = this.inputConfig.sampleRate;
 
         if (this.speech) {
-            console.log(color('Starting stream to Google').green.toString());
+            console.log(color(`Starting ${this.inputConfig.id} stream`).green.toString());
             this.recognizeStream = this.speech
                 .streamingRecognize(this.request)
                 .on('error', (err: APIError) => {
                     // Error maxing out the 305 second limit, so we just restart
                     if (err.toString().includes('305')) {
-                        this.recognizeStream.destroy();
+                        this.recognizeStream?.destroy();
                         this.rtAudio = new RtAudio(this.inputConfig.driver);
                         return this.startStreaming();
                     } else if (err.code === 16 ||
@@ -125,6 +125,11 @@ export class Speech {
                         err.toString().includes('does not contain a private_key field')) {
                         console.error(color('Google API Authentication Failed').bold.red.toString());
                         this.stop();
+                    } else if (err.message.includes('Cannot call write after a stream was destroyed')) {
+                        console.log(color(`${err.message}: ${err.code}.  Restarting...`).red.toString());
+                        // Close/destroy/cleanup but DON'T close the google client
+                        this.stop(false);
+                        this.startGoogleStream();
                     } else {
                         console.error(err);
                     }
@@ -169,7 +174,7 @@ export class Speech {
             `liveCaptions${this.inputConfig.id}`, // The name of the stream (used for JACK Api)
             (pcm: Buffer) => {
                 try {
-                    if (this.dead) return;
+
                     let data = Array.from(
                         { length: pcm.length / 2 },
                         (v, i) => pcm.readInt16LE(i * 2) / (2 ** 15)
@@ -189,10 +194,7 @@ export class Speech {
                         // If noise above threshold and streaming is not shutoff then stream audio
                         if (!streamingShutoff) {
                             this.recognizeStream?.write(pcm);
-                        }
-
-                        // If streaming is shutoff but activity exists for more than 3 frames restart
-                        if (streamingShutoff && framesSinceChange > (this.config.transcription.streamingRestart / 10)) {
+                        } else  {
                             streamingShutoff = false;
                             this.startGoogleStream();
                         }
@@ -213,14 +215,14 @@ export class Speech {
                             // Shutoff streaming after certain amount of silence
                             if (framesSinceChange > (this.config.transcription.streamingTimeout / 10)) {
                                 streamingShutoff = true;
-                                this.recognizeStream.destroy();
-                                console.log(color('Stopping stream to Google').yellow.toString());
+                                this.recognizeStream?.destroy();
+                                console.log(color(`Pausing ${this.inputConfig.id} stream`).yellow.toString());
                             }
                         }
                     }
                     framesSinceChange++;
-                } catch (err) {
-                    console.log(err)
+                } catch (err: unknown) {
+                    console.error(err);
                 }
             }, // Input callback function, write every input pcm data to the output buffer,
             null,
