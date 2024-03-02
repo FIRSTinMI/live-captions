@@ -105,7 +105,7 @@ function connectToSocket() {
 
 function handleCaptionFrame(frame) {
     console.log(frame);
-    if (frame.type == 'config') return updateConfig();
+    if (frame.type == 'config') return window.location.reload();
     if (frame.text == '') return;
 
     const device = frame.device;

@@ -12,39 +12,44 @@ import { spawn } from 'child_process';
 
 const PROGRAM_FOLDER = process.env.APPDATA + '/live-captions';
 
-const VERSION = require('../package.json').version;
-fetch('https://github.com/Filip-Kin/live-captions/releases/latest').then(async res => {
-    const latestVersion = res.url.split('/').pop()?.slice(1) || '0.0.0';
-    if (latestVersion > VERSION) {
-        // Update available
-        console.log(`Update available: ${color(VERSION).bold.yellow} -> ${color(latestVersion).bold.green}`);
-        console.log('Downloading...');
-        const stream = createWriteStream(`live-captions-${latestVersion}.exe`);
-        const { body } = await fetch(`https://github.com/Filip-Kin/live-captions/releases/download/v${latestVersion}/live-captions-${latestVersion}.exe`);
-        if (body === null) throw new Error('Failed to download update');
-        // @ts-ignore
-        await finished(Readable.fromWeb(body).pipe(stream));
-        spawn(`live-captions-${latestVersion}.exe`, [], { detached: true, shell: true }).unref();
-        process.exit();
-    } else {
-        console.log(`Running latest version: ${color(VERSION).bold.green}`);
-        readdirSync('.').filter(f => f.startsWith('live-captions') && f.endsWith('.exe')).forEach(f => {
-            if (f !== `live-captions-${VERSION}.exe`) {
-                console.log(`Removing old version: ${color(f).bold.red}`);
-                unlink(f, () => { });
-            }
-        });
-        start();
-    }
-}).catch(err => {
-    console.log('Failed to check for updates');
-    console.error(err);
-    start();
-});
-
 let server: Server;
 let speechServices: Speech[] = [];
 let clients: ws[] = [];
+
+const VERSION = require('../package.json').version;
+
+if (!process.argv.includes('--skip-update-check')) {
+    fetch('https://github.com/Filip-Kin/live-captions/releases/latest').then(async res => {
+        const latestVersion = res.url.split('/').pop()?.slice(1) || '0.0.0';
+        if (latestVersion > VERSION) {
+            // Update available
+            console.log(`Update available: ${color(VERSION).bold.yellow} -> ${color(latestVersion).bold.green}`);
+            console.log('Downloading...');
+            const stream = createWriteStream(`live-captions-${latestVersion}.exe`);
+            const { body } = await fetch(`https://github.com/Filip-Kin/live-captions/releases/download/v${latestVersion}/live-captions-${latestVersion}.exe`);
+            if (body === null) throw new Error('Failed to download update');
+            // @ts-ignore
+            await finished(Readable.fromWeb(body).pipe(stream));
+            spawn(`live-captions-${latestVersion}.exe`, [], { detached: true, shell: true }).unref();
+            process.exit();
+        } else {
+            console.log(`Running latest version: ${color(VERSION).bold.green}`);
+            readdirSync('.').filter(f => f.startsWith('live-captions') && f.endsWith('.exe')).forEach(f => {
+                if (f !== `live-captions-${VERSION}.exe`) {
+                    console.log(`Removing old version: ${color(f).bold.red}`);
+                    unlink(f, () => { });
+                }
+            });
+            start();
+        }
+    }).catch(err => {
+        console.log('Failed to check for updates');
+        console.error(err);
+        start();
+    });
+} else {
+    start();
+}
 
 function start() {
     // Kill server and speeches if they're already running

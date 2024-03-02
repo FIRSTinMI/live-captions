@@ -103,7 +103,7 @@ function addRow(device = null) {
     row.querySelector('#template-color').setAttribute('id', `device-${index}-color`)
     row.querySelector('[for="template-color"]').setAttribute('for', `device-${index}-color`);
 
-    row.querySelector('#template-channel').value = device.channel;
+    row.querySelector('#template-channel').value = parseInt(device.channel) + 1;
     row.querySelector('#template-channel').setAttribute('id', `device-${index}-channel`);
     row.querySelector('[for="template-channel"]').setAttribute('for', `device-${index}-channel`);
 
@@ -151,7 +151,7 @@ for (let btn of document.querySelectorAll('.apply-btn')) {
                 id: toSave.length,
                 device: parseInt(row.querySelector('select').value),
                 speaker: row.querySelector('[data-role="name"]').value,
-                channel: parseInt(row.querySelector('[data-role="channel"]').value),
+                channel: parseInt(row.querySelector('[data-role="channel"]').value) - 1,
                 color: row.querySelector('[data-role="color"]').value,
                 driver: 7,
                 threshold: parseInt(row.querySelector('[data-role="threshold"]').value)
