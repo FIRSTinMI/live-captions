@@ -51,7 +51,41 @@ if (!process.argv.includes('--skip-update-check')) {
     start();
 }
 
-function start() {
+async function updateBadWordsList(config: ConfigManager) {
+    const FIMBadWords = await fetch('https://storage.googleapis.com/live-captions-assets/badwords.txt').then(res => res.text());
+    
+    let filter = config.transcription.filter;
+    
+    for (let word of FIMBadWords.split('\n')) {
+        word = word.trim();
+        let sign = word.slice(0, 1);
+
+        if (word.length <= 1) continue;
+
+        if (sign === '+') {
+            if (!filter.includes(word)) {
+                filter.push(word);
+                console.log('Added to filter: ' + word);
+            }
+            if (filter.includes('-' + word.slice(1))) {
+                filter.splice(filter.indexOf('-' + word.slice(1)), 1);
+            }
+        } else if (sign === '-') {
+            if (!filter.includes(word)) {
+                filter.push(word);
+                console.log('Added to filter: ' + word);
+            }
+            if (filter.includes('+' + word.slice(1))) {
+                filter.splice(filter.indexOf('+' + word.slice(1)), 1);
+            }
+        }
+    }
+
+    config.transcription.filter = filter;
+    config.save();
+}
+
+async function start() {
     // Kill server and speeches if they're already running
     if (server) {
         server.stop();
@@ -70,6 +104,7 @@ function start() {
 
     // Generate/load config
     const config = new ConfigManager(PROGRAM_FOLDER + '/config.json');
+    updateBadWordsList(config);
 
     // Create a asio interface
     const rtAudio = new RtAudio(RtAudioApi.WINDOWS_WASAPI);

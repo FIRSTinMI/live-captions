@@ -1,4 +1,3 @@
-import { SpeechClient } from "@google-cloud/speech";
 import { RtAudio, RtAudioErrorType, RtAudioFormat, RtAudioStreamFlags, RtAudioStreamParameters } from 'audify';
 import WebSocket from "ws";
 import BadWords from 'bad-words'
@@ -6,8 +5,11 @@ import { ConfigManager } from "./util/configManager";
 import { InputConfig } from "./types/Config";
 import { Frame } from "./types/Frame";
 import { APIError, SpeechResultData } from "./types/GoogleAPI";
-import color from "colorts";
-import Pumpify from "pumpify";
+import color from "colorts";;
+import { AdaptationClient, v2 } from '@google-cloud/speech';
+import { CancellableStream } from 'google-gax';
+const SpeechClient = v2.SpeechClient;
+import { google } from '@google-cloud/speech/build/protos/protos';
 
 // Number of frames after silence is detected to continue streaming
 const THRESHOLD_CUTOFF_SMOOTHING = 10;
@@ -16,20 +18,11 @@ export class Speech {
     private config: ConfigManager;
     public inputConfig: InputConfig;
     private clients: WebSocket[];
-    private speech?: SpeechClient;
-    private request: any = {
-        config: {
-            encoding: 'LINEAR16',
-            sampleRateHertz: 16000,
-            languageCode: 'en-US',
-            model: 'latest_long'
-        },
-        interimResults: true,
-    };;
+    private speech?: v2.SpeechClient;
     private rtAudio: RtAudio;
     private dead: boolean = false;
     private filter = new BadWords();
-    private recognizeStream: Pumpify | undefined;
+    private recognizeStream?: CancellableStream;
     private lastFrame: Frame = {
         device: 0,
         type: 'words',
@@ -47,7 +40,7 @@ export class Speech {
         if (config.server.google.credentials.client_email === '' || config.server.google.credentials.private_key === '') {
             console.error(color('Google API Authentication Failed').bold.red.toString());
         } else {
-            this.speech = new SpeechClient(config.server.google);
+            this.speech = new SpeechClient({...config.server.google});
         }
         this.rtAudio = new RtAudio(input.driver);
 
@@ -108,12 +101,36 @@ export class Speech {
     }
 
     private startGoogleStream() {
-        this.request.config.sampleRateHertz = this.inputConfig.sampleRate;
+        const recognitionConfig: google.cloud.speech.v2.IRecognitionConfig = {
+            autoDecodingConfig: {},
+            explicitDecodingConfig: {
+                encoding: 'LINEAR16',
+                sampleRateHertz: this.inputConfig.sampleRate,
+                audioChannelCount: 1,
+            },
+            languageCodes: ['en-US'],
+            model: 'latest_long',
+            adaptation: {
+                phraseSets: this.config.transcription.phraseSets.map(s => ({phraseSet: s}))
+            }
+        }
+    
+        const streamingRecognitionConfig: google.cloud.speech.v2.IStreamingRecognitionConfig = {
+            config: recognitionConfig,
+            streamingFeatures: {
+                interimResults: true,
+            }
+        }
+    
+        const streamingRecognizeRequest: google.cloud.speech.v2.IStreamingRecognizeRequest = {
+            recognizer: `projects/${this.config.server.google.projectId}/locations/global/recognizers/_`,
+            streamingConfig: streamingRecognitionConfig,
+        };
 
         if (this.speech) {
             console.log(color(`Starting ${this.inputConfig.id} stream`).green.toString());
             this.recognizeStream = this.speech
-                .streamingRecognize(this.request)
+                ._streamingRecognize()
                 .on('error', (err: APIError) => {
                     // Error maxing out the 305 second limit, so we just restart
                     if (err.toString().includes('305')) {
@@ -134,7 +151,9 @@ export class Speech {
                         console.error(err);
                     }
                 })
-                .on('data', (data) => this.handleRecognitionEvent(data));
+                .on('data', (data: any) => this.handleRecognitionEvent(data));
+
+            this.recognizeStream.write(streamingRecognizeRequest);
         }
     }
 
@@ -193,7 +212,7 @@ export class Speech {
 
                         // If noise above threshold and streaming is not shutoff then stream audio
                         if (!streamingShutoff) {
-                            this.recognizeStream?.write(pcm);
+                            this.recognizeStream?.write({ audio: pcm});
                         } else  {
                             streamingShutoff = false;
                             this.startGoogleStream();
@@ -207,9 +226,9 @@ export class Speech {
 
                             // Keep streaming audio for a certain amount of time after silence is detected
                             if (framesSinceChange < THRESHOLD_CUTOFF_SMOOTHING) {
-                                this.recognizeStream?.write(pcm);
+                                this.recognizeStream?.write({ audio: pcm});
                             } else {
-                                this.recognizeStream?.write(silence);
+                                this.recognizeStream?.write({ audio: silence });
                             }
 
                             // Shutoff streaming after certain amount of silence

@@ -24,6 +24,7 @@ const configPromise = fetch('/config')
         document.getElementById('server-port').value = json.server.port;
         document.getElementById('server-google').value = JSON.stringify(json.server.google, null, 4);
         document.getElementById('transcription-filter').value = json.transcription.filter.join('\n');
+        document.getElementById('transcription-phraseSets').value = json.transcription.phraseSets.join('\n');
 
         M.FormSelect.init(document.forms[0].querySelectorAll('select'), {});
         document.querySelectorAll('textarea').forEach(M.Forms.textareaAutoResize);
@@ -46,7 +47,7 @@ function bindToInput(elm) {
     elm.addEventListener('change', (evt) => {
         const setting = encodeURIComponent(elm.id.replace('-', '.'));
         let body;
-        if (elm.id === 'transcription-filter') {
+        if (elm.id === 'transcription-filter' || elm.id === 'transcription-phraseSets') {
             body = JSON.stringify(elm.value.split('\n'));
         } else if (elm.type === 'textarea') {
             body = elm.value;

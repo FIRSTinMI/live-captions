@@ -24,7 +24,8 @@ export interface ServerConfig {
 export interface TranscriptionConfig {
     filter: string[],
     streamingTimeout: number,
-    inputs: InputConfig[]
+    inputs: InputConfig[],
+    phraseSets: string[]
 }
 
 export interface InputConfig {

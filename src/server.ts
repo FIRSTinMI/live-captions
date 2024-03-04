@@ -45,6 +45,9 @@ export class Server {
             } else if (req.params.setting === 'transcription.filter') {
                 config.transcription.filter = req.body;
                 config.save();
+            } else if (req.params.setting === 'transcription.phraseSets') {
+                config.transcription.phraseSets = req.body;
+                config.save();
             } else {
                 try {
                     config.set(req.params.setting, req.query.value);

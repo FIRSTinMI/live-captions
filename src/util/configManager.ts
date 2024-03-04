@@ -34,7 +34,11 @@ export class ConfigManager {
             '+pistols'
         ],
         streamingTimeout: 60e3,
-        inputs: []
+        inputs: [],
+        phraseSets: [
+            'projects/829228050742/locations/global/phraseSets/fim-2024-team-names',
+            'projects/829228050742/locations/global/phraseSets/frc-2024-terms'
+        ]
     }
 
     constructor(file: string) {
