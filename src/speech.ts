@@ -133,7 +133,7 @@ export class Speech {
                 ._streamingRecognize()
                 .on('error', (err: APIError) => {
                     // Error maxing out the 305 second limit, so we just restart
-                    if (err.toString().includes('305')) {
+                    if (err.toString().includes('305') || err.details.includes('Max duration')) {
                         this.recognizeStream?.destroy();
                         this.rtAudio = new RtAudio(this.inputConfig.driver);
                         return this.startStreaming();

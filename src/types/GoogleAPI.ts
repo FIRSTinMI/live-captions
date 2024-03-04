@@ -8,4 +8,5 @@ export interface SpeechResult extends SpeechRecognitionResult {
 
 export interface APIError extends Error {
     code: number
+    details: string
 }
