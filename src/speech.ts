@@ -5,10 +5,10 @@ import { ConfigManager } from "./util/configManager";
 import { InputConfig } from "./types/Config";
 import { Frame } from "./types/Frame";
 import { APIError, SpeechResultData } from "./types/GoogleAPI";
-import color from "colorts";;
-import { AdaptationClient, v2 } from '@google-cloud/speech';
-import { CancellableStream } from 'google-gax';
+import color from "colorts";
+import { v2 } from '@google-cloud/speech';
 const SpeechClient = v2.SpeechClient;
+import { CancellableStream } from 'google-gax';
 import { google } from '@google-cloud/speech/build/protos/protos';
 
 // Number of frames after silence is detected to continue streaming
@@ -40,7 +40,7 @@ export class Speech {
         if (config.server.google.credentials.client_email === '' || config.server.google.credentials.private_key === '') {
             console.error(color('Google API Authentication Failed').bold.red.toString());
         } else {
-            this.speech = new SpeechClient({...config.server.google});
+            this.speech = new SpeechClient({ ...config.server.google });
         }
         this.rtAudio = new RtAudio(input.driver);
 
@@ -111,17 +111,17 @@ export class Speech {
             languageCodes: ['en-US'],
             model: 'latest_long',
             adaptation: {
-                phraseSets: this.config.transcription.phraseSets.map(s => ({phraseSet: s}))
+                phraseSets: this.config.transcription.phraseSets.map(s => ({ phraseSet: s }))
             }
         }
-    
+
         const streamingRecognitionConfig: google.cloud.speech.v2.IStreamingRecognitionConfig = {
             config: recognitionConfig,
             streamingFeatures: {
                 interimResults: true,
             }
         }
-    
+
         const streamingRecognizeRequest: google.cloud.speech.v2.IStreamingRecognizeRequest = {
             recognizer: `projects/${this.config.server.google.projectId}/locations/global/recognizers/_`,
             streamingConfig: streamingRecognitionConfig,
@@ -212,8 +212,8 @@ export class Speech {
 
                         // If noise above threshold and streaming is not shutoff then stream audio
                         if (!streamingShutoff) {
-                            this.recognizeStream?.write({ audio: pcm});
-                        } else  {
+                            this.recognizeStream?.write({ audio: pcm });
+                        } else {
                             streamingShutoff = false;
                             this.startGoogleStream();
                         }
@@ -226,7 +226,7 @@ export class Speech {
 
                             // Keep streaming audio for a certain amount of time after silence is detected
                             if (framesSinceChange < THRESHOLD_CUTOFF_SMOOTHING) {
-                                this.recognizeStream?.write({ audio: pcm});
+                                this.recognizeStream?.write({ audio: pcm });
                             } else {
                                 this.recognizeStream?.write({ audio: silence });
                             }

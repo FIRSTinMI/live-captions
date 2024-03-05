@@ -53,9 +53,9 @@ if (!process.argv.includes('--skip-update-check')) {
 
 async function updateBadWordsList(config: ConfigManager) {
     const FIMBadWords = await fetch('https://storage.googleapis.com/live-captions-assets/badwords.txt').then(res => res.text());
-    
+
     let filter = config.transcription.filter;
-    
+
     for (let word of FIMBadWords.split('\n')) {
         word = word.trim();
         let sign = word.slice(0, 1);
