@@ -67,36 +67,41 @@ export class Speech {
     }
 
     private handleRecognitionEvent(data: SpeechResultData) {
-        let frame: Frame = {
-            device: this.inputConfig.id,
-            type: 'words',
-            isFinal: data.results[0].isFinal,
-            text: data.results[0].alternatives[0].transcript,
-            confidence: data.results[0].alternatives[0].confidence,
-            speaker: this.inputConfig.speaker
-        }
+        try {
+            if (data.results.length < 1 && data.results[0].alternatives.length < 1) return;
+            let frame: Frame = {
+                device: this.inputConfig.id,
+                type: 'words',
+                isFinal: data.results[0].isFinal,
+                text: data.results[0].alternatives[0]?.transcript,
+                confidence: data.results[0].alternatives[0]?.confidence,
+                speaker: this.inputConfig.speaker
+            }
 
-        // Sometimes the API sends duplicate isFinal frames
-        if (frame.isFinal && this.lastFrame.isFinal) return;
+            // Sometimes the API sends duplicate isFinal frames
+            if (frame.isFinal && this.lastFrame.isFinal) return;
 
-        // Or an empty text...
-        if (frame.text.trim() === '') return;
+            // Or an empty text...
+            if (frame.text.trim() === '') return;
 
-        // Or the same frame twice
-        if (frame.text === this.lastFrame.text && !frame.isFinal) return;
+            // Or the same frame twice
+            if (frame.text === this.lastFrame.text && !frame.isFinal) return;
 
-        // If this frame has fewer words and is not final let's not send the update
-        // because otherwise the words kind of flicker as it detects
-        // and if the last frame was final then this is a new sentence and obviously will have fewer words
-        if (frame.text.split(' ').length - this.lastFrame.text.split(' ').length < 0 && !frame.isFinal && !this.lastFrame.isFinal) return;
+            // If this frame has fewer words and is not final let's not send the update
+            // because otherwise the words kind of flicker as it detects
+            // and if the last frame was final then this is a new sentence and obviously will have fewer words
+            if (frame.text.split(' ').length - this.lastFrame.text.split(' ').length < 0 && !frame.isFinal && !this.lastFrame.isFinal) return;
 
-        this.lastFrame = frame;
+            this.lastFrame = frame;
 
-        // Trim whitespace and censor bad words
-        frame.text = this.filter.clean(frame.text.trim());
-        let msg = JSON.stringify(frame);
-        for (let ws of this.clients) {
-            ws.send(msg);
+            // Trim whitespace and censor bad words
+            frame.text = this.filter.clean(frame.text.trim());
+            let msg = JSON.stringify(frame);
+            for (let ws of this.clients) {
+                ws.send(msg);
+            }
+        } catch (err) {
+            console.error(err);
         }
     }
 
@@ -211,7 +216,7 @@ export class Speech {
                         }
 
                         // If noise above threshold and streaming is not shutoff then stream audio
-                        if (!streamingShutoff) {
+                        if (!streamingShutoff || this.recognizeStream?.closed || this.recognizeStream?.destroyed) {
                             this.recognizeStream?.write({ audio: pcm });
                         } else {
                             streamingShutoff = false;
