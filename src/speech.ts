@@ -237,7 +237,7 @@ export class Speech {
                             }
 
                             // Shutoff streaming after certain amount of silence
-                            if (framesSinceChange > (this.config.transcription.streamingTimeout / 10)) {
+                            if (framesSinceChange > (this.config.transcription.streamingTimeout / 40)) {
                                 streamingShutoff = true;
                                 this.recognizeStream?.destroy();
                                 console.log(color(`Pausing ${this.inputConfig.id} stream`).yellow.toString());
