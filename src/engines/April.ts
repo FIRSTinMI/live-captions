@@ -50,15 +50,17 @@ export class April {
     private start() {
         if (!this.aprilASR?.killed) this.aprilASR?.kill();
         console.log(color(`April: Starting ${this.inputId} stream`).green.toString());
-        this.aprilASR = spawn('python', ['./april-asr.py'], { shell: true, stdio: ['pipe', 'pipe', process.stderr]});
+        this.aprilASR = spawn('python', [PROGRAM_FOLDER + '/april-asr/april-asr.py'], { shell: true, stdio: ['pipe', 'pipe', process.stderr]});
 
         this.aprilASR.stdout?.on('data', (data: Buffer) => {
-            let str = data.toString();
-            console.log(str);
-            if (str.startsWith('Server started')) {
-                this.connectWebsocket(str.split(' ')[4]);
-            } else if (str.startsWith('Result')) {
-                this.handleRecognitionEvent(str.substring(7));
+            let strings = data.toString().split('\n');
+            for (let str of strings) {
+                if (str.startsWith('Server started')) {
+                    let port = str.split(' ')[4];
+                    this.connectWebsocket(port);
+                } else if (str.startsWith('Result')) {
+                    this.handleRecognitionEvent(str.substring(7));
+                }
             }
         });
     }
@@ -81,7 +83,7 @@ export class April {
             device: this.inputId,
             type: 'words',
             isFinal: data.startsWith('@'),
-            text: data.substring(2).toLowerCase(),
+            text: data.substring(2).trim().toLowerCase(),
             confidence: -1,
             speaker: this.inputName
         }
@@ -134,7 +136,13 @@ export async function downloadDependencies() {
         console.log('Downloaded April ASR model');
     }
 
-    if (!existsSync(PROGRAM_FOLDER + '/april-asr/main.exe')) {
-        // TODO: download main.exe
+    if (!existsSync(PROGRAM_FOLDER + '/april-asr/april-asr.py')) {
+        console.log('Downloading April ASR script...');
+        const { body } = await fetch('https://raw.githubusercontent.com/Filip-Kin/live-captions/main/april-asr.py');
+        if (body === null) throw new Error('Failed to download April ASR script');
+        const stream = createWriteStream(PROGRAM_FOLDER + '/april-asr/april-asr.py');
+        // @ts-ignore
+        await finished(Readable.fromWeb(body).pipe(stream));
+        console.log('Downloaded April ASR script');
     }
 }

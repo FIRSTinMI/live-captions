@@ -1,6 +1,6 @@
 {
     "name": "live-captions",
-    "version": "1.5.4",
+    "version": "1.6.0",
     "main": "./build/index.js",
     "bin": "./build/index.js",
     "scripts": {
@@ -39,7 +39,7 @@
         "assets": [
             "./src/public/**/*",
             "./node_modules/audify/**/*",
-            "./april-asr.py"
+            "./dist/april-asr/april-asr.exe"
         ],
         "outputPath": "dist",
         "entry": "./build/index.js"
