@@ -146,7 +146,7 @@ export class Speech<T extends GoogleV2 | GoogleV1 | April> {
     }
 
     public destroy() {
-        this.engine.destroy();
         this.rtAudio.closeStream();
+        return this.engine.destroy();
     }
 }

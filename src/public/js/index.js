@@ -127,13 +127,7 @@ function handleCaptionFrame(frame) {
     // Check if we've located the correct span
     if (currentDiv != undefined) {
         // Just append to that
-        if (!frame.isFinal) {
-            if (frame.confidence > 0) {
-                currentDiv.innerText = transcript + capitalize(frame.text);
-            } else {
-                currentDiv.innerText = transcript + capitalize(frame.text.toLowerCase());
-            }
-        }
+        if (!frame.isFinal) currentDiv.innerText = transcript + capitalize(frame.text);
     } else {
         // Otherwise create a new span with the correct color
         currentDiv = document.createElement('div');
@@ -153,7 +147,7 @@ function handleCaptionFrame(frame) {
             transcript += capitalize(frame.text) + '.\n'
         } else {
             // confidence < 0 means we're using April engine which handles punctuation itself
-            transcript += capitalize(frame.text.toLowerCase()) + '\n'
+            transcript += capitalize(frame.text) + '\n'
         }
         currentDiv.innerText = transcript
 

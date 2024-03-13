@@ -54,16 +54,18 @@ export class April {
 
         this.aprilASR.stdout?.on('data', (data: Buffer) => {
             let str = data.toString();
+            console.log(str);
             if (str.startsWith('Server started')) {
-                this.connectWebsocket();
+                this.connectWebsocket(str.split(' ')[4]);
             } else if (str.startsWith('Result')) {
                 this.handleRecognitionEvent(str.substring(7));
             }
         });
     }
 
-    private connectWebsocket() {
-        this.ws = new WebSocket('ws://localhost:8765');
+    private connectWebsocket(port: string = '8760') {
+        console.log(color(`April: Connecting to websocket on port ${port}`).green.toString());
+        this.ws = new WebSocket('ws://localhost:'+port);
 
         this.ws.onmessage = (event) => {
             console.log(event.data.toString());
@@ -79,7 +81,7 @@ export class April {
             device: this.inputId,
             type: 'words',
             isFinal: data.startsWith('@'),
-            text: data.substring(2),
+            text: data.substring(2).toLowerCase(),
             confidence: -1,
             speaker: this.inputName
         }
@@ -108,6 +110,11 @@ export class April {
     public destroy() {
         this.dead = true;
         this.aprilASR?.kill();
+        return new Promise((resolve) => {
+            this.aprilASR?.on('exit', () => {
+                resolve(null);
+            });
+        });
     }
 }
 

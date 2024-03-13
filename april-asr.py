@@ -5,6 +5,7 @@ from websockets.server import serve
 from typing import List
 import april_asr as april
 from os import getenv
+from psutil import net_connections
 
 ws = None
 session = None
@@ -38,8 +39,19 @@ async def main():
 
     print("Model " + model.get_name() + " loaded.")
 
-    async with serve(stream, "localhost", 8765):
-        print("Server started on port 8765")
+    ports = []
+    for conn in net_connections(kind='inet'):
+        if conn.status == 'LISTEN' and conn.laddr.port >= 8760 and conn.laddr.port < 8800:
+            ports.append(conn.laddr.port)
+
+    port = 8760
+    while port in ports:
+        port += 1
+        if port >= 8800:
+            raise Exception("No available port in range 8760-8800.")
+
+    async with serve(stream, "localhost", port):
+        print("Server started on port "+str(port))
         await asyncio.Future()  # run forever
 
 asyncio.run(main())
