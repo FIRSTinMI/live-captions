@@ -35,7 +35,7 @@ export class GoogleV2 {
         } else {
             this.speech = new SpeechClient({ ...config.server.google });
         }
-        this.startGoogleStream();
+        this.start();
     }
 
     public pause() {
@@ -46,7 +46,7 @@ export class GoogleV2 {
 
     public resume() {
         this.dead = false;
-        this.startGoogleStream();
+        this.start();
     }
 
     private handleRecognitionEvent(data: SpeechResultData) {
@@ -84,7 +84,7 @@ export class GoogleV2 {
         }
     }
 
-    private startGoogleStream() {
+    private start() {
         const recognitionConfig: google.cloud.speech.v2.IRecognitionConfig = {
             autoDecodingConfig: {},
             explicitDecodingConfig: {

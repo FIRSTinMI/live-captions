@@ -7,6 +7,8 @@ import EventEmitter from 'events';
 import Pumpify from "pumpify";
 
 export class GoogleV1 {
+    private config: ConfigManager;
+    private sampleRate: number;
     private speech?: SpeechClient;
     private dead: boolean = false;
     private recognizeStream?: Pumpify;
@@ -31,6 +33,8 @@ export class GoogleV1 {
     };
 
     constructor(config: ConfigManager, sampleRate:number, inputId: number, inputName: string) {
+        this.config = config;
+        this.sampleRate = sampleRate;
         this.request.config.sampleRateHertz = sampleRate;
         this.inputId = inputId;
         this.inputName = inputName;
@@ -39,7 +43,7 @@ export class GoogleV1 {
         } else {
             this.speech = new SpeechClient({ ...config.server.google });
         }
-        this.startGoogleStream();
+        this.start();
     }
 
     public pause() {
@@ -50,7 +54,7 @@ export class GoogleV1 {
 
     public resume() {
         this.dead = false;
-        this.startGoogleStream();
+        this.start();
     }
 
     private handleRecognitionEvent(data: SpeechResultData) {
@@ -88,7 +92,7 @@ export class GoogleV1 {
         }
     }
 
-    private startGoogleStream() {
+    private start() {
         if (this.speech) {
             console.log(color(`GoogleV1: Starting ${this.inputId} stream`).green.toString());
             this.recognizeStream = this.speech

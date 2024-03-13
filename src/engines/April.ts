@@ -7,6 +7,8 @@ import { PROGRAM_FOLDER } from "..";
 import { existsSync, mkdirSync, createWriteStream } from "fs";
 
 export class April {
+    private config: ConfigManager;
+    private sampleRate: number;
     private dead: boolean = false;
     private aprilASR: ChildProcess;
     private lastFrame: Frame = {
@@ -21,6 +23,8 @@ export class April {
     private inputName: string;
 
     constructor(config: ConfigManager, sampleRate:number, inputId: number, inputName: string) {
+        this.config = config;
+        this.sampleRate = sampleRate;
         this.inputId = inputId;
         this.inputName = inputName;
 
@@ -28,12 +32,7 @@ export class April {
             console.error(color('April ASR only supports 16kHz sample rate').bold.red.toString());
         }
 
-        console.log(color(`April: Starting ${this.inputId} stream`).green.toString());
-        this.aprilASR = spawn('python', ['./april-asr.py', PROGRAM_FOLDER + '/april-asr/april-english-dev-01110_en.april'], { shell: true, stdio: ['pipe', process.stdout, process.stderr]});
-
-        this.aprilASR.stdout?.on('data', (data: Buffer) => {
-            this.handleRecognitionEvent(data.toString());
-        });
+        this.start();
     }
 
     public pause() {
@@ -42,6 +41,16 @@ export class April {
 
     public resume() {
         // Stub because there's no reason to pause this engine
+    }
+
+    private start() {
+        if (!this.aprilASR.killed) this.aprilASR.kill();
+        console.log(color(`April: Starting ${this.inputId} stream`).green.toString());
+        this.aprilASR = spawn('python', ['./april-asr.py', PROGRAM_FOLDER + '/april-asr/april-english-dev-01110_en.april'], { shell: true, stdio: ['pipe', process.stdout, process.stderr]});
+
+        this.aprilASR.stdout?.on('data', (data: Buffer) => {
+            this.handleRecognitionEvent(data.toString());
+        });
     }
 
     private handleRecognitionEvent(data: string) {

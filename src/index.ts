@@ -91,10 +91,12 @@ async function start() {
     for (let input of <InputConfig[]>config.transcription.inputs) {
         console.log(engine);
         if (engine === 'googlev1') {
+            // @ts-ignore
             const speech = new Speech(config, clients, input, GoogleV1);
             speech.startStreaming();
             speechServices.push(speech);
         } else if (engine === 'april') {
+            // @ts-ignore
             const speech = new Speech(config, clients, input, April);
             speech.startStreaming();
             speechServices.push(speech);
