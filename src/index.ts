@@ -16,6 +16,8 @@ export const PROGRAM_FOLDER = process.env.APPDATA + '/live-captions';
 let server: Server;
 let clients: ws[] = [];
 
+let speechServices: Speech<GoogleV1 | GoogleV2 | April>[] = [];
+
 if (!process.argv.includes('--skip-update-check')) {
     update().then(start);
 } else {
@@ -39,16 +41,22 @@ async function start() {
     if (engine === 'april') {
         await downloadDependencies();
     }
-    
-    let speechServices: Speech<GoogleV1 | GoogleV2 | April>[] = [];
 
     // Kill server and speeches if they're already running
     if (server) {
         server.stop();
     }
 
-    for (let speech of speechServices) {
-        speech.destroy();
+    if (engine === 'april' && speechServices.length > 0) {
+        let promises = [];
+        for (let speech of speechServices) {
+            promises.push(speech.destroy());
+        }
+        await Promise.all(promises);
+    } else {
+        for (let speech of speechServices) {
+            speech.destroy();
+        }
     }
     speechServices = [];
     clients = [];
