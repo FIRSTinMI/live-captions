@@ -38,7 +38,8 @@ export class ConfigManager {
         phraseSets: [
             'projects/829228050742/locations/global/phraseSets/fim-2024-team-names',
             'projects/829228050742/locations/global/phraseSets/frc-2024-terms'
-        ]
+        ],
+        engine: 'googlev2'
     }
 
     constructor(file: string) {
@@ -91,6 +92,9 @@ export class ConfigManager {
                 break;
             case 'display.align':
                 this.display.align = value;
+                break;
+            case 'transcription.engine':
+                this.transcription.engine = value;
                 break;
         }
     }

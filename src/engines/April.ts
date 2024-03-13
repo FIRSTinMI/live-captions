@@ -10,7 +10,7 @@ export class April {
     private config: ConfigManager;
     private sampleRate: number;
     private dead: boolean = false;
-    private aprilASR: ChildProcess;
+    private aprilASR?: ChildProcess;
     private lastFrame: Frame = {
         device: 0,
         type: 'words',
@@ -44,7 +44,7 @@ export class April {
     }
 
     private start() {
-        if (!this.aprilASR.killed) this.aprilASR.kill();
+        if (!this.aprilASR?.killed) this.aprilASR?.kill();
         console.log(color(`April: Starting ${this.inputId} stream`).green.toString());
         this.aprilASR = spawn('python', ['./april-asr.py', PROGRAM_FOLDER + '/april-asr/april-english-dev-01110_en.april'], { shell: true, stdio: ['pipe', process.stdout, process.stderr]});
 
@@ -79,7 +79,7 @@ export class April {
     }
 
     public write(pcm: Buffer) {
-        if (this.dead || !this.aprilASR.stdin?.writable) throw new Error('Tried to write to a dead April instance');
+        if (this.dead || !this.aprilASR?.stdin?.writable) throw new Error('Tried to write to a dead April instance');
         this.aprilASR.stdin.cork();
         this.aprilASR.stdin.write(pcm);
         this.aprilASR.stdin.uncork();
@@ -87,7 +87,7 @@ export class April {
 
     public destroy() {
         this.dead = true;
-        this.aprilASR.kill();
+        this.aprilASR?.kill();
     }
 }
 

@@ -16,20 +16,6 @@ export const PROGRAM_FOLDER = process.env.APPDATA + '/live-captions';
 let server: Server;
 let clients: ws[] = [];
 
-let engine: 'googlev1' | 'googlev2' | 'april' = 'googlev2';
-if (process.argv.includes('--engine')) {
-    let index = process.argv.indexOf('--engine');
-    engine = process.argv[index + 1] as typeof engine;
-    if (!['googlev1', 'googlev2', 'april'].includes(engine)) {
-        console.error('Invalid engine type');
-        process.exit(1);
-    }
-}
-
-type engineType = typeof engine extends 'googlev2' ? GoogleV2 : typeof engine extends 'googlev1' ? GoogleV1 : April;
-
-let speechServices: Speech<engineType>[] = [];
-
 if (!process.argv.includes('--skip-update-check')) {
     update();
 } else {
@@ -38,16 +24,6 @@ if (!process.argv.includes('--skip-update-check')) {
 
 
 async function start() {
-    // Kill server and speeches if they're already running
-    if (server) {
-        server.stop();
-    }
-    for (let speech of speechServices) {
-        speech.destroy();
-    }
-    speechServices = [];
-    clients = [];
-
     // Create program folder
     if (!existsSync(PROGRAM_FOLDER)) {
         mkdirSync(PROGRAM_FOLDER);
@@ -58,9 +34,25 @@ async function start() {
     const config = new ConfigManager(PROGRAM_FOLDER + '/config.json');
     await updateBadWordsList(config);
 
+    const engine = config.transcription.engine;
+
     if (engine === 'april') {
         await downloadDependencies();
     }
+    
+    let speechServices: Speech<GoogleV1 | GoogleV2 | April>[] = [];
+
+    // Kill server and speeches if they're already running
+    if (server) {
+        server.stop();
+    }
+
+    for (let speech of speechServices) {
+        speech.destroy();
+    }
+    speechServices = [];
+    clients = [];
+
 
     // Create a asio interface
     const rtAudio = new RtAudio(RtAudioApi.WINDOWS_WASAPI);
@@ -73,7 +65,7 @@ async function start() {
         for (let client of server.settingsClients) {
             client.send(JSON.stringify({
                 type: 'volumes',
-                devices: speechServices.map((s: Speech<engineType>) => ({
+                devices: speechServices.map((s: Speech<GoogleV1 | GoogleV2 | April>) => ({
                     id: s.inputConfig.id,
                     volume: Math.round(s.volume)
                 }))
@@ -89,14 +81,11 @@ async function start() {
 
     // Start speech recognition
     for (let input of <InputConfig[]>config.transcription.inputs) {
-        console.log(engine);
         if (engine === 'googlev1') {
-            // @ts-ignore
             const speech = new Speech(config, clients, input, GoogleV1);
             speech.startStreaming();
             speechServices.push(speech);
         } else if (engine === 'april') {
-            // @ts-ignore
             const speech = new Speech(config, clients, input, April);
             speech.startStreaming();
             speechServices.push(speech);

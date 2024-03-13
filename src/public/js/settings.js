@@ -25,8 +25,9 @@ const configPromise = fetch('/config')
         document.getElementById('server-google').value = JSON.stringify(json.server.google, null, 4);
         document.getElementById('transcription-filter').value = json.transcription.filter.join('\n');
         document.getElementById('transcription-phraseSets').value = json.transcription.phraseSets.join('\n');
+        document.getElementById('transcription-engine').value = json.transcription.engine;
 
-        M.FormSelect.init(document.forms[0].querySelectorAll('select'), {});
+        M.FormSelect.init([...document.forms[0].querySelectorAll('select'), document.getElementById('transcription-engine')], {});
         document.querySelectorAll('textarea').forEach(M.Forms.textareaAutoResize);
     });
 

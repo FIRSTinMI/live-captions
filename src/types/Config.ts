@@ -25,7 +25,8 @@ export interface TranscriptionConfig {
     filter: string[],
     streamingTimeout: number,
     inputs: InputConfig[],
-    phraseSets: string[]
+    phraseSets: string[],
+    engine: 'googlev1' | 'googlev2' | 'april'
 }
 
 export interface InputConfig {

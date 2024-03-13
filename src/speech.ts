@@ -6,15 +6,17 @@ import { InputConfig } from "./types/Config";
 import { Frame } from "./types/Frame";
 import color from "colorts";
 import { GoogleV2 } from './engines/GoogleV2';
+import { GoogleV1 } from './engines/GoogleV1';
+import { April } from './engines/April';
 
 // Number of frames after silence is detected to continue streaming
 const THRESHOLD_CUTOFF_SMOOTHING = 10;
 
-export class Speech<T extends GoogleV2> {
+export class Speech<T extends GoogleV2 | GoogleV1 | April> {
     private config: ConfigManager;
     public inputConfig: InputConfig;
     private clients: WebSocket[];
-    private engine: GoogleV2;
+    private engine: GoogleV2 | GoogleV1 | April;
     private rtAudio: RtAudio;
     private filter = new BadWords();
     private amplitudeArray: number[] = [0, 0, 0, 0, 0];

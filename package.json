@@ -5,9 +5,7 @@
     "bin": "./build/index.js",
     "scripts": {
         "start": "tsc && node ./build/index.js --skip-update-check",
-        "start-april": "tsc && node ./build/index.js --engine april",
         "start-gibberish": "tsc && node ./build/index.js --gibberish",
-        "start-volume": "tsc && node ./build/index.js --volume-bar",
         "dist": "tsc && pkg ."
     },
     "author": "",

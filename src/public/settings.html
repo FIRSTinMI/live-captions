@@ -154,7 +154,17 @@
                         <div class="col s12" id="devices-container">
                         </div>
                     </div>
-                    <div class="row">
+                    <div class="row mb-2">
+                        <div class="input-field col s12">
+                            <select id="transcription-engine">
+                                <option value="googlev1">Google V1</option>
+                                <option value="googlev2">Google V2</option>
+                                <option value="april">April ASR (local)</option>
+                            </select>
+                            <label for="transcription-engine">Transcription Engine</label>
+                        </div>
+                    </div>
+                    <div class="row mb-2">
                         <div class="input-field col s12">
                             <textarea id="transcription-filter" class="materialize-textarea"></textarea>
                             <label for="transcription-filter">Profanity Filter</label>
