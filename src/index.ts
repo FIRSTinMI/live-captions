@@ -17,7 +17,7 @@ let server: Server;
 let clients: ws[] = [];
 
 if (!process.argv.includes('--skip-update-check')) {
-    update();
+    update().then(start);
 } else {
     start();
 }
