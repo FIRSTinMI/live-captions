@@ -1,11 +1,11 @@
 {
     "name": "live-captions",
-    "version": "1.5.2",
+    "version": "1.5.3",
     "main": "./build/index.js",
     "bin": "./build/index.js",
     "scripts": {
         "start": "tsc && node ./build/index.js --skip-update-check",
-        "start-april": "tsc && node ./build/index.js --local-engine",
+        "start-april": "tsc && node ./build/index.js --engine april",
         "start-gibberish": "tsc && node ./build/index.js --gibberish",
         "start-volume": "tsc && node ./build/index.js --volume-bar",
         "dist": "tsc && pkg ."
@@ -40,7 +40,8 @@
         ],
         "assets": [
             "./src/public/**/*",
-            "./node_modules/audify/**/*"
+            "./node_modules/audify/**/*",
+            "./april-asr.py"
         ],
         "outputPath": "dist",
         "entry": "./build/index.js"

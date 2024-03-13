@@ -5,20 +5,30 @@ import ws from 'ws';
 import { Speech } from './speech';
 import { ConfigManager } from './util/configManager';
 import { InputConfig } from './types/Config';
-import { AprilSpeech, downloadDependencies } from './aprilSpeech';
 import { updateBadWordsList } from './util/downloadBadWordsFIM';
 import { update } from './util/updater';
+import { GoogleV2 } from './engines/GoogleV2';
+import { GoogleV1 } from './engines/GoogleV1';
+import { April, downloadDependencies } from './engines/April';
 
 export const PROGRAM_FOLDER = process.env.APPDATA + '/live-captions';
 
 let server: Server;
 let clients: ws[] = [];
 
-const engine: 'google' | 'april' = (process.argv.includes('--local-engine')) ? 'april' : 'google';
-type engineType = typeof engine extends 'google' ? Speech : AprilSpeech;
+let engine: 'googlev1' | 'googlev2' | 'april' = 'googlev2';
+if (process.argv.includes('--engine')) {
+    let index = process.argv.indexOf('--engine');
+    engine = process.argv[index + 1] as typeof engine;
+    if (!['googlev1', 'googlev2', 'april'].includes(engine)) {
+        console.error('Invalid engine type');
+        process.exit(1);
+    }
+}
 
-let speechServices: engineType[] = [];
+type engineType = typeof engine extends 'googlev2' ? GoogleV2 : typeof engine extends 'googlev1' ? GoogleV1 : April;
 
+let speechServices: Speech<engineType>[] = [];
 
 if (!process.argv.includes('--skip-update-check')) {
     update();
@@ -33,7 +43,7 @@ async function start() {
         server.stop();
     }
     for (let speech of speechServices) {
-        speech.stop();
+        speech.destroy();
     }
     speechServices = [];
     clients = [];
@@ -63,7 +73,7 @@ async function start() {
         for (let client of server.settingsClients) {
             client.send(JSON.stringify({
                 type: 'volumes',
-                devices: speechServices.map((s: engineType) => ({
+                devices: speechServices.map((s: Speech<engineType>) => ({
                     id: s.inputConfig.id,
                     volume: Math.round(s.volume)
                 }))
@@ -79,15 +89,18 @@ async function start() {
 
     // Start speech recognition
     for (let input of <InputConfig[]>config.transcription.inputs) {
-        if (engine === 'april') {
-            const speech = new AprilSpeech(config, clients, input);
+        console.log(engine);
+        if (engine === 'googlev1') {
+            const speech = new Speech(config, clients, input, GoogleV1);
             speech.startStreaming();
-            // @ts-ignore
+            speechServices.push(speech);
+        } else if (engine === 'april') {
+            const speech = new Speech(config, clients, input, April);
+            speech.startStreaming();
             speechServices.push(speech);
         } else {
-            const speech = new Speech(config, clients, input);
+            const speech = new Speech(config, clients, input, GoogleV2);
             speech.startStreaming();
-            // @ts-ignore
             speechServices.push(speech);
         }
     }
