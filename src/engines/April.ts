@@ -5,6 +5,9 @@ import EventEmitter from 'events';
 import { ChildProcess, spawn } from "child_process";
 import { PROGRAM_FOLDER } from "..";
 import { existsSync, mkdirSync, createWriteStream } from "fs";
+import { finished } from "stream/promises";
+import { Readable } from "stream";
+import WebSocket from "ws";
 
 export class April {
     private config: ConfigManager;
@@ -21,6 +24,7 @@ export class April {
     public emitter: EventEmitter = new EventEmitter();
     private inputId: number;
     private inputName: string;
+    private ws?: WebSocket;
 
     constructor(config: ConfigManager, sampleRate:number, inputId: number, inputName: string) {
         this.config = config;
@@ -46,11 +50,28 @@ export class April {
     private start() {
         if (!this.aprilASR?.killed) this.aprilASR?.kill();
         console.log(color(`April: Starting ${this.inputId} stream`).green.toString());
-        this.aprilASR = spawn('python', ['./april-asr.py', PROGRAM_FOLDER + '/april-asr/april-english-dev-01110_en.april'], { shell: true, stdio: ['pipe', process.stdout, process.stderr]});
+        this.aprilASR = spawn('python', ['./april-asr.py'], { shell: true, stdio: ['pipe', 'pipe', process.stderr]});
 
         this.aprilASR.stdout?.on('data', (data: Buffer) => {
-            this.handleRecognitionEvent(data.toString());
+            let str = data.toString();
+            if (str.startsWith('Server started')) {
+                this.connectWebsocket();
+            } else if (str.startsWith('Result')) {
+                this.handleRecognitionEvent(str.substring(7));
+            }
         });
+    }
+
+    private connectWebsocket() {
+        this.ws = new WebSocket('ws://localhost:8765');
+
+        this.ws.onmessage = (event) => {
+            console.log(event.data.toString());
+        }
+
+        this.ws.onerror = (event) => {
+            console.error(event);
+        }
     }
 
     private handleRecognitionEvent(data: string) {
@@ -59,7 +80,7 @@ export class April {
             type: 'words',
             isFinal: data.startsWith('@'),
             text: data.substring(2),
-            confidence: 1,
+            confidence: -1,
             speaker: this.inputName
         }
 
@@ -79,10 +100,9 @@ export class April {
     }
 
     public write(pcm: Buffer) {
-        if (this.dead || !this.aprilASR?.stdin?.writable) throw new Error('Tried to write to a dead April instance');
-        this.aprilASR.stdin.cork();
-        this.aprilASR.stdin.write(pcm);
-        this.aprilASR.stdin.uncork();
+        if (!this.ws || this.ws.readyState != 1) return;
+        if (this.dead) throw new Error('Tried to write to a dead April instance');
+        this.ws.send(pcm);
     }
 
     public destroy() {
@@ -97,11 +117,11 @@ export async function downloadDependencies() {
         console.log('Created ' + PROGRAM_FOLDER + '/april-asr');
     }
 
-    if (!existsSync(PROGRAM_FOLDER + '/april-asr/aprilv0_en-us.april')) {
-        console.log('Downloading April ASR model...');
-        const { body } = await fetch('https://april.sapples.net/aprilv0_en-us.april');
+    if (!existsSync(PROGRAM_FOLDER + '/april-asr/model.april')) {
+        console.log('Downloading April ASR model... this may take a minute.');
+        const { body } = await fetch('https://april.sapples.net/april-english-dev-01110_en.april');
         if (body === null) throw new Error('Failed to download April ASR model');
-        const stream = createWriteStream(PROGRAM_FOLDER + '/april-asr/aprilv0_en-us.april');
+        const stream = createWriteStream(PROGRAM_FOLDER + '/april-asr/model.april');
         // @ts-ignore
         await finished(Readable.fromWeb(body).pipe(stream));
         console.log('Downloaded April ASR model');

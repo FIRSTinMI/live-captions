@@ -1,11 +1,15 @@
+#!/usr/bin/env python
+
+import asyncio
+from websockets.server import serve
 from typing import List
-import sys
-
-import numpy as np
 import april_asr as april
+from os import getenv
 
-def example_handler(result_type: april.Result, tokens: List[april.Token]):
-    """Simple handler that concatenates all tokens and prints it"""
+ws = None
+session = None
+
+def resultHandler(result_type: april.Result, tokens: List[april.Token]):
     prefix = "."
     if result_type == april.Result.FINAL_RECOGNITION:
         prefix = "@"
@@ -16,37 +20,26 @@ def example_handler(result_type: april.Result, tokens: List[april.Token]):
     for token in tokens:
         string += token.token
 
-    print(f"{prefix}{string}")
+    print(f"Result {prefix}{string}")
 
-def run(model_path: str) -> None:
-    """Creates a model and session, and performs recognition on the given file"""
+async def stream(websocket):
+    global ws
+    ws = websocket
+    async for message in websocket:
+        session.feed_pcm16(message)
+
+async def main():
     # Load the model
-    model = april.Model(model_path)
+    model = april.Model(getenv('APPDATA') + '/live-captions/april-asr/model.april')
 
     # Create a session
-    session = april.Session(model, example_handler)
+    global session
+    session = april.Session(model, resultHandler)
 
-    print("Model " + model.get_name() + " loaded. Waiting for audio data on stdin")
-   
-    k = 0
-    try:
-        while True:
-            session.feed_pcm16(sys.stdin.read(480 * 2))
-            k = k + 1
-    except KeyboardInterrupt:
-        session.flush()
-        sys.stdout.flush()
-        pass
-    print(k)
+    print("Model " + model.get_name() + " loaded.")
 
-def main():
-    """Checks the given arguments and prints usage or calls the run function"""
-    # Parse arguments
-    args = sys.argv
-    if len(args) != 2:
-        print("Usage: " + args[0] + " /path/to/model.april")
-    else:
-        run(args[1])
+    async with serve(stream, "localhost", 8765):
+        print("Server started on port 8765")
+        await asyncio.Future()  # run forever
 
-if __name__ == "__main__":
-    main()
+asyncio.run(main())

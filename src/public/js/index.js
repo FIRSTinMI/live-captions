@@ -127,7 +127,13 @@ function handleCaptionFrame(frame) {
     // Check if we've located the correct span
     if (currentDiv != undefined) {
         // Just append to that
-        if (!frame.isFinal) currentDiv.innerText = transcript + capitalize(frame.text);
+        if (!frame.isFinal) {
+            if (frame.confidence > 0) {
+                currentDiv.innerText = transcript + capitalize(frame.text);
+            } else {
+                currentDiv.innerText = transcript + capitalize(frame.text.toLowerCase());
+            }
+        }
     } else {
         // Otherwise create a new span with the correct color
         currentDiv = document.createElement('div');
@@ -143,7 +149,12 @@ function handleCaptionFrame(frame) {
         lastFrameWasFinal = true;
 
         // If the sentence is finished we can commit it to the transcript
-        transcript += capitalize(frame.text) + '.\n'
+        if (frame.confidence > 0) {
+            transcript += capitalize(frame.text) + '.\n'
+        } else {
+            // confidence < 0 means we're using April engine which handles punctuation itself
+            transcript += capitalize(frame.text.toLowerCase()) + '\n'
+        }
         currentDiv.innerText = transcript
 
         currentTimeout = setTimeout(() => {

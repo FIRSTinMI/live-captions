@@ -3,3 +3,5 @@ config.json
 dist
 build
 .cache_ggshield
+.venv
+.vscode
