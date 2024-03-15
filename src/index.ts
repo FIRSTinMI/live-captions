@@ -102,5 +102,6 @@ async function start() {
             speech.startStreaming();
             speechServices.push(speech);
         }
+        await new Promise((resolve) => setTimeout(resolve, 200));
     }
 };
