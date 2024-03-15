@@ -6,7 +6,7 @@ export class ConfigManager {
 
     public display: DisplayConfig = {
         position: 0,
-        size: 36,
+        size: 42,
         lines: 2,
         chromaKey: 'rgba(0,0,0,0)',
         timeout: 5,

@@ -55,6 +55,7 @@ export class April {
         this.aprilASR.stdout?.on('data', (data: Buffer) => {
             let strings = data.toString().split('\n');
             for (let str of strings) {
+                if (str == null || str == '') continue;
                 if (str.startsWith('Server started')) {
                     let port = str.split(' ')[4];
                     this.connectWebsocket(port);
@@ -79,6 +80,8 @@ export class April {
     }
 
     private handleRecognitionEvent(data: string) {
+        if (data.startsWith('.')) return;
+
         let frame: Frame = {
             device: this.inputId,
             type: 'words',
@@ -88,7 +91,7 @@ export class April {
             speaker: this.inputName
         }
 
-        if (frame.text.trim() === '') return;
+        if (frame.text.trim() === '' || frame.text.trim() === ',') return;
 
         if (frame.text === this.lastFrame.text && !frame.isFinal) return;
 
