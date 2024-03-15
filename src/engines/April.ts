@@ -91,7 +91,7 @@ export class April {
             speaker: this.inputName
         }
 
-        if (frame.text.trim() === '' || frame.text.trim() === ',') return;
+        if (frame.text.trim() === '' || frame.text.trim() === ',' || frame.text.trim() === ',') return;
 
         if (frame.text === this.lastFrame.text && !frame.isFinal) return;
 
