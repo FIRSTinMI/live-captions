@@ -47,7 +47,7 @@ function updateConfig() {
             for (let child of lc.children) {
                 child.style.fontSize = config.display.size + 'px';
                 child.style.lineHeight = (config.display.size + 6) + 'px';
-                child.style.maxHeight = (parseFloat(config.display.size) + 6) + 'px';
+                child.style.maxHeight = (parseFloat(config.display.size) * config.display.lines + 6) + 'px';
             }
 
             timeout = json.display.timeout * 1000;
@@ -134,7 +134,7 @@ function handleCaptionFrame(frame) {
         currentDiv.style.color = color;
         currentDiv.style.fontSize = config.display.size + 'px';
         currentDiv.style.lineHeight = (config.display.size + 6) + 'px';
-        currentDiv.style.maxHeight = (parseFloat(config.display.size) + 6) + 'px';
+        currentDiv.style.maxHeight = (parseFloat(config.display.size) * config.display.lines + 6) + 'px';
         lc.appendChild(currentDiv);
         currentDiv.innerText = capitalize(frame.text) + ((frame.isFinal) ? '.\n' : '');
     }
@@ -170,9 +170,16 @@ function handleCaptionFrame(frame) {
     // Scroll to bottom of ALL containers and set heights as a percentage of how many are visible
     const visibleContainers = Array.from(lc.children).reduce((acc, val) => val.innerHTML != '' ? acc + 1 : acc, 0);
     const percent = 100 / visibleContainers;
+    console.log(lc.children);
+    console.log(visibleContainers);
     for (const div of lc.children) {
+        if (visibleContainers > 1) {
+            div.style.maxHeight = parseInt(config.display.size) + 6;
+        } else {
+            div.style.maxHeight = parseInt(config.display.size) * config.display.lines + 6;
+        }
         div.scrollTop = div.scrollHeight;
-        div.style.height = percent + '%';
+        //div.style.height = percent + '%';
     }
 
     // Update frame stats

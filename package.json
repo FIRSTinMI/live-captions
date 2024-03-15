@@ -1,6 +1,6 @@
 {
     "name": "live-captions",
-    "version": "1.6.2",
+    "version": "1.6.3",
     "main": "./build/index.js",
     "bin": "./build/index.js",
     "scripts": {
