@@ -8,7 +8,7 @@ export class ConfigManager {
         position: 0,
         size: 36,
         lines: 2,
-        chromaKey: '#FF00FF',
+        chromaKey: 'rgba(0,0,0,0)',
         timeout: 5,
         align: 'left'
     };

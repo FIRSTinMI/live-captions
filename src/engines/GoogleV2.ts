@@ -117,7 +117,7 @@ export class GoogleV2 {
                 ._streamingRecognize()
                 .on('error', (err: APIError) => {
                     // Error maxing out the 305 second limit, so we just restart
-                    if (err.toString().includes('305') || err.details.includes('Max duration')) {
+                    if (err.toString().includes('305') || err.details?.includes('Max duration')) {
                         this.recognizeStream?.destroy();
                         this.resume();
                     } else if (err.code === 16 ||
