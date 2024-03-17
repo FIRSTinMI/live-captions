@@ -34,7 +34,7 @@ async function start() {
 
     // Generate/load config
     const config = new ConfigManager(PROGRAM_FOLDER + '/config.json');
-    await updateBadWordsList(config);
+    //await updateBadWordsList(config);
 
     const engine = config.transcription.engine;
 

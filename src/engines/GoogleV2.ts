@@ -41,7 +41,6 @@ export class GoogleV2 {
     public pause() {
         this.dead = true;
         this.recognizeStream?.destroy();
-        this.speech?.close();
     }
 
     public resume() {
@@ -65,7 +64,7 @@ export class GoogleV2 {
             if (frame.isFinal && this.lastFrame.isFinal) return;
 
             // Or an empty text...
-            if (frame.text.trim() === '') return;
+            if (!frame.text || frame.text.trim() === '') return;
 
             // Or the same frame twice
             if (frame.text === this.lastFrame.text && !frame.isFinal) return;

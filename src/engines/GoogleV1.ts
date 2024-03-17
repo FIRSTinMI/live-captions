@@ -49,7 +49,6 @@ export class GoogleV1 {
     public pause() {
         this.dead = true;
         this.recognizeStream?.destroy();
-        this.speech?.close();
     }
 
     public resume() {

@@ -86,57 +86,52 @@ export class Speech<T extends GoogleV2 | GoogleV1 | April> {
             480, // Frame size is 480 (10ms)
             `liveCaptions${this.inputConfig.id}`, // The name of the stream (used for JACK Api)
             (pcm: Buffer) => {
-                try {
+                let data = Array.from(
+                    { length: pcm.length / 2 },
+                    (v, i) => pcm.readInt16LE(i * 2) / (2 ** 15)
+                );
 
-                    let data = Array.from(
-                        { length: pcm.length / 2 },
-                        (v, i) => pcm.readInt16LE(i * 2) / (2 ** 15)
-                    );
+                const amplitude = Math.max(...data) - Math.min(...data);
+                this.amplitudeArray.shift();
+                this.amplitudeArray.push(Math.ceil(amplitude * 100));
+                this.volume = Math.log(this.amplitudeArray.reduce((partialSum, a) => partialSum + a, 0) / this.amplitudeArray.length) * 18.939;
 
-                    const amplitude = Math.max(...data) - Math.min(...data);
-                    this.amplitudeArray.shift();
-                    this.amplitudeArray.push(Math.ceil(amplitude * 100));
-                    this.volume = Math.log(this.amplitudeArray.reduce((partialSum, a) => partialSum + a, 0) / this.amplitudeArray.length) * 18.939;
+                if (this.volume >= this.inputConfig.threshold) {
+                    if (silent) {
+                        silent = false;
+                        framesSinceChange = 0;
+                    }
 
-                    if (this.volume >= this.inputConfig.threshold) {
-                        if (silent) {
-                            silent = false;
+                    // If noise above threshold and streaming is not shutoff then stream audio
+                    if (!streamingShutoff) {
+                        this.engine.write(pcm);
+                    } else {
+                        this.engine.resume();
+                        streamingShutoff = false;
+                    }
+                } else {
+                    if (!streamingShutoff) {
+                        if (!silent) {
+                            silent = true;
                             framesSinceChange = 0;
                         }
 
-                        // If noise above threshold and streaming is not shutoff then stream audio
-                        if (!streamingShutoff) {
+                        // Keep streaming audio for a certain amount of time after silence is detected
+                        if (framesSinceChange < THRESHOLD_CUTOFF_SMOOTHING) {
                             this.engine.write(pcm);
                         } else {
-                            this.engine.resume();
-                            streamingShutoff = false;
+                            this.engine.write(silence);
                         }
-                    } else {
-                        if (!streamingShutoff) {
-                            if (!silent) {
-                                silent = true;
-                                framesSinceChange = 0;
-                            }
 
-                            // Keep streaming audio for a certain amount of time after silence is detected
-                            if (framesSinceChange < THRESHOLD_CUTOFF_SMOOTHING) {
-                                this.engine.write(pcm);
-                            } else {
-                                this.engine.write(silence);
-                            }
-
-                            // Shutoff streaming after certain amount of silence
-                            if (framesSinceChange > (this.config.transcription.streamingTimeout / 10)) {
-                                streamingShutoff = true;
-                                this.engine.pause();
-                                console.log(color(`Pausing ${this.inputConfig.id} stream`).yellow.toString());
-                            }
+                        // Shutoff streaming after certain amount of silence
+                        if (framesSinceChange > (this.config.transcription.streamingTimeout / 10)) {
+                            console.log(color(`Pausing ${this.inputConfig.id} stream`).yellow.toString());
+                            streamingShutoff = true;
+                            this.engine.pause();
                         }
                     }
-                    framesSinceChange++;
-                } catch (err: unknown) {
-                    console.error(err);
                 }
+                framesSinceChange++;
             }, // Input callback function, write every input pcm data to the output buffer,
             null,
             RtAudioStreamFlags.RTAUDIO_ALSA_USE_DEFAULT,

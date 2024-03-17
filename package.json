@@ -1,10 +1,10 @@
 {
     "name": "live-captions",
-    "version": "1.6.3",
+    "version": "1.6.4",
     "main": "./build/index.js",
     "bin": "./build/index.js",
     "scripts": {
-        "start": "tsc && node ./build/index.js --skip-update-check",
+        "start": "npx tsx ./src/index.ts --skip-update-check",
         "start-gibberish": "tsc && node ./build/index.js --gibberish",
         "dist": "tsc && pkg ."
     },
