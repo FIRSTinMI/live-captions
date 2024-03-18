@@ -8,7 +8,7 @@ const VERSION = require('../../package.json').version;
 
 export async function update() {
     try {
-        const res = await fetch('https://github.com/Filip-Kin/live-captions/releases/latest')
+        const res = await fetch('https://github.com/FIRSTinMI/live-captions/releases/latest')
         const latestVersion = res.url.split('/').pop()?.slice(1) || '0.0.0';
 
         if (latestVersion > VERSION) {
@@ -16,7 +16,7 @@ export async function update() {
             console.log(`Update available: ${color(VERSION).bold.yellow} -> ${color(latestVersion).bold.green}`);
             console.log('Downloading...');
             const stream = createWriteStream(`live-captions-${latestVersion}.exe`);
-            const { body } = await fetch(`https://github.com/Filip-Kin/live-captions/releases/download/v${latestVersion}/live-captions-${latestVersion}.exe`);
+            const { body } = await fetch(`https://github.com/FIRSTinMI/live-captions/releases/download/v${latestVersion}/live-captions-${latestVersion}.exe`);
             if (body === null) throw new Error('Failed to download update');
             // @ts-ignore
             await finished(Readable.fromWeb(body).pipe(stream));
