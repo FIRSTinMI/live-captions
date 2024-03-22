@@ -8,6 +8,7 @@ import color from "colorts";
 import { GoogleV2 } from './engines/GoogleV2';
 import { GoogleV1 } from './engines/GoogleV1';
 import { April } from './engines/April';
+import { transform } from './util/transformer';
 
 // Number of frames after silence is detected to continue streaming
 const THRESHOLD_CUTOFF_SMOOTHING = 10;
@@ -44,6 +45,7 @@ export class Speech<T extends GoogleV2 | GoogleV1 | April> {
         this.engine = new engine(config, input.sampleRate, input.id, input.speaker ?? "Unknown");
 
         this.engine.emitter.on('frame', (frame: Frame) => {
+            frame.text = transform(frame.text);
             try {
                 frame.text = this.filter.clean(frame.text);
             } catch (err) {
