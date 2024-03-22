@@ -1,5 +1,9 @@
 const transformations = [
     {
+        regex: /(\d\d)(\.| )(\d\d)/gm,
+        replacement: "$1$3"
+    },
+    {
         regex: /(fucking?|bucking) gears/gmi,
         replacement: "Buc'n'Gears"
     },
