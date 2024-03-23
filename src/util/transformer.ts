@@ -4,11 +4,11 @@ const transformations = [
         replacement: "$1$3"
     },
     {
-        regex: /(fucking?|bucking) gears/gmi,
+        regex: /(fucking?|bucking|bucket) gears/gmi,
         replacement: "Buc'n'Gears"
     },
     {
-        regex: /zoo buttocks/gmi,
+        regex: /(zoo buttocks|zubats)/gmi,
         replacement: "ZooBOTix"
     },
     {
@@ -16,12 +16,12 @@ const transformations = [
         replacement: "TnT"
     },
     {
-        regex: /blue (lines|lions)/gmi,
+        regex: /blue (lines?|lions?)/gmi,
         replacement: "Blue Alliance"
     },
     {
-        regex: /red (lines|lions)/gmi,
-        replacement: "The Red Alliance"
+        regex: /red (lines?|lions?)/gmi,
+        replacement: "Red Alliance"
     },
     {
         regex: /christian (go|know)/gmi,
@@ -30,6 +30,22 @@ const transformations = [
     {
         regex: /the bears/gmi,
         replacement: "Da Bears"
+    },
+    {
+        regex: /try sonic's/gmi,
+        replacement: "TriSonics"
+    },
+    {
+        regex: /soccer tr?uck/gmi,
+        replacement: "Saugatuck"
+    },
+    {
+        regex: /so (i've|i) (been|can) driving/gmi,
+        replacement: "step up and drive"
+    },
+    {
+        regex: /drivers? behind a lines?/gmi,
+        replacement: 'drivers behind the lines'
     }
 ]
 
