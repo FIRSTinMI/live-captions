@@ -46,6 +46,18 @@ const transformations = [
     {
         regex: /drivers? behind a lines?/gmi,
         replacement: 'drivers behind the lines'
+    },
+    {
+        regex: /drunk town thunder/gmi,
+        replacement: "Truck Town Thunder"
+    },
+    {
+        regex: /rubble eagles/gmi,
+        replacement: "RoboEagles"
+    },
+    {
+        regex: /bender butts/gmi,
+        replacement: "Vander Bots"
     }
 ]
 
