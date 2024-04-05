@@ -58,6 +58,10 @@ const transformations = [
     {
         regex: /bender butts/gmi,
         replacement: "Vander Bots"
+    },
+    {
+        regex: /woody/gmi,
+        replacement: "Woodie"
     }
 ]
 
