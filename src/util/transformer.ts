@@ -1,4 +1,4 @@
-const transformations = [
+export const transformations = [
     {
         regex: /(\d\d)(\.| )(\d\d)/gm,
         replacement: "$1$3"
@@ -62,6 +62,18 @@ const transformations = [
     {
         regex: /woody/gmi,
         replacement: "Woodie"
+    },
+    {
+        regex: /app to field/gmi,
+        replacement: "Aptiv Field"
+    },
+    {
+        regex: /active field/gmi,
+        replacement: "Aptiv Field"
+    },
+    {
+        regex: /ch?risti?ano/gmi,
+        replacement: "Crescendo"
     }
 ]
 
