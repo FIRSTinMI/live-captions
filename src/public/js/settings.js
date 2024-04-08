@@ -26,6 +26,7 @@ const configPromise = fetch('/config')
         document.getElementById('transcription-filter').value = json.transcription.filter.join('\n');
         document.getElementById('transcription-phraseSets').value = json.transcription.phraseSets.join('\n');
         document.getElementById('transcription-engine').value = json.transcription.engine;
+        document.getElementById('display-hidden').innerText = (json.display.hidden) ? 'Show Captions' : 'Hide Captions';
 
         M.FormSelect.init([...document.forms[0].querySelectorAll('select'), document.getElementById('transcription-engine')], {});
         document.querySelectorAll('textarea').forEach(M.Forms.textareaAutoResize);
@@ -35,7 +36,7 @@ const configPromise = fetch('/config')
 fetch('/devices')
     .then(res => res.json())
     .then(async devices => {
-        physicalDevices = devices
+        physicalDevices = devices;
         // Iterate over devices and create rows
         await configPromise;
         for (let device of config.transcription.inputs) {
@@ -45,32 +46,43 @@ fetch('/devices')
 
 // This handles sending all settings except devices
 function bindToInput(elm) {
-    elm.addEventListener('change', (evt) => {
-        const setting = encodeURIComponent(elm.id.replace('-', '.'));
-        let body;
-        if (elm.id === 'transcription-filter' || elm.id === 'transcription-phraseSets') {
-            body = JSON.stringify(elm.value.split('\n'));
-        } else if (elm.type === 'textarea') {
-            body = elm.value;
-        } else {
-            return fetch(`/config/${setting}${(body) ? '' : `?value=${encodeURIComponent(elm.value)}`}`, { method: 'POST' });
-        }
+    const setting = encodeURIComponent(elm.id.replace('-', '.'));
+    let body;
+    console.log(setting, elm.id, elm.value, elm.type, elm.innerText)
+    if (elm.id === 'transcription-filter' || elm.id === 'transcription-phraseSets') {
+        body = JSON.stringify(elm.value.split('\n'));
+    } else if (elm.type === 'textarea') {
+        body = elm.value;
+    } else if (elm.id === 'display-hidden') {
+        const value = elm.innerText.startsWith('Hide');
+        elm.innerText = (value) ? 'Show Captions' : 'Hide Captions';
+        return fetch(`/config/${setting}?value=${value}`, { method: 'POST' });
+    } else if (elm.type === 'submits') {
+        return fetch(`/config/${setting}?value=true`, { method: 'POST' });
+    } else {
+        return fetch(`/config/${setting}${(body) ? '' : `?value=${encodeURIComponent(elm.value)}`}`, { method: 'POST' });
+    }
 
-        fetch(`/config/${setting}${(body) ? '' : `?value=${encodeURIComponent(elm.value)}`}`,
-            {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: body
-            });
-    });
+    fetch(`/config/${setting}${(body) ? '' : `?value=${encodeURIComponent(elm.value)}`}`,
+        {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: body
+        });
 }
 
 for (let elm of document.querySelectorAll('input, select, textarea')) {
     if (elm.hasAttribute('data-role')) continue; // Skip any elms relating to devices
-    bindToInput(elm);
+    elm.addEventListener('change', (evt) => { bindToInput(elm); });
 }
+
+for (let elm of document.querySelectorAll('button')) {
+    if (elm.hasAttribute('data-role')) continue; // Skip any elms relating to devices
+    elm.addEventListener('click', (evt) => { evt.preventDefault(); bindToInput(elm); });
+}
+
 
 const container = document.getElementById('devices-container');
 
@@ -102,7 +114,7 @@ function addRow(device = null) {
     row.querySelector('#template-color').value = device.color;
     applyColorToInput(row.querySelector('#template-color'));
     row.querySelector('#template-color').addEventListener('change', (evt) => applyColorToInput(evt.target));
-    row.querySelector('#template-color').setAttribute('id', `device-${index}-color`)
+    row.querySelector('#template-color').setAttribute('id', `device-${index}-color`);
     row.querySelector('[for="template-color"]').setAttribute('for', `device-${index}-color`);
 
     row.querySelector('#template-channel').value = parseInt(device.channel) + 1;
@@ -146,7 +158,7 @@ function addRowUi() {
 
 for (let btn of document.querySelectorAll('.apply-btn')) {
     btn.addEventListener('click', () => {
-        const toSave = []
+        const toSave = [];
         for (let row of document.getElementById('devices-container').children) {
             toSave.push({
                 // Get values
@@ -169,7 +181,7 @@ for (let btn of document.querySelectorAll('.apply-btn')) {
         }).then(() => {
             fetch('/restart', { method: 'POST' }).then(() => {
                 setTimeout(() => connectToSocket(), 500);
-                alert('Settings saved, restarting server.')
+                alert('Settings saved, restarting server.');
             });
         });
     });

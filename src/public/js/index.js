@@ -2,6 +2,8 @@ const lc = document.getElementById('lc');
 
 let timeout = 10e3;
 let config = {};
+let hidden = false;
+let clearingWaitForFinal = false;
 
 const deviceStats = [];
 
@@ -9,6 +11,7 @@ function updateConfig() {
     return fetch('/config')
         .then(res => res.json())
         .then(json => {
+            console.log(json);
             // Clear old styles
             lc.style.removeProperty('bottom');
             lc.style.removeProperty('top');
@@ -50,6 +53,7 @@ function updateConfig() {
                 child.style.maxHeight = (parseFloat(config.display.size) * config.display.lines + 6) + 'px';
             }
 
+            hidden = json.display.hidden;
             timeout = json.display.timeout * 1000;
             config = json;
         });
@@ -107,6 +111,23 @@ function handleCaptionFrame(frame) {
     console.log(frame);
     if (frame.type == 'config') return window.location.reload();
     if (frame.text == '') return;
+    if (frame.type == 'clear') {
+        console.log('clearing');
+        clearingWaitForFinal = true;
+        lc.style.display = 'none';
+        clearTimeout(currentTimeout);
+        for (const device of deviceStats) {
+            device.transcript = '';
+            device.currentDiv.innerText = '';
+        }
+        return;
+    }
+    if (frame.type == 'hide') {
+        console.log('toggle hide '+frame.value);
+        hidden = frame.value;
+        lc.style.display = (frame.value) ?  'none':'block';
+        return;
+    }
 
     const device = frame.device;
 
@@ -122,7 +143,17 @@ function handleCaptionFrame(frame) {
     let { transcript, lastFrameWasFinal, currentDiv, currentTimeout, color } = deviceStats[device];
 
     clearTimeout(currentTimeout);
-    lc.style.display = 'block';
+
+    // If we get the final frame for a sentence then we can clear the transcript and return to normal stuff
+    if (clearingWaitForFinal && frame.isFinal) {
+        clearingWaitForFinal = false;
+        transcript = '';
+        return;
+    } else if (clearingWaitForFinal) {
+        return;
+    }
+
+    if (!hidden) lc.style.display = 'block';
 
     // Check if we've located the correct span
     if (currentDiv != undefined) {

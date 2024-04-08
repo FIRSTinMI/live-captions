@@ -48,6 +48,24 @@ export class Server {
             } else if (req.params.setting === 'transcription.phraseSets') {
                 config.transcription.phraseSets = req.body;
                 config.save();
+            } else if (req.params.setting === 'transcription.transformations') {
+                config.transcription.transformations = req.body;
+                config.save();
+            } else if (req.params.setting === 'display.clear') {
+                // Send clear to all clients, no config update needed
+                for (let ws of this.clients) {
+                    ws.send(JSON.stringify({ type: 'clear' }));
+                }
+                res.send();
+                return;
+            } else if (req.params.setting === 'display.hidden') {
+                config.display.hidden = req.query.value == 'true';
+                config.save();
+                // Send hide to all clients without config update because that'll reload the thing
+                for (let ws of this.clients) {
+                    ws.send(JSON.stringify({ type: 'hide', value: config.display.hidden }));
+                }
+                return;
             } else {
                 try {
                     config.set(req.params.setting, req.query.value);

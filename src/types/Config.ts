@@ -6,7 +6,8 @@ export interface DisplayConfig {
     lines: number,
     chromaKey: string,
     timeout: number,
-    align: 'left' | 'center' | 'right'
+    align: 'left' | 'center' | 'right',
+    hidden: boolean
 }
 
 export interface ServerConfig {
@@ -26,7 +27,8 @@ export interface TranscriptionConfig {
     streamingTimeout: number,
     inputs: InputConfig[],
     phraseSets: string[],
-    engine: 'googlev1' | 'googlev2' | 'april'
+    engine: 'googlev1' | 'googlev2' | 'april',
+    transformations: { regex: RegExp, replacement: string }[]
 }
 
 export interface InputConfig {

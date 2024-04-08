@@ -10,7 +10,8 @@ export class ConfigManager {
         lines: 2,
         chromaKey: 'rgba(0,0,0,0)',
         timeout: 5,
-        align: 'left'
+        align: 'left',
+        hidden: false
     };
 
     public server: ServerConfig = {
@@ -39,7 +40,85 @@ export class ConfigManager {
             'projects/829228050742/locations/global/phraseSets/fim-2024-team-names',
             'projects/829228050742/locations/global/phraseSets/frc-2024-terms'
         ],
-        engine: 'googlev2'
+        engine: 'googlev2',
+        transformations: [
+            {
+                regex: /(\d\d)(\.| )(\d\d)/gm,
+                replacement: "$1$3"
+            },
+            {
+                regex: /(fucking?|bucking|bucket) gears/gmi,
+                replacement: "Buc'n'Gears"
+            },
+            {
+                regex: /(zoo buttocks|zubats)/gmi,
+                replacement: "ZooBOTix"
+            },
+            {
+                regex: /tea and tea/gmi,
+                replacement: "TnT"
+            },
+            {
+                regex: /blue (lines?|lions?)/gmi,
+                replacement: "Blue Alliance"
+            },
+            {
+                regex: /red (lines?|lions?)/gmi,
+                replacement: "Red Alliance"
+            },
+            {
+                regex: /christian (go|know)/gmi,
+                replacement: "Crescendo"
+            },
+            {
+                regex: /the bears/gmi,
+                replacement: "Da Bears"
+            },
+            {
+                regex: /try sonic's/gmi,
+                replacement: "TriSonics"
+            },
+            {
+                regex: /soccer tr?uck/gmi,
+                replacement: "Saugatuck"
+            },
+            {
+                regex: /so (i've|i) (been|can) driving/gmi,
+                replacement: "step up and drive"
+            },
+            {
+                regex: /drivers? behind a lines?/gmi,
+                replacement: 'drivers behind the lines'
+            },
+            {
+                regex: /drunk town thunder/gmi,
+                replacement: "Truck Town Thunder"
+            },
+            {
+                regex: /rubble eagles/gmi,
+                replacement: "RoboEagles"
+            },
+            {
+                regex: /bender butts/gmi,
+                replacement: "Vander Bots"
+            },
+            {
+                regex: /woody/gmi,
+                replacement: "Woodie"
+            },
+            {
+                regex: /app to field/gmi,
+                replacement: "Aptiv Field"
+            },
+            {
+                regex: /active field/gmi,
+                replacement: "Aptiv Field"
+            },
+            {
+                regex: /ch?risti?ano/gmi,
+                replacement: "Crescendo"
+            }
+        ]
     }
 
     constructor(file: string) {
@@ -95,6 +174,9 @@ export class ConfigManager {
                 break;
             case 'transcription.engine':
                 this.transcription.engine = value;
+                break;
+            case 'transcription.hidden': 
+                this.display.hidden = value;
                 break;
         }
     }
