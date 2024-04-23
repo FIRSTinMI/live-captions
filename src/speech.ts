@@ -21,6 +21,7 @@ export class Speech<T extends GoogleV2 | GoogleV1 | April> {
     private rtAudio: RtAudio;
     private filter = new BadWords();
     private amplitudeArray: number[] = [0, 0, 0, 0, 0];
+    private amplitudeSum: number = 0;
     public volume: number = 0;
 
     constructor(config: ConfigManager, clients: WebSocket[], input: InputConfig, engine: { new(config: ConfigManager, sampleRate: number, inputId: number, inputName: string): T }) {
@@ -88,15 +89,30 @@ export class Speech<T extends GoogleV2 | GoogleV1 | April> {
             480, // Frame size is 480 (10ms)
             `liveCaptions${this.inputConfig.id}`, // The name of the stream (used for JACK Api)
             (pcm: Buffer) => {
-                let data = Array.from(
-                    { length: pcm.length / 2 },
-                    (v, i) => pcm.readInt16LE(i * 2) / (2 ** 15)
-                );
+                let min = 32767;
+                let max = -32768;
+                const originalBufferLength = pcm.length; // not sure if reading from this buffer type clears the data from the buffer -> reduces length of the buffer
+                for (let i = 0; i < originalBufferLength / 2; i++) {
+                let val = pcm.readInt16LE(i * 2) / 2 ** 15;
 
-                const amplitude = Math.max(...data) - Math.min(...data);
+                if (val < min) {
+                    min = val;
+                }
+
+                if (val > max) {
+                    max = val;
+                }
+                }
+
+                const amplitude = max - min;
+
+                this.amplitudeSum -= this.amplitudeArray[0];
                 this.amplitudeArray.shift();
+
                 this.amplitudeArray.push(Math.ceil(amplitude * 100));
-                this.volume = Math.log(this.amplitudeArray.reduce((partialSum, a) => partialSum + a, 0) / this.amplitudeArray.length) * 18.939;
+                this.amplitudeSum += this.amplitudeArray[this.amplitudeArray.length - 1];
+
+                this.volume = Math.log(this.amplitudeSum / this.amplitudeArray.length) * 18.939;
 
                 if (this.volume >= this.inputConfig.threshold) {
                     if (silent) {
