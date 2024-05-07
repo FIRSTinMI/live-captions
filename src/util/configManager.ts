@@ -55,7 +55,7 @@ export class ConfigManager {
                 replacement: "ZooBOTix"
             },
             {
-                regex: /tea and tea/gmi,
+                regex: /t(ea)? and t(ea)?/gmi,
                 replacement: "TnT"
             },
             {
@@ -127,7 +127,12 @@ export class ConfigManager {
     }
 
     public save() {
-        writeFileSync(this.file, JSON.stringify(this.get(), null, 4));
+        const save = this.get();
+        for (let transformation of save.transcription.transformations) {
+            // @ts-expect-error
+            transformation.regex = transformation.regex.toString();
+        }
+        writeFileSync(this.file, JSON.stringify(save, null, 4));
     }
 
     public load() {
@@ -138,7 +143,10 @@ export class ConfigManager {
         const json = JSON.parse(readFileSync(this.file).toString());
         this.display = overloadConfig(this.display, json.display);
         this.server = overloadConfig(this.server, json.server);
+        this.transcription.transformations = parseTransformations(json.transcription.transformations);
         this.transcription = overloadConfig(this.transcription, json.transcription);
+        console.log(this.transcription.transformations)
+        this.save();
     }
 
     public get(): JSONConfig {
@@ -206,4 +214,19 @@ function overloadConfig(objA: any, objB: any, parent?: any, key?: string) {
         objA = objB;
     }
     return objA;
+}
+
+function parseTransformations(transformations: { regex: string, replacement: string }[]) {
+    const newTransformations = [];
+    for (let transformation of transformations) {
+        const splitRegex = transformation.regex.split('/');
+        const options = splitRegex.pop();
+        const regex = splitRegex.slice(1).join('/');
+        newTransformations.push({
+            regex: new RegExp(regex, options),
+            replacement: transformation.replacement
+        });
+    }
+    console.log(newTransformations);
+    return newTransformations;
 }

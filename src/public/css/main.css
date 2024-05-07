@@ -37,5 +37,25 @@ body {
     background-image: linear-gradient(90deg, #ff4242 0%, #ff9c39 17%, #ffff5e 34%, #58f558 51%, #6294ff 68%, #b300ff 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
-    animation: rainbow 5s linear infinite;
+    background-size: 200% 200%;
+
+    -webkit-animation: Animation 3s ease infinite;
+    -moz-animation: Animation 3s ease infinite;
+    animation: Animation 3s ease infinite;
+}
+
+@-webkit-keyframes Animation {
+    0%{background-position:10% 0%}
+    50%{background-position:91% 100%}
+    100%{background-position:10% 0%}
+}
+@-moz-keyframes Animation {
+    0%{background-position:10% 0%}
+    50%{background-position:91% 100%}
+    100%{background-position:10% 0%}
+}
+@keyframes Animation { 
+    0%{background-position:10% 0%}
+    50%{background-position:91% 100%}
+    100%{background-position:10% 0%}
 }

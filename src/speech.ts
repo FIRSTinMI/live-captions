@@ -46,6 +46,7 @@ export class Speech<T extends GoogleV2 | GoogleV1 | April> {
         this.engine = new engine(config, input.sampleRate, input.id, input.speaker ?? "Unknown");
 
         this.engine.emitter.on('frame', (frame: Frame) => {
+            console.log(config.transcription.transformations);
             frame.text = transform(frame.text, config.transcription.transformations);
             try {
                 frame.text = this.filter.clean(frame.text);
