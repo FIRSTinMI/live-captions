@@ -32,3 +32,10 @@ body {
 #lc::-webkit-scrollbar {
     width: 0;
 }
+
+.r {
+    background-image: linear-gradient(90deg, #ff4242 0%, #ff9c39 17%, #ffff5e 34%, #58f558 51%, #6294ff 68%, #b300ff 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: rainbow 5s linear infinite;
+}

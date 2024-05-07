@@ -66,7 +66,7 @@ function capitalize(text) {
         arr[i] = arr[i].charAt(0).toUpperCase() + arr[i].slice(1);
     }
 
-    return arr.join(".");
+    return arr.join(".").replace(/(rainbow(?: rumble)?)/gi, '<span class="r">$1</span>');
 }
 
 
@@ -118,7 +118,7 @@ function handleCaptionFrame(frame) {
         clearTimeout(currentTimeout);
         for (const device of deviceStats) {
             device.transcript = '';
-            device.currentDiv.innerText = '';
+            device.currentDiv.innerHTML = '';
         }
         return;
     }
@@ -158,7 +158,7 @@ function handleCaptionFrame(frame) {
     // Check if we've located the correct span
     if (currentDiv != undefined) {
         // Just append to that
-        if (!frame.isFinal) currentDiv.innerText = transcript + capitalize(frame.text);
+        if (!frame.isFinal) currentDiv.innerHTML = transcript + capitalize(frame.text);
     } else {
         // Otherwise create a new span with the correct color
         currentDiv = document.createElement('div');
@@ -167,7 +167,7 @@ function handleCaptionFrame(frame) {
         currentDiv.style.lineHeight = (config.display.size + 6) + 'px';
         currentDiv.style.maxHeight = (parseFloat(config.display.size) * config.display.lines + 6) + 'px';
         lc.appendChild(currentDiv);
-        currentDiv.innerText = capitalize(frame.text) + ((frame.isFinal) ? '.\n' : '');
+        currentDiv.innerHTML = capitalize(frame.text) + ((frame.isFinal) ? '.\n' : '');
     }
 
     if (frame.isFinal) {
@@ -180,7 +180,7 @@ function handleCaptionFrame(frame) {
             // confidence < 0 means we're using April engine which handles punctuation itself
             transcript += capitalize(frame.text) + '\n'
         }
-        currentDiv.innerText = transcript
+        currentDiv.innerHTML = transcript
 
         currentTimeout = setTimeout(() => {
             deviceStats[device].currentDiv.innerHTML = '';
