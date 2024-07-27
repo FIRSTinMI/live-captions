@@ -49,7 +49,7 @@ export class Server {
                 config.transcription.phraseSets = req.body;
                 config.save();
             } else if (req.params.setting === 'transcription.transformations') {
-                config.transcription.transformations = req.body;
+                config.transformations = req.body;
                 config.save();
             } else if (req.params.setting === 'display.clear') {
                 // Send clear to all clients, no config update needed

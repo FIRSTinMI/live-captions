@@ -27,9 +27,10 @@ export interface TranscriptionConfig {
     streamingTimeout: number,
     inputs: InputConfig[],
     phraseSets: string[],
-    engine: 'googlev1' | 'googlev2' | 'april',
-    transformations: { regex: RegExp, replacement: string }[]
+    engine: 'googlev1' | 'googlev2' | 'april';
 }
+
+export type TransformationsConfig = { regex: RegExp, replacement: string; }[];
 
 export interface InputConfig {
     id: number,
@@ -45,5 +46,6 @@ export interface InputConfig {
 export interface JSONConfig {
     display: DisplayConfig,
     server: ServerConfig,
-    transcription: TranscriptionConfig
+    transcription: TranscriptionConfig,
+    transformations: TransformationsConfig;
 }

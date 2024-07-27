@@ -1,5 +1,5 @@
 import { existsSync, readFileSync, writeFileSync } from 'fs';
-import { DisplayConfig, JSONConfig, ServerConfig, TranscriptionConfig } from '../types/Config';
+import { DisplayConfig, JSONConfig, ServerConfig, TranscriptionConfig, TransformationsConfig } from '../types/Config';
 
 export class ConfigManager {
     private file: string;
@@ -40,86 +40,87 @@ export class ConfigManager {
             'projects/829228050742/locations/global/phraseSets/fim-2024-team-names',
             'projects/829228050742/locations/global/phraseSets/frc-2024-terms'
         ],
-        engine: 'googlev2',
-        transformations: [
-            {
-                regex: /(\d\d)(\.| )(\d\d)/gm,
-                replacement: "$1$3"
-            },
-            {
-                regex: /(fucking?|bucking|bucket) gears/gmi,
-                replacement: "Buc'n'Gears"
-            },
-            {
-                regex: /(zoo buttocks|zubats)/gmi,
-                replacement: "ZooBOTix"
-            },
-            {
-                regex: /t(ea)? and t(ea)?/gmi,
-                replacement: "TnT"
-            },
-            {
-                regex: /blue (lines?|lions?)/gmi,
-                replacement: "Blue Alliance"
-            },
-            {
-                regex: /red (lines?|lions?)/gmi,
-                replacement: "Red Alliance"
-            },
-            {
-                regex: /christian (go|know)/gmi,
-                replacement: "Crescendo"
-            },
-            {
-                regex: /the bears/gmi,
-                replacement: "Da Bears"
-            },
-            {
-                regex: /try sonic's/gmi,
-                replacement: "TriSonics"
-            },
-            {
-                regex: /soccer tr?uck/gmi,
-                replacement: "Saugatuck"
-            },
-            {
-                regex: /so (i've|i) (been|can) driving/gmi,
-                replacement: "step up and drive"
-            },
-            {
-                regex: /drivers? behind a lines?/gmi,
-                replacement: 'drivers behind the lines'
-            },
-            {
-                regex: /drunk town thunder/gmi,
-                replacement: "Truck Town Thunder"
-            },
-            {
-                regex: /rubble eagles/gmi,
-                replacement: "RoboEagles"
-            },
-            {
-                regex: /bender butts/gmi,
-                replacement: "Vander Bots"
-            },
-            {
-                regex: /woody/gmi,
-                replacement: "Woodie"
-            },
-            {
-                regex: /app to field/gmi,
-                replacement: "Aptiv Field"
-            },
-            {
-                regex: /active field/gmi,
-                replacement: "Aptiv Field"
-            },
-            {
-                regex: /ch?risti?ano/gmi,
-                replacement: "Crescendo"
-            }
-        ]
-    }
+        engine: 'googlev2'
+    };
+
+    public transformations: TransformationsConfig = [
+        {
+            regex: /(\d\d)(\.| )(\d\d)/gm,
+            replacement: "$1$3"
+        },
+        {
+            regex: /(fucking?|bucking|bucket) gears/gmi,
+            replacement: "Buc'n'Gears"
+        },
+        {
+            regex: /(zoo buttocks|zubats)/gmi,
+            replacement: "ZooBOTix"
+        },
+        {
+            regex: /t(ea)? and t(ea)?/gmi,
+            replacement: "TnT"
+        },
+        {
+            regex: /blue (lines?|lions?)/gmi,
+            replacement: "Blue Alliance"
+        },
+        {
+            regex: /red (lines?|lions?)/gmi,
+            replacement: "Red Alliance"
+        },
+        {
+            regex: /christian (go|know)/gmi,
+            replacement: "Crescendo"
+        },
+        {
+            regex: /the bears/gmi,
+            replacement: "Da Bears"
+        },
+        {
+            regex: /try sonic's/gmi,
+            replacement: "TriSonics"
+        },
+        {
+            regex: /soccer tr?uck/gmi,
+            replacement: "Saugatuck"
+        },
+        {
+            regex: /so (i've|i) (been|can) driving/gmi,
+            replacement: "step up and drive"
+        },
+        {
+            regex: /drivers? behind a lines?/gmi,
+            replacement: 'drivers behind the lines'
+        },
+        {
+            regex: /drunk town thunder/gmi,
+            replacement: "Truck Town Thunder"
+        },
+        {
+            regex: /rubble eagles/gmi,
+            replacement: "RoboEagles"
+        },
+        {
+            regex: /bender butts/gmi,
+            replacement: "Vander Bots"
+        },
+        {
+            regex: /woody/gmi,
+            replacement: "Woodie"
+        },
+        {
+            regex: /app to field/gmi,
+            replacement: "Aptiv Field"
+        },
+        {
+            regex: /active field/gmi,
+            replacement: "Aptiv Field"
+        },
+        {
+            regex: /ch?risti?ano/gmi,
+            replacement: "Crescendo"
+        }
+    ];
 
     constructor(file: string) {
         this.file = file;
@@ -128,10 +129,11 @@ export class ConfigManager {
 
     public save() {
         const save = this.get();
-        for (let transformation of save.transcription.transformations) {
+        for (let transformation of save.transformations) {
             // @ts-expect-error
             transformation.regex = transformation.regex.toString();
         }
+        console.log(save);
         writeFileSync(this.file, JSON.stringify(save, null, 4));
     }
 
@@ -143,9 +145,12 @@ export class ConfigManager {
         const json = JSON.parse(readFileSync(this.file).toString());
         this.display = overloadConfig(this.display, json.display);
         this.server = overloadConfig(this.server, json.server);
-        this.transcription.transformations = parseTransformations(json.transcription.transformations);
+        const newTransformations = parseTransformations(json.transformations);
+        if (newTransformations.length > 0) {
+            this.transformations = newTransformations;
+        }
         this.transcription = overloadConfig(this.transcription, json.transcription);
-        console.log(this.transcription.transformations)
+        console.log(this.transformations)
         this.save();
     }
 
@@ -153,7 +158,8 @@ export class ConfigManager {
         return {
             display: this.display,
             server: this.server,
-            transcription: this.transcription
+            transcription: this.transcription,
+            transformations: this.transformations
         };
     }
 
@@ -217,7 +223,8 @@ function overloadConfig(objA: any, objB: any, parent?: any, key?: string) {
 }
 
 function parseTransformations(transformations: { regex: string, replacement: string }[]) {
-    const newTransformations = [];
+    const newTransformations: { regex: RegExp, replacement: string; }[] = [];
+    if (!transformations) return newTransformations;
     for (let transformation of transformations) {
         const splitRegex = transformation.regex.split('/');
         const options = splitRegex.pop();
