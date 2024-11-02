@@ -1,6 +1,6 @@
 {
     "name": "live-captions",
-    "version": "1.7.1",
+    "version": "1.7.2",
     "main": "./build/index.js",
     "bin": "./build/index.js",
     "scripts": {
@@ -13,7 +13,7 @@
     "dependencies": {
         "@google-cloud/speech": "^6.1.0",
         "@materializecss/materialize": "^2.0.3-beta",
-        "audify": "^1.8.2",
+        "audify": "^1.9.0",
         "bad-words": "^3.0.4",
         "body-parser": "^1.20.2",
         "colorts": "^0.1.63",

@@ -19,7 +19,7 @@ export class Speech<T extends GoogleV2 | GoogleV1 | April> {
     private clients: WebSocket[];
     private engine: GoogleV2 | GoogleV1 | April;
     private rtAudio: RtAudio;
-    private filter = new BadWords();
+    private filter = new BadWords({ placeHolder: ' ' });
     private amplitudeArray: number[] = [0, 0, 0, 0, 0];
     private amplitudeSum: number = 0;
     public volume: number = 0;
@@ -46,7 +46,6 @@ export class Speech<T extends GoogleV2 | GoogleV1 | April> {
         this.engine = new engine(config, input.sampleRate, input.id, input.speaker ?? "Unknown");
 
         this.engine.emitter.on('frame', (frame: Frame) => {
-            console.log(config.transformations);
             frame.text = transform(frame.text, config.transformations);
             try {
                 frame.text = this.filter.clean(frame.text);

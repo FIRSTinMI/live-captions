@@ -129,12 +129,17 @@ export class ConfigManager {
 
     public save() {
         const save = this.get();
+        const newTransformations = [];
         for (let transformation of save.transformations) {
-            // @ts-expect-error
-            transformation.regex = transformation.regex.toString();
+            newTransformations.push({
+                regex: transformation.regex.toString(),
+                replacement: transformation.replacement
+            })
         }
-        console.log(save);
-        writeFileSync(this.file, JSON.stringify(save, null, 4));
+        writeFileSync(this.file, JSON.stringify({
+            ...save,
+            transformations: newTransformations
+        }, null, 4));
     }
 
     public load() {
@@ -150,7 +155,6 @@ export class ConfigManager {
             this.transformations = newTransformations;
         }
         this.transcription = overloadConfig(this.transcription, json.transcription);
-        console.log(this.transformations)
         this.save();
     }
 
@@ -234,6 +238,5 @@ function parseTransformations(transformations: { regex: string, replacement: str
             replacement: transformation.replacement
         });
     }
-    console.log(newTransformations);
     return newTransformations;
 }
