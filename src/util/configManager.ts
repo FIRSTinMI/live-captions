@@ -24,7 +24,7 @@ export class ConfigManager {
                 private_key: ''
             }
         }
-    }
+    };
 
     public transcription: TranscriptionConfig = {
         filter: [
@@ -119,6 +119,34 @@ export class ConfigManager {
         {
             regex: /ch?risti?ano/gmi,
             replacement: "Crescendo"
+        },
+        {
+            regex: /(hi|high) chamber/gmi,
+            replacement: "High Chamber"
+        },
+        {
+            regex: /low chamber/gmi,
+            replacement: "Low Chamber"
+        },
+        {
+            regex: /(hi|high) basket/gmi,
+            replacement: "High Basket"
+        },
+        {
+            regex: /low basket/gmi,
+            replacement: "Low Basket"
+        },
+        {
+            regex: /(\d\d)( ?)(\d)(:| )(\d\d)/gm,
+            replacement: "$1$3$5"
+        },
+        {
+            regex: /butts/gmi,
+            replacement: "bots"
+        },
+        {
+            regex: /tally up/gmi,
+            replacement: "teleop"
         }
     ];
 
@@ -134,7 +162,7 @@ export class ConfigManager {
             newTransformations.push({
                 regex: transformation.regex.toString(),
                 replacement: transformation.replacement
-            })
+            });
         }
         writeFileSync(this.file, JSON.stringify({
             ...save,
@@ -150,10 +178,14 @@ export class ConfigManager {
         const json = JSON.parse(readFileSync(this.file).toString());
         this.display = overloadConfig(this.display, json.display);
         this.server = overloadConfig(this.server, json.server);
-        const newTransformations = parseTransformations(json.transformations);
-        if (newTransformations.length > 0) {
-            this.transformations = newTransformations;
+        const parsedTransformations = parseTransformations(json.transformations);
+        for (let transformation of parsedTransformations) {
+            if (!this.transformations.find(t => t.regex.toString() === transformation.regex.toString())) {
+                this.transformations.push(transformation);
+            }
         }
+        console.log(this.transformations);
+
         this.transcription = overloadConfig(this.transcription, json.transcription);
         this.save();
     }
@@ -193,7 +225,7 @@ export class ConfigManager {
             case 'transcription.engine':
                 this.transcription.engine = value;
                 break;
-            case 'transcription.hidden': 
+            case 'transcription.hidden':
                 this.display.hidden = value;
                 break;
         }
@@ -226,7 +258,7 @@ function overloadConfig(objA: any, objB: any, parent?: any, key?: string) {
     return objA;
 }
 
-function parseTransformations(transformations: { regex: string, replacement: string }[]) {
+function parseTransformations(transformations: { regex: string, replacement: string; }[]) {
     const newTransformations: { regex: RegExp, replacement: string; }[] = [];
     if (!transformations) return newTransformations;
     for (let transformation of transformations) {
