@@ -16,7 +16,7 @@ body {
     border-radius: 15px;
     margin: 10px;
     position: absolute;
-    transition: height 0.5s ease 0s;
+    transition: height 0.5s cubic-bezier(0,.79,.65,.99) 0s;
     flex-direction: column;
 }
 
@@ -25,7 +25,7 @@ body {
     scroll-behavior: smooth;
     flex-grow: 1;
     flex-basis: 50%;
-    transition: all 1s ease 0s;
+    transition: all 1s cubic-bezier(0,.79,.65,.99) 0s;
     height: 100%;
 }
 
@@ -39,9 +39,9 @@ body {
     -webkit-text-fill-color: transparent;
     background-size: 200% 200%;
 
-    -webkit-animation: Animation 3s ease infinite;
-    -moz-animation: Animation 3s ease infinite;
-    animation: Animation 3s ease infinite;
+    -webkit-animation: Animation 3s cubic-bezier(0,.79,.65,.99) infinite;
+    -moz-animation: Animation 3s cubic-bezier(0,.79,.65,.99) infinite;
+    animation: Animation 3s cubic-bezier(0,.79,.65,.99) infinite;
 }
 
 @-webkit-keyframes Animation {
