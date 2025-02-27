@@ -1,3 +1,4 @@
 april_asr
 websockets
 psutil
+whisper

@@ -10,6 +10,7 @@ import { update } from './util/updater';
 import { GoogleV2 } from './engines/GoogleV2';
 import { GoogleV1 } from './engines/GoogleV1';
 import { April, downloadDependencies } from './engines/April';
+import { Whisper3, downloadDependencies as w3DownloadDependecies } from './engines/Whisper3';
 
 export const PROGRAM_FOLDER = process.env.APPDATA + '/live-captions';
 
@@ -41,13 +42,16 @@ async function start() {
     if (engine === 'april') {
         await downloadDependencies();
     }
+    if (engine === 'whisper') {
+        await w3DownloadDependecies();
+    }
 
     // Kill server and speeches if they're already running
     if (server) {
         server.stop();
     }
 
-    if (engine === 'april' && speechServices.length > 0) {
+    if ((engine === 'april' || engine === 'whisper') && speechServices.length > 0) {
         let promises = [];
         for (let speech of speechServices) {
             promises.push(speech.destroy());
@@ -73,7 +77,7 @@ async function start() {
         for (let client of server.settingsClients) {
             client.send(JSON.stringify({
                 type: 'volumes',
-                devices: speechServices.map((s: Speech<GoogleV1 | GoogleV2 | April>) => ({
+                devices: speechServices.map((s: Speech<GoogleV1 | GoogleV2 | April | Whisper3>) => ({
                     id: s.inputConfig.id,
                     volume: Math.round(s.volume)
                 }))
@@ -95,6 +99,10 @@ async function start() {
             speechServices.push(speech);
         } else if (engine === 'april') {
             const speech = new Speech(config, clients, input, April);
+            speech.startStreaming();
+            speechServices.push(speech);
+        } else if (engine === 'whisper') {
+            const speech = new Speech(config, clients, input, Whisper3);
             speech.startStreaming();
             speechServices.push(speech);
         } else {

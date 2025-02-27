@@ -1,6 +1,6 @@
 import { RtAudio, RtAudioErrorType, RtAudioFormat, RtAudioStreamFlags, RtAudioStreamParameters } from 'audify';
 import WebSocket from "ws";
-import BadWords from 'bad-words'
+import BadWords from 'bad-words';
 import { ConfigManager } from "./util/configManager";
 import { InputConfig } from "./types/Config";
 import { Frame } from "./types/Frame";
@@ -9,11 +9,12 @@ import { GoogleV2 } from './engines/GoogleV2';
 import { GoogleV1 } from './engines/GoogleV1';
 import { April } from './engines/April';
 import { transform } from './util/transformer';
+import { Whisper3 } from './engines/Whisper3';
 
 // Number of frames after silence is detected to continue streaming
 const THRESHOLD_CUTOFF_SMOOTHING = 10;
 
-export class Speech<T extends GoogleV2 | GoogleV1 | April> {
+export class Speech<T extends GoogleV2 | GoogleV1 | April | Whisper3> {
     private config: ConfigManager;
     public inputConfig: InputConfig;
     private clients: WebSocket[];
@@ -24,7 +25,7 @@ export class Speech<T extends GoogleV2 | GoogleV1 | April> {
     private amplitudeSum: number = 0;
     public volume: number = 0;
 
-    constructor(config: ConfigManager, clients: WebSocket[], input: InputConfig, engine: { new(config: ConfigManager, sampleRate: number, inputId: number, inputName: string): T }) {
+    constructor(config: ConfigManager, clients: WebSocket[], input: InputConfig, engine: { new(config: ConfigManager, sampleRate: number, inputId: number, inputName: string): T; }) {
         input.sampleRate = 16000;
         this.config = config;
         this.inputConfig = input;
@@ -63,7 +64,7 @@ export class Speech<T extends GoogleV2 | GoogleV1 | April> {
 
     public startStreaming() {
         // Find the device we're listening to based on what was selected in the UI
-        const asio = this.rtAudio.getDevices().filter(d => d.id === this.inputConfig.device)[0]
+        const asio = this.rtAudio.getDevices().filter(d => d.id === this.inputConfig.device)[0];
         if (!asio) return;
         console.log(
             `Connecting to ASIO device ${color(asio.name).bold.blue} with ${color(asio.inputChannels.toString()).bold.blue} channels, listening on channel ${color(this.inputConfig.channel.toString()).bold.blue}`
@@ -93,15 +94,15 @@ export class Speech<T extends GoogleV2 | GoogleV1 | April> {
                 let max = -32768;
                 const originalBufferLength = pcm.length; // not sure if reading from this buffer type clears the data from the buffer -> reduces length of the buffer
                 for (let i = 0; i < originalBufferLength / 2; i++) {
-                let val = pcm.readInt16LE(i * 2) / 2 ** 15;
+                    let val = pcm.readInt16LE(i * 2) / 2 ** 15;
 
-                if (val < min) {
-                    min = val;
-                }
+                    if (val < min) {
+                        min = val;
+                    }
 
-                if (val > max) {
-                    max = val;
-                }
+                    if (val > max) {
+                        max = val;
+                    }
                 }
 
                 const amplitude = max - min;
