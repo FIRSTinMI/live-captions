@@ -1,6 +1,6 @@
 import { RtAudio, RtAudioErrorType, RtAudioFormat, RtAudioStreamFlags, RtAudioStreamParameters } from 'audify';
 import WebSocket from "ws";
-import BadWords from 'bad-words'
+import BadWords from 'bad-words';
 import { ConfigManager } from "./util/configManager";
 import { InputConfig } from "./types/Config";
 import { Frame } from "./types/Frame";
@@ -23,12 +23,14 @@ export class Speech<T extends GoogleV2 | GoogleV1 | April> {
     private amplitudeArray: number[] = [0, 0, 0, 0, 0];
     private amplitudeSum: number = 0;
     public volume: number = 0;
+    private restart: () => void;
 
-    constructor(config: ConfigManager, clients: WebSocket[], input: InputConfig, engine: { new(config: ConfigManager, sampleRate: number, inputId: number, inputName: string): T }) {
+    constructor(config: ConfigManager, clients: WebSocket[], input: InputConfig, engine: { new(config: ConfigManager, sampleRate: number, inputId: number, inputName: string, restart: () => void): T; }, restart: () => void) {
         input.sampleRate = 16000;
         this.config = config;
         this.inputConfig = input;
         this.clients = clients;
+        this.restart = restart;
 
         // Process filter
         let removeWords = [];
@@ -43,7 +45,7 @@ export class Speech<T extends GoogleV2 | GoogleV1 | April> {
         this.filter.addWords(...addWords);
         this.filter.removeWords(...removeWords);
 
-        this.engine = new engine(config, input.sampleRate, input.id, input.speaker ?? "Unknown");
+        this.engine = new engine(config, input.sampleRate, input.id, input.speaker ?? "Unknown", this.restart);
 
         this.engine.emitter.on('frame', (frame: Frame) => {
             frame.text = transform(frame.text, config.transformations);
@@ -63,7 +65,7 @@ export class Speech<T extends GoogleV2 | GoogleV1 | April> {
 
     public startStreaming() {
         // Find the device we're listening to based on what was selected in the UI
-        const asio = this.rtAudio.getDevices().filter(d => d.id === this.inputConfig.device)[0]
+        const asio = this.rtAudio.getDevices().filter(d => d.id === this.inputConfig.device)[0];
         if (!asio) return;
         console.log(
             `Connecting to ASIO device ${color(asio.name).bold.blue} with ${color(asio.inputChannels.toString()).bold.blue} channels, listening on channel ${color(this.inputConfig.channel.toString()).bold.blue}`
@@ -93,15 +95,15 @@ export class Speech<T extends GoogleV2 | GoogleV1 | April> {
                 let max = -32768;
                 const originalBufferLength = pcm.length; // not sure if reading from this buffer type clears the data from the buffer -> reduces length of the buffer
                 for (let i = 0; i < originalBufferLength / 2; i++) {
-                let val = pcm.readInt16LE(i * 2) / 2 ** 15;
+                    let val = pcm.readInt16LE(i * 2) / 2 ** 15;
 
-                if (val < min) {
-                    min = val;
-                }
+                    if (val < min) {
+                        min = val;
+                    }
 
-                if (val > max) {
-                    max = val;
-                }
+                    if (val > max) {
+                        max = val;
+                    }
                 }
 
                 const amplitude = max - min;

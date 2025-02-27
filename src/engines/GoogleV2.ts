@@ -24,12 +24,15 @@ export class GoogleV2 {
     private inputId: number;
     private inputName: string;
     private sampleRate: number;
+    private restart: () => void;
 
-    constructor(config: ConfigManager, sampleRate:number, inputId: number, inputName: string) {
+    constructor(config: ConfigManager, sampleRate: number, inputId: number, inputName: string, restart: () => void) {
         this.config = config;
         this.sampleRate = sampleRate;
         this.inputId = inputId;
         this.inputName = inputName;
+        this.restart = restart;
+
         if (config.server.google.credentials.client_email === '' || config.server.google.credentials.private_key === '') {
             console.error(color('Google API Authentication Failed').bold.red.toString());
         } else {
@@ -58,7 +61,7 @@ export class GoogleV2 {
                 text: data.results[0].alternatives[0]?.transcript,
                 confidence: data.results[0].alternatives[0]?.confidence,
                 speaker: this.inputName
-            }
+            };
 
             // Sometimes the API sends duplicate isFinal frames
             if (frame.isFinal && this.lastFrame.isFinal) return;
@@ -96,14 +99,14 @@ export class GoogleV2 {
             adaptation: {
                 phraseSets: this.config.transcription.phraseSets.map(s => ({ phraseSet: s }))
             }
-        }
+        };
 
         const streamingRecognitionConfig: google.cloud.speech.v2.IStreamingRecognitionConfig = {
             config: recognitionConfig,
             streamingFeatures: {
                 interimResults: true,
             }
-        }
+        };
 
         const streamingRecognizeRequest: google.cloud.speech.v2.IStreamingRecognizeRequest = {
             recognizer: `projects/${this.config.server.google.projectId}/locations/global/recognizers/_`,
@@ -139,7 +142,14 @@ export class GoogleV2 {
     }
 
     public write(pcm: Buffer) {
-        if (this.dead || this.recognizeStream?.closed || this.recognizeStream?.destroyed) throw new Error('Tried to write to a dead GoogleV2 instance');   
+        if (this.dead || this.recognizeStream?.closed || this.recognizeStream?.destroyed) {
+            console.error('Tried to write to a dead GoogleV2 instance');
+            this.recognizeStream?.destroy();
+            this.speech?.close();
+            console.error('Attempting to restart server');
+            this.restart();
+            return;
+        }
         this.recognizeStream?.write({ audio: pcm });
     }
 

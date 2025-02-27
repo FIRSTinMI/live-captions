@@ -31,13 +31,16 @@ export class GoogleV1 {
         },
         interimResults: true,
     };
+    private restart: () => void;
 
-    constructor(config: ConfigManager, sampleRate:number, inputId: number, inputName: string) {
+    constructor(config: ConfigManager, sampleRate: number, inputId: number, inputName: string, restart: () => void) {
         this.config = config;
         this.sampleRate = sampleRate;
         this.request.config.sampleRateHertz = sampleRate;
         this.inputId = inputId;
         this.inputName = inputName;
+        this.restart = restart;
+
         if (config.server.google.credentials.client_email === '' || config.server.google.credentials.private_key === '') {
             console.error(color('Google API Authentication Failed').bold.red.toString());
         } else {
@@ -66,7 +69,7 @@ export class GoogleV1 {
                 text: data.results[0].alternatives[0]?.transcript,
                 confidence: data.results[0].alternatives[0]?.confidence,
                 speaker: this.inputName
-            }
+            };
 
             // Sometimes the API sends duplicate isFinal frames
             if (frame.isFinal && this.lastFrame.isFinal) return;
@@ -119,7 +122,14 @@ export class GoogleV1 {
     }
 
     public write(pcm: Buffer) {
-        if (this.dead || this.recognizeStream?.closed || this.recognizeStream?.destroyed) throw new Error('Tried to write to a dead GoogleV1 instance');   
+        if (this.dead || this.recognizeStream?.closed || this.recognizeStream?.destroyed) {
+            console.error('Tried to write to a dead GoogleV1 instance');
+            this.recognizeStream?.destroy();
+            this.speech?.close();
+            console.error('Attempting to restart server');
+            this.restart();
+            return;
+        }
         this.recognizeStream?.write(pcm);
     }
 

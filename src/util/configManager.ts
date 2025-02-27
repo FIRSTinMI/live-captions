@@ -37,8 +37,8 @@ export class ConfigManager {
         streamingTimeout: 60e3,
         inputs: [],
         phraseSets: [
-            'projects/829228050742/locations/global/phraseSets/fim-2024-team-names',
-            'projects/829228050742/locations/global/phraseSets/frc-2024-terms'
+            'projects/829228050742/locations/global/phraseSets/fim-team-names',
+            'projects/829228050742/locations/global/phraseSets/frc-terms'
         ],
         engine: 'googlev2'
     };
@@ -67,10 +67,6 @@ export class ConfigManager {
         {
             regex: /red (lines?|lions?)/gmi,
             replacement: "Red Alliance"
-        },
-        {
-            regex: /christian (go|know)/gmi,
-            replacement: "Crescendo"
         },
         {
             regex: /the bears/gmi,
@@ -115,26 +111,6 @@ export class ConfigManager {
         {
             regex: /active field/gmi,
             replacement: "Aptiv Field"
-        },
-        {
-            regex: /ch?risti?ano/gmi,
-            replacement: "Crescendo"
-        },
-        {
-            regex: /(hi|high) chamber/gmi,
-            replacement: "High Chamber"
-        },
-        {
-            regex: /low chamber/gmi,
-            replacement: "Low Chamber"
-        },
-        {
-            regex: /(hi|high) basket/gmi,
-            replacement: "High Basket"
-        },
-        {
-            regex: /low basket/gmi,
-            replacement: "Low Basket"
         },
         {
             regex: /(\d\d)( ?)(\d)(:| )(\d\d)/gm,

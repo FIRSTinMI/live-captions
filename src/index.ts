@@ -10,6 +10,7 @@ import { update } from './util/updater';
 import { GoogleV2 } from './engines/GoogleV2';
 import { GoogleV1 } from './engines/GoogleV1';
 import { April, downloadDependencies } from './engines/April';
+import color from 'colorts';
 
 export const PROGRAM_FOLDER = process.env.APPDATA + '/live-captions';
 
@@ -69,6 +70,7 @@ async function start() {
     server = new Server(config, clients, rtAudio, start);
     server.start();
 
+
     setInterval(() => {
         for (let client of server.settingsClients) {
             client.send(JSON.stringify({
@@ -90,15 +92,15 @@ async function start() {
     // Start speech recognition
     for (let input of <InputConfig[]>config.transcription.inputs) {
         if (engine === 'googlev1') {
-            const speech = new Speech(config, clients, input, GoogleV1);
+            const speech = new Speech(config, clients, input, GoogleV1, start);
             speech.startStreaming();
             speechServices.push(speech);
         } else if (engine === 'april') {
-            const speech = new Speech(config, clients, input, April);
+            const speech = new Speech(config, clients, input, April, start);
             speech.startStreaming();
             speechServices.push(speech);
         } else {
-            const speech = new Speech(config, clients, input, GoogleV2);
+            const speech = new Speech(config, clients, input, GoogleV2, start);
             speech.startStreaming();
             speechServices.push(speech);
         }

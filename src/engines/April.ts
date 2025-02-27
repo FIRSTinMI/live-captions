@@ -25,12 +25,14 @@ export class April {
     private inputId: number;
     private inputName: string;
     private ws?: WebSocket;
+    private restart: () => void;
 
-    constructor(config: ConfigManager, sampleRate:number, inputId: number, inputName: string) {
+    constructor(config: ConfigManager, sampleRate: number, inputId: number, inputName: string, restart: () => void) {
         this.config = config;
         this.sampleRate = sampleRate;
         this.inputId = inputId;
         this.inputName = inputName;
+        this.restart = restart;
 
         if (sampleRate !== 16000) {
             console.error(color('April ASR only supports 16kHz sample rate').bold.red.toString());
@@ -50,7 +52,7 @@ export class April {
     private start() {
         if (!this.aprilASR?.killed) this.aprilASR?.kill();
         console.log(color(`April: Starting ${this.inputId} stream`).green.toString());
-        this.aprilASR = spawn('python', [PROGRAM_FOLDER + '/april-asr/april-asr.py'], { shell: true, stdio: ['pipe', 'pipe', process.stderr]});
+        this.aprilASR = spawn('python', [PROGRAM_FOLDER + '/april-asr/april-asr.py'], { shell: true, stdio: ['pipe', 'pipe', process.stderr] });
 
         this.aprilASR.stdout?.on('data', (data: Buffer) => {
             let strings = data.toString().split('\n');
@@ -68,15 +70,15 @@ export class April {
 
     private connectWebsocket(port: string = '8760') {
         console.log(color(`April: Connecting to websocket on port ${port}`).green.toString());
-        this.ws = new WebSocket('ws://localhost:'+port);
+        this.ws = new WebSocket('ws://localhost:' + port);
 
         this.ws.onmessage = (event) => {
             console.log(event.data.toString());
-        }
+        };
 
         this.ws.onerror = (event) => {
             console.error(event);
-        }
+        };
     }
 
     private handleRecognitionEvent(data: string) {
@@ -89,7 +91,7 @@ export class April {
             text: data.substring(2).trim().toLowerCase(),
             confidence: -1,
             speaker: this.inputName
-        }
+        };
 
         if (frame.text.trim() === '' || frame.text.trim() === ',' || frame.text.trim() === ',') return;
 

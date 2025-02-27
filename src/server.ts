@@ -7,7 +7,6 @@ import color from 'colorts';
 import { RtAudio } from 'audify';
 import { Server as HttpServer, IncomingMessage, ServerResponse } from 'http';
 import { ConfigManager } from './util/configManager';
-import { Speech } from './speech';
 
 export class Server {
     public clients: ws[];
@@ -70,7 +69,7 @@ export class Server {
                 try {
                     config.set(req.params.setting, req.query.value);
                 } catch (err) {
-                    return res.status(500).send({ type: 'error', msg: err })
+                    return res.status(500).send({ type: 'error', msg: err });
                 }
                 config.save();
             }
