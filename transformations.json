@@ -1,0 +1,110 @@
+[
+    {
+        "regex": "/(\\d\\d)(\\.| )(\\d\\d)/gm",
+        "replacement": "$1$3"
+    },
+    {
+        "regex": "/(fucking?|bucking|bucket) gears/gim",
+        "replacement": "Buc'n'Gears"
+    },
+    {
+        "regex": "/(zoo buttocks|zubats)/gim",
+        "replacement": "ZooBOTix"
+    },
+    {
+        "regex": "/t(ea)? and t(ea)?/gim",
+        "replacement": "TnT"
+    },
+    {
+        "regex": "/blue (lines?|lions?)/gim",
+        "replacement": "Blue Alliance"
+    },
+    {
+        "regex": "/red (lines?|lions?)/gim",
+        "replacement": "Red Alliance"
+    },
+    {
+        "regex": "/the bears/gim",
+        "replacement": "Da Bears"
+    },
+    {
+        "regex": "/try sonic's/gim",
+        "replacement": "TriSonics"
+    },
+    {
+        "regex": "/soccer tr?uck/gim",
+        "replacement": "Saugatuck"
+    },
+    {
+        "regex": "/so (i've|i) (been|can) driving/gim",
+        "replacement": "step up and drive"
+    },
+    {
+        "regex": "/drivers? behind a lines?/gim",
+        "replacement": "drivers behind the lines"
+    },
+    {
+        "regex": "/drunk town thunder/gim",
+        "replacement": "Truck Town Thunder"
+    },
+    {
+        "regex": "/rubble eagles/gim",
+        "replacement": "RoboEagles"
+    },
+    {
+        "regex": "/bender butts/gim",
+        "replacement": "Vander Bots"
+    },
+    {
+        "regex": "/woody/gim",
+        "replacement": "Woodie"
+    },
+    {
+        "regex": "/app to field/gim",
+        "replacement": "Aptiv Field"
+    },
+    {
+        "regex": "/active field/gim",
+        "replacement": "Aptiv Field"
+    },
+    {
+        "regex": "/(\\d\\d)( ?)(\\d)(:| )(\\d\\d)/gm",
+        "replacement": "$1$3$5"
+    },
+    {
+        "regex": "/butts/gim",
+        "replacement": "bots"
+    },
+    {
+        "regex": "/tally up/gim",
+        "replacement": "teleop"
+    },
+    {
+        "regex": "/christian (go|know)/gim",
+        "replacement": "Crescendo"
+    },
+    {
+        "regex": "/ch?risti?ano/gim",
+        "replacement": "Crescendo"
+    },
+    {
+        "regex": "/(hi|high) chamber/gim",
+        "replacement": "High Chamber"
+    },
+    {
+        "regex": "/low chamber/gim",
+        "replacement": "Low Chamber"
+    },
+    {
+        "regex": "/(hi|high) basket/gim",
+        "replacement": "High Basket"
+    },
+    {
+        "regex": "/low basket/gim",
+        "replacement": "Low Basket"
+    },
+    {
+        "regex": "/reef escape/gim",
+        "replacement": "Reefscape"
+    }
+]

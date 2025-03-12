@@ -123,6 +123,10 @@ export class ConfigManager {
         {
             regex: /tally up/gmi,
             replacement: "teleop"
+        },
+        {
+            regex: /reef escape/gim,
+            replacement: "Reefscape"
         }
     ];
 
@@ -234,7 +238,7 @@ function overloadConfig(objA: any, objB: any, parent?: any, key?: string) {
     return objA;
 }
 
-function parseTransformations(transformations: { regex: string, replacement: string; }[]) {
+export function parseTransformations(transformations: { regex: string, replacement: string; }[]) {
     const newTransformations: { regex: RegExp, replacement: string; }[] = [];
     if (!transformations) return newTransformations;
     for (let transformation of transformations) {

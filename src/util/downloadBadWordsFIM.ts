@@ -1,4 +1,4 @@
-import { ConfigManager } from "./configManager";
+import { ConfigManager, parseTransformations } from "./configManager";
 
 export async function updateBadWordsList(config: ConfigManager) {
     const FIMBadWords = await fetch('https://storage.googleapis.com/live-captions-assets/badwords.txt').then(res => res.text());
@@ -31,5 +31,20 @@ export async function updateBadWordsList(config: ConfigManager) {
     }
 
     config.transcription.filter = filter;
+    config.save();
+}
+
+export async function updateTransformations(config: ConfigManager) {
+    const newTransformations = parseTransformations(await fetch('https://raw.githubusercontent.com/FIRSTinMI/live-captions/refs/heads/main/transformations.json').then(res => res.json()));
+
+    let transformations = config.transformations;
+
+    for (let transformation of newTransformations) {
+        if (!transformations.find(t => t.regex.toString() === transformation.regex.toString())) {
+            transformations.push(transformation);
+            console.log('Added transformation: ' + transformation.regex);
+        }
+    }
+
     config.save();
 }

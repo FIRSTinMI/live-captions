@@ -5,7 +5,7 @@ import ws from 'ws';
 import { Speech } from './speech';
 import { ConfigManager } from './util/configManager';
 import { InputConfig } from './types/Config';
-import { updateBadWordsList } from './util/downloadBadWordsFIM';
+import { updateBadWordsList, updateTransformations } from './util/downloadBadWordsFIM';
 import { update } from './util/updater';
 import { GoogleV2 } from './engines/GoogleV2';
 import { GoogleV1 } from './engines/GoogleV1';
@@ -25,6 +25,8 @@ if (!process.argv.includes('--skip-update-check')) {
     start();
 }
 
+let volumeInterval: NodeJS.Timeout;
+let updateInterval: NodeJS.Timeout;
 
 async function start() {
     // Create program folder
@@ -35,7 +37,12 @@ async function start() {
 
     // Generate/load config
     const config = new ConfigManager(PROGRAM_FOLDER + '/config.json');
-    //await updateBadWordsList(config);
+    try {
+        await updateBadWordsList(config);
+        await updateTransformations(config);
+    } catch (err) {
+        console.error('Failed to update bad words list or transformations', err);
+    }
 
     const engine = config.transcription.engine;
 
@@ -71,7 +78,9 @@ async function start() {
     server.start();
 
 
-    setInterval(() => {
+    if (volumeInterval) clearInterval(volumeInterval);
+
+    volumeInterval = setInterval(() => {
         for (let client of server.settingsClients) {
             client.send(JSON.stringify({
                 type: 'volumes',
@@ -82,6 +91,17 @@ async function start() {
             }));
         }
     }, 50);
+
+    if (updateInterval) clearInterval(updateInterval);
+
+    updateInterval = setInterval(async () => {
+        try {
+            await updateBadWordsList(config);
+            await updateTransformations(config);
+        } catch (err) {
+            console.error('Failed to update bad words list or transformations', err);
+        }
+    }, 60e3 * 15); // 15 minutes
 
     // For development testing simulating semi-realistic captions
     if (process.argv.includes('--gibberish')) {
