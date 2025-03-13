@@ -106,5 +106,9 @@
     {
         "regex": "/reef escape/gim",
         "replacement": "Reefscape"
+    },
+    {
+        "regex": "/three[,.]? two[,.]? one[,.]? die/gim",
+        "replacement": "three, two, one, dive"
     }
 ]
