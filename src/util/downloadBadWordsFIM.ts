@@ -1,7 +1,7 @@
 import { ConfigManager, parseTransformations } from "./configManager";
 
 export async function updateBadWordsList(config: ConfigManager) {
-    const FIMBadWords = await fetch('https://storage.googleapis.com/live-captions-assets/badwords.txt').then(res => res.text());
+    const FIMBadWords = await fetch(`https://storage.googleapis.com/live-captions-assets/badwords.txt?t=${new Date().getTime() / 1000}`).then(res => res.text());
 
     let filter = config.transcription.filter;
 

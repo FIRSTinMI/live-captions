@@ -43,6 +43,11 @@
             position: relative;
             top: -14px;
         }
+
+        .transcription-filter:not(:focus) {
+            height: 6em !important;
+            filter: blur(4px);
+        }
     </style>
 </head>
 
@@ -174,10 +179,10 @@
                     </div>
                     <div class="row mb-2">
                         <div class="input-field col s12">
-                            <textarea id="transcription-filter" class="materialize-textarea"></textarea>
+                            <textarea id="transcription-filter" class="materialize-textarea transcription-filter"></textarea>
                             <label for="transcription-filter">Profanity Filter</label>
                             <span class="supporting-text">One word per line, +word adds word to the filter, -word
-                                removes it</span>
+                                removes it. Click textbox to reveal contents.</span>
                         </div>
                     </div>
                     <div class="row">
