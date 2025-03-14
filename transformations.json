@@ -110,5 +110,9 @@
     {
         "regex": "/three[,.]? two[,.]? one[,.]? die/gim",
         "replacement": "three, two, one, dive"
+    },
+    {
+        "regex": "/steel niggers/gim",
+        "replacement": "Steel Stingers"
     }
 ]
