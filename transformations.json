@@ -116,7 +116,7 @@
         "replacement": "Steel Stingers"
     },
     {
-        "regex": "/LG/gim",
+        "regex": "/ LG /gim",
         "replacement": "Algea"
     }
 ]
