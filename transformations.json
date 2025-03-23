@@ -117,6 +117,6 @@
     },
     {
         "regex": "/ LG /gim",
-        "replacement": "Algea"
+        "replacement": "Algae"
     }
 ]
