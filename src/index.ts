@@ -10,7 +10,6 @@ import { update } from './util/updater';
 import { GoogleV2 } from './engines/GoogleV2';
 import { GoogleV1 } from './engines/GoogleV1';
 import { April, downloadDependencies } from './engines/April';
-import color from 'colorts';
 
 export const PROGRAM_FOLDER = process.env.APPDATA + '/live-captions';
 
