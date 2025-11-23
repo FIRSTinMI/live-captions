@@ -222,6 +222,7 @@ function handleCaptionFrame(frame) {
 		lastFrameWasFinal,
 		currentDiv,
 		currentTimeout,
+		color,
 	};
 }
 
