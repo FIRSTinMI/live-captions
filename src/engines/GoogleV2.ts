@@ -126,6 +126,7 @@ export class GoogleV2 {
                         err.toString().includes('does not contain a client_email field') ||
                         err.toString().includes('does not contain a private_key field')) {
                         console.error(color('Google API Authentication Failed').bold.red.toString());
+                        console.error(err.message);
                         this.pause();
                     } else if (err.message.includes('Cannot call write after a stream was destroyed')) {
                         console.log(color(`${err.message}: ${err.code}.  Restarting...`).red.toString());
