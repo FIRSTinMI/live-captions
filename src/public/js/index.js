@@ -177,12 +177,7 @@ function handleCaptionFrame(frame) {
 		lastFrameWasFinal = true;
 
 		// If the sentence is finished we can commit it to the transcript
-		if (frame.confidence > 0) {
-			transcript += capitalize(frame.text) + ".\n";
-		} else {
-			// confidence < 0 means we're using April engine which handles punctuation itself
-			transcript += capitalize(frame.text) + "\n";
-		}
+		transcript += capitalize(frame.text) + "\n";
 		currentDiv.innerHTML = transcript;
 
 		currentTimeout = setTimeout(() => {
