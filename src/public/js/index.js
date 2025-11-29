@@ -109,19 +109,33 @@ function connectToSocket() {
 }
 */
 
+let clearing = false;
+
 function handleCaptionFrame(frame) {
 	console.log(frame);
 	if (frame.type == "config") return window.location.reload();
 	if (frame.text == "") return;
 	if (frame.type == "clear") {
 		console.log("clearing");
-		clearingWaitForFinal = true;
+		clearing = true;
 		lc.style.display = "none";
-		clearTimeout(currentTimeout);
+
 		for (const device of deviceStats) {
 			device.transcript = "";
 			device.currentDiv.innerHTML = "";
+
+			if (device.lastFrameWasFinal) {
+				// do nothing
+			} else {
+				clearingWaitForFinal = true;
+				console.log("waiting for final");
+			}
+
+			clearTimeout(device.currentTimeout);
 		}
+
+		clearing = false;
+
 		return;
 	}
 	if (frame.type == "hide") {
@@ -130,6 +144,8 @@ function handleCaptionFrame(frame) {
 		lc.style.display = frame.value ? "none" : "block";
 		return;
 	}
+
+	if (clearing) return; // Don't process frames while clearing
 
 	const device = frame.device;
 
@@ -148,6 +164,7 @@ function handleCaptionFrame(frame) {
 	clearTimeout(currentTimeout);
 
 	// If we get the final frame for a sentence then we can clear the transcript and return to normal stuff
+	console.log("clearingWaitForFinal:", clearingWaitForFinal, "isFinal:", frame.isFinal);
 	if (clearingWaitForFinal && frame.isFinal) {
 		clearingWaitForFinal = false;
 		transcript = "";

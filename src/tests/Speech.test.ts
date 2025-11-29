@@ -8,13 +8,6 @@ import { RtAudioApi } from 'audify';
 import { join } from 'path';
 import { PROGRAM_FOLDER } from '..';
 
-/**
- * Sleep for a given number of milliseconds
- */
-function sleep(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
-}
-
 describe('Speech Class with Manual PCM Feeding', () => {
     let configManager: ConfigManager;
 
@@ -81,7 +74,6 @@ describe('Speech Class with Manual PCM Feeding', () => {
         for (let i = 0; i < 200; i++) {
             const noiseBuffer = createNoisePCMBuffer();
             speech.feedPCMData(noiseBuffer);
-            await sleep(10); // Each frame is 10ms
         }
 
         // Now feed silence for 2+ seconds (200+ frames)
@@ -90,7 +82,6 @@ describe('Speech Class with Manual PCM Feeding', () => {
         for (let i = 0; i < 220; i++) {
             const silenceBuffer = createSilencePCMBuffer();
             speech.feedPCMData(silenceBuffer);
-            await sleep(10); // Each frame is 10ms
         }
 
         // After sufficient silence, streamingShutoff should be true
@@ -107,7 +98,6 @@ describe('Speech Class with Manual PCM Feeding', () => {
         for (let i = 0; i < 220; i++) {
             const silenceBuffer = createSilencePCMBuffer();
             speech.feedPCMData(silenceBuffer);
-            await sleep(10); // Each frame is 10ms
         }
 
         // Verify streamingShutoff is true (paused)
@@ -118,7 +108,6 @@ describe('Speech Class with Manual PCM Feeding', () => {
         for (let i = 0; i < 10; i++) {
             const noiseBuffer = createNoisePCMBuffer();
             speech.feedPCMData(noiseBuffer);
-            await sleep(10); // Each frame is 10ms
         }
 
         // streamingShutoff should be false (resumed)
@@ -135,7 +124,6 @@ describe('Speech Class with Manual PCM Feeding', () => {
         for (let i = 0; i < 200; i++) {
             const noiseBuffer = createNoisePCMBuffer();
             speech.feedPCMData(noiseBuffer);
-            await sleep(10); // Each frame is 10ms
         }
         expect(speech.getState).toBe(StreamingState.ACTIVE); // Should not be paused during speech
 
@@ -144,7 +132,6 @@ describe('Speech Class with Manual PCM Feeding', () => {
         for (let i = 0; i < 220; i++) {
             const silenceBuffer = createSilencePCMBuffer();
             speech.feedPCMData(silenceBuffer);
-            await sleep(10); // Each frame is 10ms
         }
         expect(speech.getState).toBe(StreamingState.PAUSED); // Should be paused after silence timeout
 
@@ -153,7 +140,6 @@ describe('Speech Class with Manual PCM Feeding', () => {
         for (let i = 0; i < 20; i++) {
             const noiseBuffer = createNoisePCMBuffer();
             speech.feedPCMData(noiseBuffer);
-            await sleep(10); // Each frame is 10ms
         }
         expect(speech.getState).toBe(StreamingState.ACTIVE); // Should be resumed when noise is detected
 
@@ -169,7 +155,6 @@ describe('Speech Class with Manual PCM Feeding', () => {
         for (let i = 0; i < 50; i++) {
             const noiseBuffer = createNoisePCMBuffer();
             speech.feedPCMData(noiseBuffer);
-            await sleep(10);
         }
 
         // Feed exactly 2 seconds of silence (200 frames)
@@ -177,7 +162,6 @@ describe('Speech Class with Manual PCM Feeding', () => {
         for (let i = 0; i < 200; i++) {
             const silenceBuffer = createSilencePCMBuffer();
             speech.feedPCMData(silenceBuffer);
-            await sleep(10);
         }
 
         // Should still be active at exactly 2 seconds
@@ -188,7 +172,6 @@ describe('Speech Class with Manual PCM Feeding', () => {
         for (let i = 0; i < 50; i++) {
             const noiseBuffer = createNoisePCMBuffer();
             speech.feedPCMData(noiseBuffer);
-            await sleep(10);
         }
 
         // Should remain ACTIVE
@@ -204,21 +187,18 @@ describe('Speech Class with Manual PCM Feeding', () => {
         console.log('Cycle 1: Speak');
         for (let i = 0; i < 100; i++) {
             speech.feedPCMData(createNoisePCMBuffer());
-            if (i % 10 === 0) await sleep(5); // Sleep periodically to reduce pressure
         }
         expect(speech.getState).toBe(StreamingState.ACTIVE);
 
         console.log('Cycle 1: Silence');
         for (let i = 0; i < 150; i++) {
             speech.feedPCMData(createSilencePCMBuffer());
-            if (i % 10 === 0) await sleep(5);
         }
         expect(speech.getState).toBe(StreamingState.ACTIVE); // Still active (not at timeout yet)
 
         console.log('Cycle 1: Speak again');
         for (let i = 0; i < 100; i++) {
             speech.feedPCMData(createNoisePCMBuffer());
-            if (i % 10 === 0) await sleep(5);
         }
         expect(speech.getState).toBe(StreamingState.ACTIVE);
 
@@ -226,7 +206,6 @@ describe('Speech Class with Manual PCM Feeding', () => {
         console.log('Cycle 2: Long silence to pause');
         for (let i = 0; i < 220; i++) {
             speech.feedPCMData(createSilencePCMBuffer());
-            if (i % 20 === 0) await sleep(5);
         }
         expect(speech.getState).toBe(StreamingState.PAUSED);
 
@@ -234,7 +213,6 @@ describe('Speech Class with Manual PCM Feeding', () => {
         console.log('Cycle 3: Resume');
         for (let i = 0; i < 50; i++) {
             speech.feedPCMData(createNoisePCMBuffer());
-            if (i % 10 === 0) await sleep(5);
         }
         expect(speech.getState).toBe(StreamingState.ACTIVE);
 
@@ -249,20 +227,17 @@ describe('Speech Class with Manual PCM Feeding', () => {
         console.log('Instance 1: Feeding noise...');
         for (let i = 0; i < 100; i++) {
             speech1.feedPCMData(createNoisePCMBuffer());
-            if (i % 10 === 0) await sleep(5);
         }
 
         // Instance 2: Noise then pause (in parallel-ish fashion)
         console.log('Instance 2: Feeding noise...');
         for (let i = 0; i < 50; i++) {
             speech2.feedPCMData(createNoisePCMBuffer());
-            if (i % 10 === 0) await sleep(5);
         }
 
         console.log('Instance 2: Feeding silence to pause...');
         for (let i = 0; i < 220; i++) {
             speech2.feedPCMData(createSilencePCMBuffer());
-            if (i % 20 === 0) await sleep(5);
         }
 
         // Verify independent states
@@ -287,8 +262,6 @@ describe('Speech Class with Manual PCM Feeding', () => {
 
             // Speech2 processes silence
             speech2.feedPCMData(createSilencePCMBuffer());
-
-            if (round % 10 === 0) await sleep(5);
         }
 
         expect(speech1.getState).toBe(StreamingState.ACTIVE);
@@ -298,7 +271,6 @@ describe('Speech Class with Manual PCM Feeding', () => {
         console.log('Feeding more silence to Instance 2...');
         for (let i = 50; i < 220; i++) {
             speech2.feedPCMData(createSilencePCMBuffer());
-            if ((i - 50) % 20 === 0) await sleep(5);
         }
 
         // Verify states remain independent
