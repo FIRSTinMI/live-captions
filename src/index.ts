@@ -11,7 +11,9 @@ import { GoogleV2 } from './engines/GoogleV2';
 import { GoogleV1 } from './engines/GoogleV1';
 import { April, downloadDependencies } from './engines/April';
 
-export const PROGRAM_FOLDER = process.env.APPDATA + '/live-captions';
+export const PROGRAM_FOLDER = process.platform === 'win32'
+    ? process.env.APPDATA + '/live-captions'
+    : process.env.HOME + '/.config/live-captions';
 
 let server: Server;
 let clients: ws[] = [];

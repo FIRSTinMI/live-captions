@@ -164,7 +164,6 @@ export class ConfigManager {
                 this.transformations.push(transformation);
             }
         }
-        console.log(this.transformations);
 
         this.transcription = overloadConfig(this.transcription, json.transcription);
         this.save();
