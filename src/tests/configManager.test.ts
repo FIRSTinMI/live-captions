@@ -3,6 +3,7 @@ import { ConfigManager, parseTransformations } from "../util/configManager";
 import { existsSync, unlinkSync, readFileSync } from "fs";
 import { tmpdir } from "os";
 import { join } from "path";
+import { randomUUID } from "crypto";
 
 describe("ConfigManager", () => {
     let configFile: string;
@@ -10,7 +11,7 @@ describe("ConfigManager", () => {
 
     beforeEach(() => {
         // Create a temporary config file for testing
-        configFile = join(tmpdir(), `test-config-${Date.now()}.json`);
+        configFile = join(tmpdir(), `test-config-${randomUUID()}.json`);
     });
 
     afterEach(() => {
