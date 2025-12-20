@@ -32,6 +32,7 @@ export class GoogleV2 {
         this.inputId = inputId;
         this.inputName = inputName;
         this.restart = restart;
+        this.languages = languages;
 
         if (config.server.google.credentials.client_email === '' || config.server.google.credentials.private_key === '') {
             console.error(color('Google API Authentication Failed').bold.red.toString());
@@ -94,7 +95,7 @@ export class GoogleV2 {
                 sampleRateHertz: this.sampleRate,
                 audioChannelCount: 1,
             },
-            languageCodes: languages,
+            languageCodes: this.languages,
             model: 'latest_long',
             adaptation: {
                 phraseSets: this.config.transcription.phraseSets.map(s => ({ phraseSet: s }))
