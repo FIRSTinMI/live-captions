@@ -28,3 +28,43 @@ It's recognition is not as good as Google's but atleast it'll work consistently.
 3. Select the April engine on the transcription tab of settings and click apply
 4. Wait for the software to download the model and script
 5. Win
+
+## First time setup for non FiM users
+This will walk through the steps to setup a google cloud account for non FiM users
+1. Visit https://console.cloud.google.com/ and open a new project
+
+<img width="661" height="53" alt="image" src="https://github.com/user-attachments/assets/0a7817c0-5f3d-437a-9e02-8488ad579f82" />
+<img width="551" height="157" alt="image" src="https://github.com/user-attachments/assets/cfa3f1ff-ab2f-41bf-92ff-fa8c180b70ae" />
+<img width="633" height="231" alt="image" src="https://github.com/user-attachments/assets/301e7301-83b8-47f2-992c-8a0064e4e5fa" />
+
+2. Note the project ID for later use.  (All IDs shown in this demo have been revoked. I'm keeping them visible for clarity.)
+3. Select the "Convert speech to text" product
+<img width="1252" height="477" alt="image" src="https://github.com/user-attachments/assets/da02f48e-0e55-430f-a7b4-5daa43505d46" />
+
+4. Enable it
+<img width="647" height="250" alt="image" src="https://github.com/user-attachments/assets/be1f253b-cd5e-4419-a191-bceba6e3db11" />
+
+5. Select Credentials then Create Credentials->Service Account
+<img width="1030" height="651" alt="image" src="https://github.com/user-attachments/assets/98c9b729-c2a1-4539-b5b0-a5dbd723f19a" />
+
+6. Name the account anything of your choice 
+7. Select speech client permissions and select Done 
+ <img width="727" height="207" alt="image" src="https://github.com/user-attachments/assets/dd0107f0-d2a6-49b6-822d-813c71c28d67" />
+
+
+8. Then click on the new account under Service Accounts
+<img width="1639" height="444" alt="image" src="https://github.com/user-attachments/assets/1edaae77-7a5e-44ad-acf0-cb04b7444deb" />
+
+9. Click on "Keys" then "Add Key->Create New Key" and select type JSON
+<img width="1320" height="557" alt="image" src="https://github.com/user-attachments/assets/238f8660-0729-4c24-83ec-19a4d252157c" />
+
+10. Open the json file that auto-download in a text editor
+11. Copy the client_email, private key, and project_id values to the server tab of local-captions tool.  *NOTE The key names in the JSON vary slightly from the key names in the tool. Make sure you don't change the keynames, and only change the values. *
+12. Go to https://console.cloud.google.com/speech/adaptation-resources/list
+13. Add a new phraseSet containing common phrases like team names to improve the transcription
+<img width="704" height="409" alt="image" src="https://github.com/user-attachments/assets/19668624-1abd-4836-bf95-31e894f4a901" />
+
+14. Copy phraseSet name and paste it in the transcription field, replacing the examples from FiM
+<img width="745" height="294" alt="image" src="https://github.com/user-attachments/assets/ad3c30c1-01ae-427b-8a2f-155f8b708a51" />
+
+15. 
