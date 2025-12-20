@@ -28,3 +28,8 @@ It's recognition is not as good as Google's but atleast it'll work consistently.
 3. Select the April engine on the transcription tab of settings and click apply
 4. Wait for the software to download the model and script
 5. Win
+
+## Language Support
+* Google v2 can support multi-lingual transcriptions. You can use the dropdown to tell it what languages to expect for a given source.
+* Google v1 can support one language per-input. If you select multiples, it will default to the first one listed.
+* April ASR ignores the languge selection and only supports English.

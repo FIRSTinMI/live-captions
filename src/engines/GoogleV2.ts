@@ -26,7 +26,7 @@ export class GoogleV2 {
     private sampleRate: number;
     private restart: () => void;
 
-    constructor(config: ConfigManager, sampleRate: number, inputId: number, inputName: string, restart: () => void) {
+    constructor(config: ConfigManager, sampleRate: number, inputId: number, inputName: string, languages: [string], restart: () => void) {
         this.config = config;
         this.sampleRate = sampleRate;
         this.inputId = inputId;
@@ -94,7 +94,7 @@ export class GoogleV2 {
                 sampleRateHertz: this.sampleRate,
                 audioChannelCount: 1,
             },
-            languageCodes: ['en-US'],
+            languageCodes: languages,
             model: 'latest_long',
             adaptation: {
                 phraseSets: this.config.transcription.phraseSets.map(s => ({ phraseSet: s }))

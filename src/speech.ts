@@ -40,7 +40,7 @@ export class Speech<T extends GoogleV2 | GoogleV1 | April> {
         return this.state;
     }
 
-    constructor(config: ConfigManager, clients: WebSocket[], input: InputConfig, engine: { new(config: ConfigManager, sampleRate: number, inputId: number, inputName: string, restart: () => void): T; }, restart: () => void, mockMode: boolean = false) {
+    constructor(config: ConfigManager, clients: WebSocket[], input: InputConfig, engine: { new(config: ConfigManager, sampleRate: number, inputId: number, inputName: string, languages: [string], restart: () => void): T; }, restart: () => void, mockMode: boolean = false) {
         input.sampleRate = 16000;
         this.config = config;
         this.inputConfig = input;
@@ -61,7 +61,7 @@ export class Speech<T extends GoogleV2 | GoogleV1 | April> {
         this.filter.addWords(...addWords);
         this.filter.removeWords(...removeWords);
 
-        this.engine = new engine(config, input.sampleRate, input.id, input.speaker ?? "Unknown", this.restart);
+        this.engine = new engine(config, input.sampleRate, input.id, input.speaker ?? "Unknown", input.languages ?? ['en-us'], this.restart);
 
         this.engine.emitter.on('frame', (frame: Frame) => {
             frame.text = transform(frame.text, config.transformations);
