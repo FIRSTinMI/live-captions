@@ -27,7 +27,7 @@ export class April {
     private ws?: WebSocket;
     private restart: () => void;
 
-    constructor(config: ConfigManager, sampleRate: number, inputId: number, inputName: string, restart: () => void) {
+    constructor(config: ConfigManager, sampleRate: number, inputId: number, inputName: string, languages: [string], restart: () => void) {
         this.config = config;
         this.sampleRate = sampleRate;
         this.inputId = inputId;

@@ -29,6 +29,11 @@ It's recognition is not as good as Google's but atleast it'll work consistently.
 4. Wait for the software to download the model and script
 5. Win
 
+## Language Support
+* Google v2 can support multi-lingual transcriptions. You can use the dropdown to tell it what languages to expect for a given source.
+* Google v1 can support one language per-input. If you select multiples, it will default to the first one listed.
+* April ASR ignores the languge selection and only supports English.
+
 ## First time setup for non FiM users
 This will walk through the steps to setup a google cloud account for non FiM users
 1. Visit https://console.cloud.google.com/ and open a new project
@@ -67,4 +72,4 @@ This will walk through the steps to setup a google cloud account for non FiM use
 14. Copy phraseSet name and paste it in the transcription field, replacing the examples from FiM
 <img width="745" height="294" alt="image" src="https://github.com/user-attachments/assets/ad3c30c1-01ae-427b-8a2f-155f8b708a51" />
 
-15. 
+

@@ -131,12 +131,12 @@
                     </div>
                     <div data-role="template" style="display:none">
                         <div class="row mb-2">
-                            <div class="input-field col s12 m3">
+                            <div class="input-field col s12 m2">
                                 <input id="template-name" type="text" data-role="name">
                                 <label for="template-name">Name</label>
                                 <span class="supporting-text">Speaker Name</span>
                             </div>
-                            <div class="input-field col s12 m4">
+                            <div class="input-field col s12 m3">
                                 <select id="template-device" data-role="id">
                                     <option value="null">Default</option>
                                 </select>
@@ -151,6 +151,13 @@
                                 <input id="template-channel" type="number" data-role="channel" min="0">
                                 <label for="template-channel">Channel Number</label>
                                 <span class="supporting-text">Channel # to monitor</span>
+                            </div>
+                            <div class="input-field col s12 m2">
+                                <select id="template-language" data-role="language" multiple>
+                                    <option value="en-us">English</option>
+                                    <option value="es-us">Spanish</option>
+                                </select>
+                                <label for="template-language">Language</label>
                             </div>
                             <div class="col s12 m1 valign-wrapper">
                                 <a class="waves-effect waves-light red btn center-align" data-action="remove">Remove</a>

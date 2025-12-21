@@ -98,6 +98,7 @@ function addRow(device = null) {
 			color: defaultColors[index >= defaultColors.length ? defaultColors.length - 1 : index],
 			channel: 0,
 			threshold: 10,
+			languages: ['en-us'],
 		};
 	}
 
@@ -139,9 +140,19 @@ function addRow(device = null) {
 	}
 	dropdown.value = device.device;
 
+	// Add options to dropdown
+	const dropdown_language = row.querySelector('[data-role="language"]');
+
+	for (let i = 0; i < dropdown_language.options.length; i++) {
+		if (device.languages.includes(dropdown_language.options[i].value)) {
+			dropdown_language.options[i].selected = true;
+		}
+	}
+
 	// Append row to table
 	container.appendChild(row);
 	M.FormSelect.init(dropdown, {});
+	M.FormSelect.init(dropdown_language, {});
 	row.removeAttribute("style");
 
 	// Add listener to remove button
@@ -172,6 +183,7 @@ for (let btn of document.querySelectorAll(".apply-btn")) {
 				color: row.querySelector('[data-role="color"]').value,
 				driver: 7,
 				threshold: parseInt(row.querySelector('[data-role="threshold"]').value),
+				languages: Array.from(row.querySelector('[data-role="language"]').selectedOptions).map(option => option.value),
 			});
 		}
 

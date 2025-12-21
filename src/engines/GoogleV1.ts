@@ -22,22 +22,24 @@ export class GoogleV1 {
     public emitter: EventEmitter = new EventEmitter();
     private inputId: number;
     private inputName: string;
+
     private request: any = {
         config: {
             encoding: 'LINEAR16',
             sampleRateHertz: 16000,
-            languageCode: 'en-US',
+            languageCode: 'en-us',
             model: 'latest_long'
         },
         interimResults: true,
     };
     private restart: () => void;
 
-    constructor(config: ConfigManager, sampleRate: number, inputId: number, inputName: string, restart: () => void) {
+    constructor(config: ConfigManager, sampleRate: number, inputId: number, inputName: string, languages: [string], restart: () => void) {
         this.config = config;
         this.sampleRate = sampleRate;
         this.request.config.sampleRateHertz = sampleRate;
         this.inputId = inputId;
+        this.request.config.languageCode = languages
         this.inputName = inputName;
         this.restart = restart;
 
