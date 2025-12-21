@@ -32,7 +32,8 @@ describe('Speech Class with Manual PCM Feeding', () => {
             sampleRate: 16000,
             color: '#FFFFFF',
             driver: RtAudioApi.WINDOWS_ASIO,
-            threshold: 0.01 // Low threshold so generated noise triggers it
+            threshold: 0.01, // Low threshold so generated noise triggers it
+            languages: ['en-us']
         };
 
         const restartFn = () => {

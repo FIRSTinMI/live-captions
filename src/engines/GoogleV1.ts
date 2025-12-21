@@ -34,12 +34,12 @@ export class GoogleV1 {
     };
     private restart: () => void;
 
-    constructor(config: ConfigManager, sampleRate: number, inputId: number, inputName: string, languages: [string], restart: () => void) {
+    constructor(config: ConfigManager, sampleRate: number, inputId: number, inputName: string, languages: string[], restart: () => void) {
         this.config = config;
         this.sampleRate = sampleRate;
         this.request.config.sampleRateHertz = sampleRate;
         this.inputId = inputId;
-        this.request.config.languageCode = languages
+        this.request.config.languageCode = languages[0] || 'en-us';
         this.inputName = inputName;
         this.restart = restart;
 

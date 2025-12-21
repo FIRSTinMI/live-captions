@@ -25,8 +25,9 @@ export class GoogleV2 {
     private inputName: string;
     private sampleRate: number;
     private restart: () => void;
+    private languages: string[];
 
-    constructor(config: ConfigManager, sampleRate: number, inputId: number, inputName: string, languages: [string], restart: () => void) {
+    constructor(config: ConfigManager, sampleRate: number, inputId: number, inputName: string, languages: string[], restart: () => void) {
         this.config = config;
         this.sampleRate = sampleRate;
         this.inputId = inputId;

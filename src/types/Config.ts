@@ -1,4 +1,4 @@
-import { RtAudioApi } from "audify"
+import { RtAudioApi } from "audify";
 
 export interface DisplayConfig {
     position: number,
@@ -7,19 +7,19 @@ export interface DisplayConfig {
     chromaKey: string,
     timeout: number,
     align: 'left' | 'center' | 'right',
-    hidden: boolean
+    hidden: boolean;
 }
 
 export interface ServerConfig {
-    port: number
+    port: number;
     google: {
         projectId: string,
         scopes: string,
         credentials: {
             client_email: string,
-            private_key: string
-        }
-    }
+            private_key: string;
+        };
+    };
 }
 
 export interface TranscriptionConfig {
@@ -41,7 +41,7 @@ export interface InputConfig {
     color: string,
     driver: RtAudioApi.WINDOWS_ASIO | RtAudioApi.WINDOWS_DS | RtAudioApi.WINDOWS_WASAPI,
     threshold: number,
-    languages: [string]
+    languages: string[];
 }
 
 export interface JSONConfig {
