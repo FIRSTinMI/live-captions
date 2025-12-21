@@ -45,6 +45,30 @@ function updateConfig() {
 					lc.style.transform = "translateX(-50%)";
 					break;
 			}
+			const queryString = window.location.search;
+			const urlParams = new URLSearchParams(queryString);
+			if (urlParams.get('fontSize')) {
+				json.display.size = parseInt(urlParams.get('fontSize'))
+			}
+			if (urlParams.get('maxLines')) {
+				json.display.lines = parseInt(urlParams.get('maxLines'))
+			}
+			if (urlParams.get('align')) {
+				json.display.align = parseInt(urlParams.get('align'))
+			}
+			if (urlParams.get('position')) {
+				json.display.position = parseInt(urlParams.get('position'))
+			}
+			if (urlParams.get('timeout')) {
+				json.display.timeout = parseInt(urlParams.get('timeout'))
+			}
+			if (urlParams.get('chromaKey')) {
+				json.display.chromaKey = parseInt(urlParams.get('chromaKey'))
+			}
+			if (urlParams.get('speaker')) {
+				json.display.speakers = urlParams.getAll('speaker')
+			}
+
 			document.body.style.backgroundColor = json.display.chromaKey;
 			lc.style.maxHeight = json.display.lines * (json.display.size + 6) + "px";
 			for (let child of lc.children) {
@@ -174,6 +198,10 @@ function handleCaptionFrame(frame) {
 	}
 
 	if (!hidden) lc.style.display = "block";
+	if (config.display.speakers && ! config.display.speakers.includes(device.toString())){
+		console.log("Disabled speaker")
+		return;
+	}
 
 	// Check if we've located the correct span
 	if (currentDiv != undefined) {
@@ -220,7 +248,14 @@ function handleCaptionFrame(frame) {
 	console.log(visibleContainers);
 	for (const div of lc.children) {
 		if (visibleContainers > 1) {
-			div.style.maxHeight = parseInt(config.display.size) + 6;
+			if (config.display.lines > 2 * visibleContainers) {
+				// If we have enough lines, divide them among the speakers
+				// Useful in full-screen caption-only displays
+				div.style.maxHeight = parseInt(config.display.size) * config.display.lines  / visibleContainers + 6;
+			}
+			else {
+				div.style.maxHeight = parseInt(config.display.size) + 6;
+			}
 		} else {
 			div.style.maxHeight = parseInt(config.display.size) * config.display.lines + 6;
 		}
