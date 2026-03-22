@@ -37,8 +37,8 @@ async function main() {
 
     await seedInitialAdmin();
 
-    const app = createServer();
-    app.listen(PORT, () => {
+    const server = createServer();
+    server.listen(PORT, () => {
         console.log(`Live Captions Cloud Server running on port ${PORT}`);
         console.log(`Admin panel: http://localhost:${PORT}/admin`);
     });
