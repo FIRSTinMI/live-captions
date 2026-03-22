@@ -10,5 +10,6 @@
         "skipLibCheck": true,
         "resolveJsonModule": true
     },
+    "include": ["src"],
     "exclude": ["src/admin", "node_modules"]
 }
