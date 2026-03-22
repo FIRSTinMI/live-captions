@@ -1,0 +1,68 @@
+import { pgTable, serial, text, timestamp, integer, numeric, jsonb, pgEnum } from 'drizzle-orm/pg-core';
+import { relations } from 'drizzle-orm';
+
+export const apiKeyTypeEnum = pgEnum('api_key_type', ['google-v1', 'google-v2']);
+
+export const users = pgTable('users', {
+    id: serial('id').primaryKey(),
+    username: text('username').notNull().unique(),
+    password: text('password').notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const devices = pgTable('devices', {
+    id: serial('id').primaryKey(),
+    name: text('name').notNull(),
+    pin: text('pin').notNull(),
+    tokenHash: text('token_hash'),
+    apiKey: text('api_key').notNull().default(''),
+    apiKeyType: apiKeyTypeEnum('api_key_type').notNull().default('google-v2'),
+    settings: jsonb('settings'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+    lastSeenAt: timestamp('last_seen_at'),
+    lastHeartbeatAt: timestamp('last_heartbeat_at'),
+});
+
+export const usageLogs = pgTable('usage_logs', {
+    id: serial('id').primaryKey(),
+    deviceId: integer('device_id').notNull().references(() => devices.id, { onDelete: 'cascade' }),
+    minutesUsed: numeric('minutes_used', { precision: 10, scale: 3 }).notNull(),
+    recordedAt: timestamp('recorded_at').defaultNow().notNull(),
+});
+
+export const errorLogs = pgTable('error_logs', {
+    id: serial('id').primaryKey(),
+    deviceId: integer('device_id').notNull().references(() => devices.id, { onDelete: 'cascade' }),
+    message: text('message').notNull(),
+    context: jsonb('context'),
+    occurredAt: timestamp('occurred_at').defaultNow().notNull(),
+});
+
+export const settingsQueue = pgTable('settings_queue', {
+    id: serial('id').primaryKey(),
+    deviceId: integer('device_id').notNull().references(() => devices.id, { onDelete: 'cascade' }),
+    settings: jsonb('settings').notNull(),
+    appliedAt: timestamp('applied_at'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+// Relations
+export const devicesRelations = relations(devices, ({ many }) => ({
+    usageLogs: many(usageLogs),
+    errorLogs: many(errorLogs),
+    settingsQueue: many(settingsQueue),
+}));
+
+export const usageLogsRelations = relations(usageLogs, ({ one }) => ({
+    device: one(devices, { fields: [usageLogs.deviceId], references: [devices.id] }),
+}));
+
+export const errorLogsRelations = relations(errorLogs, ({ one }) => ({
+    device: one(devices, { fields: [errorLogs.deviceId], references: [devices.id] }),
+}));
+
+export const settingsQueueRelations = relations(settingsQueue, ({ one }) => ({
+    device: one(devices, { fields: [settingsQueue.deviceId], references: [devices.id] }),
+}));

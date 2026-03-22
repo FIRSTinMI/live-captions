@@ -99,8 +99,12 @@ export class GoogleV1 {
     private start() {
         if (this.speech) {
             console.log(color(`GoogleV1: Starting ${this.inputId} stream`).green.toString());
+            const deviceName = this.config.server.cloud.deviceName;
+            const request = deviceName
+                ? { ...this.request, config: { ...this.request.config, metadata: { recordingDeviceName: deviceName, recordingDeviceType: 'PC_MIC' } } }
+                : this.request;
             this.recognizeStream = this.speech
-                .streamingRecognize(this.request)
+                .streamingRecognize(request)
                 .on('error', (err: APIError) => {
                     // Error maxing out the 305 second limit, so we just restart
                     if (err.toString().includes('305')) {

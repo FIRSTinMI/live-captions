@@ -20,6 +20,10 @@ export interface ServerConfig {
             private_key: string;
         };
     };
+    cloud: {
+        deviceToken: string | null;
+        deviceName: string | null;
+    };
 }
 
 export interface TranscriptionConfig {

@@ -103,7 +103,13 @@ export class GoogleV2 {
             },
             features: {
                 enableAutomaticPunctuation: true
-            }
+            },
+            ...(this.config.server.cloud.deviceName ? {
+                metadata: {
+                    recordingDeviceName: this.config.server.cloud.deviceName,
+                    recordingDeviceType: 'PC_MIC' as const,
+                }
+            } : {})
         };
 
         const streamingRecognitionConfig: google.cloud.speech.v2.IStreamingRecognitionConfig = {

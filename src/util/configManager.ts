@@ -23,6 +23,10 @@ export class ConfigManager {
                 client_email: '',
                 private_key: ''
             }
+        },
+        cloud: {
+            deviceToken: null,
+            deviceName: null
         }
     };
 
@@ -206,6 +210,12 @@ export class ConfigManager {
                 break;
             case 'transcription.hidden':
                 this.display.hidden = value;
+                break;
+            case 'server.cloud.deviceToken':
+                this.server.cloud.deviceToken = value === '' ? null : value;
+                break;
+            case 'server.cloud.deviceName':
+                this.server.cloud.deviceName = value === '' ? null : value;
                 break;
         }
     }

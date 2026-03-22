@@ -10,9 +10,11 @@ import { April } from '../engines/April';
 import { captionBus, micBus, displayCtrlBus, MicStatusPayload, DisplayControlEvent } from '../util/eventBus';
 import { Frame } from '../types/Frame';
 import { Context, createContext } from './context';
+import { CloudSync } from '../util/cloudSync';
 
 export interface RouterDeps {
     config: ConfigManager;
+    cloudSync: CloudSync;
     getSpeechServices: () => Speech<GoogleV1 | GoogleV2 | April>[];
     getRtAudio: () => RtAudio;
     restart: () => void;
@@ -89,6 +91,24 @@ export function createAppRouter(deps: RouterDeps) {
         devices: router({
             list: publicProcedure.query(() => {
                 return deps.getRtAudio().getDevices();
+            }),
+        }),
+
+        cloud: router({
+            connect: publicProcedure
+                .input(z.object({ pin: z.string() }))
+                .mutation(async ({ input }) => {
+                    return deps.cloudSync.connect(input.pin);
+                }),
+            disconnect: publicProcedure
+                .mutation(() => {
+                    deps.cloudSync.disconnect();
+                }),
+            status: publicProcedure.query(() => {
+                return {
+                    connected: !!deps.config.server.cloud.deviceToken,
+                    deviceName: deps.config.server.cloud.deviceName,
+                };
             }),
         }),
 

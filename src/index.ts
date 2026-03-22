@@ -11,6 +11,7 @@ import { GoogleV1 } from './engines/GoogleV1';
 import { April, downloadDependencies } from './engines/April';
 import { createAppRouter } from './trpc/router';
 import { micBus } from './util/eventBus';
+import { CloudSync } from './util/cloudSync';
 
 export const PROGRAM_FOLDER = process.platform === 'win32'
     ? process.env.APPDATA + '/live-captions'
@@ -106,8 +107,12 @@ async function start() {
         }
     }
 
+    const cloudSync = new CloudSync(config, () => speechServices);
+    await cloudSync.initialize();
+
     const appRouter = createAppRouter({
         config,
+        cloudSync,
         getSpeechServices: () => speechServices,
         getRtAudio: () => rtAudio,
         restart: start,

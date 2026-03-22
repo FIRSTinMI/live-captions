@@ -40,10 +40,19 @@ export class Speech<T extends GoogleV2 | GoogleV1 | April> {
     private state: StreamingState = StreamingState.ACTIVE;
     private suspended: boolean = false;
     private noiseFloor: number = 0;
+    private usageSeconds: number = 0;
 
     // Getter for test compatibility
     public get getState(): StreamingState {
         return this.state;
+    }
+
+    public getUsageMinutes(): number {
+        return this.usageSeconds / 60;
+    }
+
+    public resetUsageMinutes(): void {
+        this.usageSeconds = 0;
     }
 
     public get effectiveThreshold(): number {
@@ -210,6 +219,7 @@ export class Speech<T extends GoogleV2 | GoogleV1 | April> {
             // If noise above threshold and streaming is not paused then stream audio
             if (this.state === StreamingState.ACTIVE) {
                 this.engine.write(pcm);
+                this.usageSeconds += 480 / 16000; // one frame = 480 samples @ 16kHz
             } else {
                 this.engine.resume();
                 this.state = StreamingState.ACTIVE;

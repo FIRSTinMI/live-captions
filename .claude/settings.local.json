@@ -5,7 +5,11 @@
       "Bash(npm install:*)",
       "Bash(node -e \"console.log\\(require\\(''./node_modules/@trpc/server/package.json''\\).version\\)\")",
       "Bash(npx vite:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(find /c/Users/Filip/live-captions -maxdepth 3 -not -path */node_modules* -not -path */.git/* -type d)",
+      "Bash(git -C /c/Users/Filip/live-captions log --oneline -10)",
+      "Bash(npx drizzle-kit:*)",
+      "Bash(node -e \":*)"
     ]
   }
 }
