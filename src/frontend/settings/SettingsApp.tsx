@@ -39,7 +39,7 @@ export function SettingsApp() {
     const devicesQuery = trpc.devices.list.useQuery();
     const utils = trpc.useUtils();
 
-    // Single volumes subscription — shared across header badge + TranscriptionTab
+    // Single volumes subscription - shared across header badge + TranscriptionTab
     const { volumes, connected } = useVolumes();
 
     useEffect(() => {
@@ -56,7 +56,7 @@ export function SettingsApp() {
     return (
         <div className={styles.container}>
             <div className={styles.appHeader}>
-                <span className={styles.appTitle}>Live Captions — Settings</span>
+                <span className={styles.appTitle}>Live Captions - Settings</span>
                 <ConnectionBadge status={connected} />
             </div>
 

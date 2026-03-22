@@ -9,10 +9,15 @@ interface Props {
 }
 
 export function ServerTab({ config, onRefresh }: Props) {
+    const utils = trpc.useUtils();
     const set = trpc.config.set.useMutation({ onSuccess: onRefresh });
     const setJson = trpc.config.setJson.useMutation({ onSuccess: onRefresh });
-    const connect = trpc.cloud.connect.useMutation({ onSuccess: onRefresh });
-    const disconnect = trpc.cloud.disconnect.useMutation({ onSuccess: onRefresh });
+    const connect = trpc.cloud.connect.useMutation({
+        onSuccess: () => { utils.cloud.status.invalidate(); onRefresh(); },
+    });
+    const disconnect = trpc.cloud.disconnect.useMutation({
+        onSuccess: () => { utils.cloud.status.invalidate(); onRefresh(); },
+    });
     const { data: cloudStatus } = trpc.cloud.status.useQuery();
 
     const [pin, setPin] = useState('');
@@ -56,38 +61,41 @@ export function ServerTab({ config, onRefresh }: Props) {
                 <div className={styles.field}>
                     <label>Managed Device</label>
                     {isManaged ? (
-                        <div>
-                            <p style={{ marginBottom: 8, color: '#4caf50', fontWeight: 'bold' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                            <p style={{ color: 'var(--success)', fontWeight: 600 }}>
                                 ✓ Connected as: {cloudStatus?.deviceName ?? 'Unknown'}
                             </p>
-                            <button onClick={handleDisconnect} disabled={disconnect.isPending}>
+                            <span className={styles.supporting}>API key and credentials are managed by your administrator.</span>
+                            <button className={`${styles.btn} ${styles.btnDanger}`} onClick={handleDisconnect} disabled={disconnect.isPending}
+                                style={{ alignSelf: 'flex-start' }}>
                                 {disconnect.isPending ? 'Disconnecting...' : 'Disconnect'}
                             </button>
                         </div>
                     ) : (
-                        <div>
-                            <input
-                                type="text"
-                                value={pin}
-                                onChange={e => setPin(e.target.value)}
-                                placeholder="Enter device PIN"
-                                style={{ marginBottom: 8 }}
-                            />
-                            <button onClick={handleConnect} disabled={connect.isPending || !pin}>
-                                {connect.isPending ? 'Connecting...' : 'Connect'}
-                            </button>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                            <div style={{ display: 'flex', gap: 8 }}>
+                                <input
+                                    type="text"
+                                    value={pin}
+                                    onChange={e => setPin(e.target.value)}
+                                    onKeyDown={e => e.key === 'Enter' && pin && handleConnect()}
+                                    placeholder="Enter device PIN"
+                                    style={{ flex: 1 }}
+                                />
+                                <button className={`${styles.btn} ${styles.btnPrimary}`} onClick={handleConnect} disabled={connect.isPending || !pin}>
+                                    {connect.isPending ? 'Connecting...' : 'Connect'}
+                                </button>
+                            </div>
                             {connectError && (
-                                <p style={{ color: 'red', fontSize: 12, marginTop: 4 }}>{connectError}</p>
+                                <span className={styles.supporting} style={{ color: 'var(--danger)' }}>{connectError}</span>
                             )}
+                            <span className={styles.supporting}>Enter your device PIN to connect to cloud management.</span>
                         </div>
                     )}
-                    <span className={styles.supporting}>
-                        Enter your device PIN to connect to cloud management. The API key will be managed for you.
-                    </span>
                 </div>
             </div>
 
-            {/* Google credentials — hidden when managed */}
+            {/* Google credentials - hidden when managed */}
             {!isManaged && (
                 <div className={styles.row}>
                     <div className={styles.field}>
@@ -107,15 +115,6 @@ export function ServerTab({ config, onRefresh }: Props) {
                 </div>
             )}
 
-            {isManaged && (
-                <div className={styles.row}>
-                    <div className={styles.field}>
-                        <span className={styles.supporting} style={{ fontStyle: 'italic' }}>
-                            Google API credentials are managed by your administrator.
-                        </span>
-                    </div>
-                </div>
-            )}
         </div>
     );
 }

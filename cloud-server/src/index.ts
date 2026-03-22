@@ -14,7 +14,7 @@ async function seedInitialAdmin() {
     const username = process.env.ADMIN_USERNAME;
     const password = process.env.ADMIN_PASSWORD;
     if (!username || !password) {
-        console.warn('[seed] No ADMIN_USERNAME/ADMIN_PASSWORD set — skipping initial admin creation.');
+        console.warn('[seed] No ADMIN_USERNAME/ADMIN_PASSWORD set - skipping initial admin creation.');
         console.warn('[seed] Set these env vars and restart if this is a fresh install.');
         return;
     }

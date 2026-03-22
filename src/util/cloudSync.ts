@@ -6,9 +6,13 @@ import { GoogleV1 } from '../engines/GoogleV1';
 import { GoogleV2 } from '../engines/GoogleV2';
 import { April } from '../engines/April';
 import { CLOUD_SERVER_URL } from './cloudConfig';
+import { displayCtrlBus, captionBus } from '../util/eventBus';
+import type { Frame } from '../types/Frame';
 import color from 'colorts';
 
 const HEARTBEAT_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
+const RELAY_VOLUME_INTERVAL_MS = 500; // 500ms
+const RELAY_RECONNECT_DELAY_MS = 5000; // 5s
 
 interface QueuedError {
     message: string;
@@ -18,13 +22,30 @@ interface QueuedError {
 export class CloudSync {
     private config: ConfigManager;
     private getSpeechServices: () => Speech<GoogleV1 | GoogleV2 | April>[];
+    private getPhysicalDevices: () => Array<{ id: number; name: string; inputChannels: number }>;
+    private restart: () => void;
     private heartbeatTimer?: NodeJS.Timeout;
     private errorQueue: QueuedError[] = [];
     private client: ReturnType<typeof createTRPCClient<AppRouter>>;
 
-    constructor(config: ConfigManager, getSpeechServices: () => Speech<GoogleV1 | GoogleV2 | April>[]) {
+    // Relay WebSocket state
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    private relayWs: any = null;
+    private relayReconnectTimer: NodeJS.Timeout | null = null;
+    private volumeInterval: NodeJS.Timeout | null = null;
+    private relayConnected = false;
+    private captionHandler: ((frame: Frame) => void) | null = null;
+
+    constructor(
+        config: ConfigManager,
+        getSpeechServices: () => Speech<GoogleV1 | GoogleV2 | April>[],
+        getPhysicalDevices: () => Array<{ id: number; name: string; inputChannels: number }> = () => [],
+        restart: () => void = () => {},
+    ) {
         this.config = config;
         this.getSpeechServices = getSpeechServices;
+        this.getPhysicalDevices = getPhysicalDevices;
+        this.restart = restart;
         this.client = createTRPCClient<AppRouter>({
             links: [
                 httpBatchLink({
@@ -53,11 +74,13 @@ export class CloudSync {
         this.config.save();
         await this.syncConfig();
         this.startHeartbeat();
+        this.connectRelay();
         return { deviceName: result.deviceName };
     }
 
     public disconnect() {
         this.stopHeartbeat();
+        this.disconnectRelay();
         this.config.server.cloud.deviceToken = null;
         this.config.server.cloud.deviceName = null;
         this.config.save();
@@ -68,9 +91,193 @@ export class CloudSync {
         try {
             await this.syncConfig();
             this.startHeartbeat();
+            this.connectRelay();
             console.log(color('Cloud sync initialized').green.toString());
         } catch (err) {
             console.error(color('Cloud sync init failed:').red.toString(), err);
+        }
+    }
+
+    private connectRelay() {
+        const deviceToken = this.config.server.cloud.deviceToken;
+        if (!deviceToken) return;
+
+        // Clear any pending reconnect
+        if (this.relayReconnectTimer) {
+            clearTimeout(this.relayReconnectTimer);
+            this.relayReconnectTimer = null;
+        }
+
+        // Close existing WS if open
+        if (this.relayWs) {
+            try {
+                this.relayWs.onclose = null;
+                this.relayWs.close();
+            } catch { /* ignore */ }
+            this.relayWs = null;
+        }
+
+        const wsUrl = `${CLOUD_SERVER_URL.replace(/^http/, 'ws')}/ws/device?token=${encodeURIComponent(deviceToken)}`;
+
+        // Use global WebSocket if available (browser), otherwise require ws (Node.js/Bun)
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const WS: any = typeof WebSocket !== 'undefined' ? WebSocket : require('ws').WebSocket;
+
+        let ws: typeof this.relayWs;
+        try {
+            ws = new WS(wsUrl);
+        } catch (err) {
+            console.error(color('Relay WS connect failed:').red.toString(), err);
+            this.scheduleRelayReconnect();
+            return;
+        }
+
+        this.relayWs = ws;
+        this.relayConnected = false;
+
+        ws.onopen = () => {
+            this.relayConnected = true;
+            console.log(color('Relay WS connected').green.toString());
+
+            // Send hello
+            this.relaySend({
+                type: 'hello',
+                config: this.config.get(),
+                physicalDevices: this.getPhysicalDevices(),
+            });
+
+            // Forward captions to relay
+            if (this.captionHandler) captionBus.off('frame', this.captionHandler);
+            this.captionHandler = (frame: Frame) => this.relaySend({ type: 'caption', frame });
+            captionBus.on('frame', this.captionHandler);
+
+            // Start volume interval
+            this.stopVolumeInterval();
+            this.volumeInterval = setInterval(() => {
+                if (ws.readyState !== 1 /* OPEN */) return;
+                this.relaySend({
+                    type: 'volumes',
+                    devices: this.getSpeechServices().map(s => ({
+                        id: s.inputConfig.id,
+                        volume: Math.round(s.volume),
+                        threshold: Math.round(s.effectiveThreshold),
+                        state: s.getState,
+                    })),
+                });
+            }, RELAY_VOLUME_INTERVAL_MS);
+        };
+
+        ws.onmessage = (event: { data: string }) => {
+            try {
+                const msg = JSON.parse(event.data) as Record<string, unknown>;
+                this.handleRelayCommand(msg);
+            } catch { /* ignore */ }
+        };
+
+        ws.onclose = () => {
+            this.relayConnected = false;
+            this.stopVolumeInterval();
+            if (this.captionHandler) { captionBus.off('frame', this.captionHandler); this.captionHandler = null; }
+            console.log(color('Relay WS disconnected').yellow.toString());
+            // Reconnect if we still have a token
+            if (this.config.server.cloud.deviceToken) {
+                this.scheduleRelayReconnect();
+            }
+        };
+
+        ws.onerror = (err: unknown) => {
+            console.error(color('Relay WS error:').red.toString(), err);
+        };
+    }
+
+    private scheduleRelayReconnect() {
+        if (this.relayReconnectTimer) return;
+        this.relayReconnectTimer = setTimeout(() => {
+            this.relayReconnectTimer = null;
+            if (this.config.server.cloud.deviceToken) {
+                this.connectRelay();
+            }
+        }, RELAY_RECONNECT_DELAY_MS);
+    }
+
+    private disconnectRelay() {
+        this.stopVolumeInterval();
+        if (this.captionHandler) { captionBus.off('frame', this.captionHandler); this.captionHandler = null; }
+        if (this.relayReconnectTimer) {
+            clearTimeout(this.relayReconnectTimer);
+            this.relayReconnectTimer = null;
+        }
+        if (this.relayWs) {
+            try {
+                this.relayWs.onclose = null;
+                this.relayWs.close();
+            } catch { /* ignore */ }
+            this.relayWs = null;
+        }
+        this.relayConnected = false;
+    }
+
+    private stopVolumeInterval() {
+        if (this.volumeInterval) {
+            clearInterval(this.volumeInterval);
+            this.volumeInterval = null;
+        }
+    }
+
+    private relaySend(msg: unknown) {
+        if (this.relayWs?.readyState === 1 /* OPEN */) {
+            try {
+                this.relayWs.send(JSON.stringify(msg));
+            } catch { /* ignore */ }
+        }
+    }
+
+    private handleRelayCommand(msg: Record<string, unknown>) {
+        const type = msg.type as string;
+
+        if (type === 'set') {
+            const key = msg.key as string;
+            const value = msg.value;
+            (this.config as unknown as { set: (key: string, value: unknown) => void }).set(key, value);
+            this.config.save();
+            displayCtrlBus.emit('event', { type: 'config' });
+            this.relaySend({ type: 'config', config: this.config.get() });
+
+        } else if (type === 'setJson') {
+            const key = msg.key as string;
+            if (key === 'server.google') {
+                (this.config.server as unknown as Record<string, unknown>).google = msg.value;
+                this.config.save();
+                displayCtrlBus.emit('event', { type: 'config' });
+                this.relaySend({ type: 'config', config: this.config.get() });
+            }
+
+        } else if (type === 'setArray') {
+            const fullKey = msg.key as string;
+            const value = msg.value;
+            // Extract the sub-key after 'transcription.'
+            const subKey = fullKey.includes('.') ? fullKey.split('.').pop()! : fullKey;
+            (this.config.transcription as unknown as Record<string, unknown>)[subKey] = value;
+            this.config.save();
+            this.relaySend({ type: 'config', config: this.config.get() });
+
+        } else if (type === 'setInputs') {
+            this.config.transcription.inputs = msg.inputs as typeof this.config.transcription.inputs;
+            this.config.save();
+            this.relaySend({ type: 'config', config: this.config.get() });
+
+        } else if (type === 'restart') {
+            this.restart();
+
+        } else if (type === 'hide') {
+            const value = msg.value as boolean;
+            this.config.display.hidden = value;
+            this.config.save();
+            displayCtrlBus.emit('event', { type: 'hide', value });
+            this.relaySend({ type: 'config', config: this.config.get() });
+
+        } else if (type === 'clear') {
+            displayCtrlBus.emit('event', { type: 'clear' });
         }
     }
 
@@ -114,7 +321,7 @@ export class CloudSync {
 
     private applyApiKey(apiKey: string | null, apiKeyType: string) {
         if (!apiKey) {
-            // Key withheld — clear credentials so recognition stops
+            // Key withheld - clear credentials so recognition stops
             if (this.config.server.cloud.deviceToken) {
                 console.warn(color('Cloud: API key withheld (heartbeat overdue). Recognition paused.').yellow.toString());
                 this.config.server.google.credentials.client_email = '';

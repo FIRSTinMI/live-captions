@@ -25,7 +25,7 @@ export function VolumeBar({ volume, threshold, auto, onThresholdChange }: Props)
                 <span className={styles.thresholdValue}>{Math.round(clampedThreshold)}</span>
             </div>
 
-            {/* Volume bar — block, above slider */}
+            {/* Volume bar - block, above slider */}
             <div className={styles.volumeBarWrap}>
                 <div
                     className={`${styles.volumeBar} ${isActive ? styles.volumeBarActive : ''}`}
@@ -33,7 +33,7 @@ export function VolumeBar({ volume, threshold, auto, onThresholdChange }: Props)
                 />
             </div>
 
-            {/* Threshold slider — block, below bar, no overlap */}
+            {/* Threshold slider - block, below bar, no overlap */}
             <input
                 type="range"
                 className={styles.thresholdSlider}

@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { trpc } from '../api';
+import { useDeviceRelay } from '../hooks/useDeviceRelay';
+import { LiveSession } from '../components/LiveSession';
 
 function UsageChart({ rows }: { rows: { day: string; minutes: number }[] }) {
     if (!rows.length) return <p className="text-gray-400 text-sm py-4">No usage data</p>;
@@ -101,6 +103,8 @@ export function DeviceDetail() {
         if (device) setSettings(initFromSettings(device.settings));
     }, [device?.id]);
 
+    const [relayState, relaySend] = useDeviceRelay(deviceId);
+
     const update = trpc.admin.devices.update.useMutation({
         onSuccess: () => {
             utils.admin.devices.get.invalidate({ id: deviceId });
@@ -113,7 +117,7 @@ export function DeviceDetail() {
         onSuccess: () => {
             utils.admin.devices.get.invalidate({ id: deviceId });
             setPushError('');
-            setPushMsg('Queued — device will apply on next heartbeat');
+            setPushMsg('Queued - device will apply on next heartbeat');
             setTimeout(() => setPushMsg(''), 4000);
         },
         onError: (e) => setPushError(e.message),
@@ -194,92 +198,103 @@ export function DeviceDetail() {
                 </div>
             </div>
 
-            {/* Push settings */}
-            <div className="bg-white rounded-lg shadow mb-6">
-                <div className="px-6 py-4 border-b border-gray-200">
-                    <h3 className="font-semibold text-gray-900">Push Settings to Device</h3>
-                    <p className="text-xs text-gray-400 mt-0.5">
-                        Applied on next heartbeat (within 5 minutes){device.settings ? ' · showing last pushed values' : ''}
-                    </p>
-                </div>
+            {/* Live Session */}
+            <LiveSession deviceId={deviceId} state={relayState} send={relaySend} />
 
-                <div className="flex border-b border-gray-200 px-6">
-                    {(['display', 'transcription'] as SettingsTab[]).map(tab => (
-                        <button
-                            key={tab}
-                            onClick={() => setSettingsTab(tab)}
-                            className={`py-3 px-4 text-sm font-medium border-b-2 -mb-px capitalize transition-colors ${
-                                settingsTab === tab
-                                    ? 'border-blue-600 text-blue-600'
-                                    : 'border-transparent text-gray-500 hover:text-gray-700'
-                            }`}
-                        >{tab}</button>
-                    ))}
-                </div>
+            {/* Push settings (collapsible, queued for offline use) */}
+            <details className="bg-white rounded-lg shadow mb-6 group">
+                <summary className="px-6 py-4 cursor-pointer list-none flex items-center justify-between select-none">
+                    <div>
+                        <h3 className="font-semibold text-gray-900 inline">Push Settings</h3>
+                        <span className="text-xs text-gray-400 ml-2">(queued, for offline use)</span>
+                        <p className="text-xs text-gray-400 mt-0.5">
+                            Applied on next heartbeat (within 5 minutes){device.settings ? ' · showing last pushed values' : ''}
+                        </p>
+                    </div>
+                    <svg className="w-4 h-4 text-gray-400 transition-transform group-open:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                </summary>
 
-                <div className="p-6">
-                    {settingsTab === 'display' && (
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                            <Field label="Position">
-                                <select value={settings.display.position} onChange={e => setDisplay('position', Number(e.target.value))}>
-                                    <option value={0}>Bottom</option>
-                                    <option value={1}>Top</option>
-                                    <option value={2}>Bottom (audience space)</option>
-                                    <option value={3}>Top (audience space)</option>
-                                </select>
-                            </Field>
-                            <Field label="Alignment">
-                                <select value={settings.display.align} onChange={e => setDisplay('align', e.target.value as 'left' | 'center' | 'right')}>
-                                    <option value="left">Left</option>
-                                    <option value="center">Center</option>
-                                    <option value="right">Right</option>
-                                </select>
-                            </Field>
-                            <Field label="Chroma Key">
-                                <input type="text" value={settings.display.chromaKey} onChange={e => setDisplay('chromaKey', e.target.value)} placeholder="#00B140" />
-                            </Field>
-                            <Field label="Text Size (px)">
-                                <input type="number" value={settings.display.size} onChange={e => setDisplay('size', Number(e.target.value))} />
-                            </Field>
-                            <Field label="Max Lines">
-                                <input type="number" value={settings.display.lines} onChange={e => setDisplay('lines', Number(e.target.value))} />
-                            </Field>
-                            <Field label="Timeout (s)">
-                                <input type="number" value={settings.display.timeout} onChange={e => setDisplay('timeout', Number(e.target.value))} />
-                            </Field>
+                <div className="border-t border-gray-200">
+                    <div className="flex border-b border-gray-200 px-6">
+                        {(['display', 'transcription'] as SettingsTab[]).map(tab => (
+                            <button
+                                key={tab}
+                                onClick={() => setSettingsTab(tab)}
+                                className={`py-3 px-4 text-sm font-medium border-b-2 -mb-px capitalize transition-colors ${
+                                    settingsTab === tab
+                                        ? 'border-blue-600 text-blue-600'
+                                        : 'border-transparent text-gray-500 hover:text-gray-700'
+                                }`}
+                            >{tab}</button>
+                        ))}
+                    </div>
+
+                    <div className="p-6">
+                        {settingsTab === 'display' && (
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                                <Field label="Position">
+                                    <select value={settings.display.position} onChange={e => setDisplay('position', Number(e.target.value))}>
+                                        <option value={0}>Bottom</option>
+                                        <option value={1}>Top</option>
+                                        <option value={2}>Bottom (audience space)</option>
+                                        <option value={3}>Top (audience space)</option>
+                                    </select>
+                                </Field>
+                                <Field label="Alignment">
+                                    <select value={settings.display.align} onChange={e => setDisplay('align', e.target.value as 'left' | 'center' | 'right')}>
+                                        <option value="left">Left</option>
+                                        <option value="center">Center</option>
+                                        <option value="right">Right</option>
+                                    </select>
+                                </Field>
+                                <Field label="Chroma Key">
+                                    <input type="text" value={settings.display.chromaKey} onChange={e => setDisplay('chromaKey', e.target.value)} placeholder="#00B140" />
+                                </Field>
+                                <Field label="Text Size (px)">
+                                    <input type="number" value={settings.display.size} onChange={e => setDisplay('size', Number(e.target.value))} />
+                                </Field>
+                                <Field label="Max Lines">
+                                    <input type="number" value={settings.display.lines} onChange={e => setDisplay('lines', Number(e.target.value))} />
+                                </Field>
+                                <Field label="Timeout (s)">
+                                    <input type="number" value={settings.display.timeout} onChange={e => setDisplay('timeout', Number(e.target.value))} />
+                                </Field>
+                            </div>
+                        )}
+
+                        {settingsTab === 'transcription' && (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <Field label="Transcription Engine">
+                                    <select value={settings.transcription.engine} onChange={e => setTranscription('engine', e.target.value as 'googlev1' | 'googlev2' | 'april')}>
+                                        <option value="googlev1">Google V1</option>
+                                        <option value="googlev2">Google V2</option>
+                                        <option value="april">April ASR (local) - Beta</option>
+                                    </select>
+                                </Field>
+                                <Field label="Phrase Sets" supporting="One per line. Must be configured in GCloud.">
+                                    <textarea
+                                        value={settings.transcription.phraseSets}
+                                        onChange={e => setTranscription('phraseSets', e.target.value)}
+                                        rows={4}
+                                        className="font-mono resize-y"
+                                    />
+                                </Field>
+                            </div>
+                        )}
+
+                        <div className="flex items-center gap-3 mt-6 pt-4 border-t border-gray-100">
+                            <button onClick={handlePushSettings} disabled={pushSettings.isPending}
+                                className="bg-orange-600 text-white rounded px-4 py-2 text-sm font-medium hover:bg-orange-700 disabled:opacity-50">
+                                {pushSettings.isPending ? 'Queuing...' : 'Push Settings to Device'}
+                            </button>
+                            {pushMsg && <span className="text-sm text-green-600">{pushMsg}</span>}
+                            {pushError && <span className="text-sm text-red-600">{pushError}</span>}
                         </div>
-                    )}
-
-                    {settingsTab === 'transcription' && (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <Field label="Transcription Engine">
-                                <select value={settings.transcription.engine} onChange={e => setTranscription('engine', e.target.value as 'googlev1' | 'googlev2' | 'april')}>
-                                    <option value="googlev1">Google V1</option>
-                                    <option value="googlev2">Google V2</option>
-                                    <option value="april">April ASR (local) — Beta</option>
-                                </select>
-                            </Field>
-                            <Field label="Phrase Sets" supporting="One per line. Must be configured in GCloud.">
-                                <textarea
-                                    value={settings.transcription.phraseSets}
-                                    onChange={e => setTranscription('phraseSets', e.target.value)}
-                                    rows={4}
-                                    className="font-mono resize-y"
-                                />
-                            </Field>
-                        </div>
-                    )}
-
-                    <div className="flex items-center gap-3 mt-6 pt-4 border-t border-gray-100">
-                        <button onClick={handlePushSettings} disabled={pushSettings.isPending}
-                            className="bg-orange-600 text-white rounded px-4 py-2 text-sm font-medium hover:bg-orange-700 disabled:opacity-50">
-                            {pushSettings.isPending ? 'Queuing...' : 'Push Settings to Device'}
-                        </button>
-                        {pushMsg && <span className="text-sm text-green-600">{pushMsg}</span>}
-                        {pushError && <span className="text-sm text-red-600">{pushError}</span>}
                     </div>
                 </div>
-            </div>
+            </details>
 
             {/* Error logs */}
             <div className="bg-white rounded-lg shadow mb-6">

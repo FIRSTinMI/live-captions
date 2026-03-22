@@ -102,7 +102,7 @@ export function TranscriptionTab({ config, physicalDevices, volumes, connected, 
                     >
                         <option value="googlev1">Google V1</option>
                         <option value="googlev2">Google V2</option>
-                        <option value="april">April ASR (local) — Beta</option>
+                        <option value="april">April ASR (local) - Beta</option>
                     </select>
                 </div>
             </div>
@@ -119,7 +119,7 @@ export function TranscriptionTab({ config, physicalDevices, volumes, connected, 
                         })}
                     />
                     <span className={styles.supporting}>
-                        One word per line — +word adds, -word removes. Click to reveal.
+                        One word per line - +word adds, -word removes. Click to reveal.
                     </span>
                 </div>
             </div>

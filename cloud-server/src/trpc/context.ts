@@ -35,7 +35,7 @@ export async function createContext({ req }: { req: Request }): Promise<Context>
                         .where(eq(schema.devices.id, device.id));
                 }
             } catch {
-                // DB unavailable — leave deviceId null
+                // DB unavailable - leave deviceId null
             }
         }
     }

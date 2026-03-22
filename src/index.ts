@@ -101,13 +101,13 @@ async function start() {
         } else if (!noClientsPauseTimer) {
             noClientsPauseTimer = setTimeout(() => {
                 noClientsPauseTimer = undefined;
-                console.log('No clients for 30s — pausing speech engines');
+                console.log('No clients for 30s - pausing speech engines');
                 speechServices.forEach(s => s.suspend());
             }, 30000);
         }
     }
 
-    const cloudSync = new CloudSync(config, () => speechServices);
+    const cloudSync = new CloudSync(config, () => speechServices, () => rtAudio.getDevices(), start);
     await cloudSync.initialize();
 
     const appRouter = createAppRouter({

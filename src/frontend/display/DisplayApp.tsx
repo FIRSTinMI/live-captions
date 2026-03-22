@@ -40,7 +40,7 @@ export function DisplayApp() {
     const configQuery = trpc.config.get.useQuery(undefined, { staleTime: Infinity });
     const utils = trpc.useUtils();
 
-    // Parse query and merge with server config — runs when data arrives
+    // Parse query and merge with server config - runs when data arrives
     useEffect(() => {
         if (!configQuery.data) return;
         const json = configQuery.data as AppConfig;

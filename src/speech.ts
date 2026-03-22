@@ -190,22 +190,22 @@ export class Speech<T extends GoogleV2 | GoogleV1 | April> {
         const rawVolume = Math.log(this.amplitudeSum / this.amplitudeArray.length) * 18.939;
         this.volume = isFinite(rawVolume) ? rawVolume : 0;
 
-        // Update noise floor EMA only during silence — never during active speech.
+        // Update noise floor EMA only during silence - never during active speech.
         // This prevents: (a) long speech slowly raising the floor until it cuts out,
         // (b) the floor chasing the speaker's voice instead of the ambient noise.
         // During muting (volume → 0) the floor still fast-decays, re-calibrating on unmute.
         if (this.volume < this.effectiveThreshold) {
             if (this.volume < this.noiseFloor) {
-                // Room got quieter — decay quickly
+                // Room got quieter - decay quickly
                 this.noiseFloor = AUTO_THRESHOLD_ALPHA_DOWN * this.volume + (1 - AUTO_THRESHOLD_ALPHA_DOWN) * this.noiseFloor;
             } else {
-                // Ambient noise crept up — rise slowly
+                // Ambient noise crept up - rise slowly
                 this.noiseFloor = AUTO_THRESHOLD_ALPHA_UP * this.volume + (1 - AUTO_THRESHOLD_ALPHA_UP) * this.noiseFloor;
             }
         }
         // When volume >= effectiveThreshold (someone speaking): hold the floor steady.
 
-        // Stop here when suspended — don't write to the speech engine
+        // Stop here when suspended - don't write to the speech engine
         if (this.suspended) return;
 
         const effectiveThreshold = this.effectiveThreshold;
