@@ -81,23 +81,70 @@ async function start() {
     // Create a asio interface
     const rtAudio = new RtAudio(RtAudioApi.WINDOWS_WASAPI);
 
+    let noClientsPauseTimer: NodeJS.Timeout | undefined;
+
+    function cancelPauseTimer() {
+        if (noClientsPauseTimer) {
+            clearTimeout(noClientsPauseTimer);
+            noClientsPauseTimer = undefined;
+        }
+    }
+
+    function schedulePauseIfEmpty() {
+        // Pause only after 30s with no display or settings clients at all
+        const anyConnected = server.clients.length > 0 || server.settingsClients.length > 0;
+        if (anyConnected) {
+            cancelPauseTimer();
+        } else if (!noClientsPauseTimer) {
+            noClientsPauseTimer = setTimeout(() => {
+                noClientsPauseTimer = undefined;
+                console.log('No clients for 30s — pausing speech engines');
+                speechServices.forEach(s => s.suspend());
+            }, 30000);
+        }
+    }
+
     // Start web server
-    server = new Server(config, clients, rtAudio, start);
+    server = new Server(config, clients, rtAudio, start,
+        () => schedulePauseIfEmpty(),          // display client disconnected
+        () => {                                // display client connected — cancel timer AND unsuspend
+            cancelPauseTimer();
+            speechServices.forEach(s => s.unsuspend());
+        },
+        () => schedulePauseIfEmpty(),          // settings client disconnected
+        () => cancelPauseTimer()               // settings client connected — cancel timer only, don't unsuspend
+    );
     server.start();
 
 
     if (volumeInterval) clearInterval(volumeInterval);
 
+    let volumeTickCount = 0;
     volumeInterval = setInterval(() => {
         for (let client of server.settingsClients) {
             client.send(JSON.stringify({
                 type: 'volumes',
                 devices: speechServices.map((s: Speech<GoogleV1 | GoogleV2 | April>) => ({
                     id: s.inputConfig.id,
-                    volume: Math.round(s.volume)
+                    volume: Math.round(s.volume),
+                    threshold: Math.round(s.effectiveThreshold)
                 }))
             }));
         }
+        // Send mic active status to display clients once per second (every 20 × 50ms ticks)
+        if (volumeTickCount % 20 === 0) {
+            const micStatus = JSON.stringify({
+                type: 'mic_status',
+                devices: speechServices.map((s: Speech<GoogleV1 | GoogleV2 | April>) => ({
+                    id: s.inputConfig.id,
+                    active: s.volume >= s.effectiveThreshold
+                }))
+            });
+            for (let client of server.clients) {
+                client.send(micStatus);
+            }
+        }
+        volumeTickCount++;
     }, 50);
 
     if (updateInterval) clearInterval(updateInterval);

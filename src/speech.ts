@@ -13,6 +13,11 @@ import { transform } from './util/transformer';
 // Number of frames after silence is detected to continue streaming
 const THRESHOLD_CUTOFF_SMOOTHING = 10;
 
+// Auto-threshold constants
+const AUTO_THRESHOLD_HEADROOM = 12;
+const AUTO_THRESHOLD_ALPHA_DOWN = 0.005; // fast decay when room gets quieter (τ ≈ 2s)
+const AUTO_THRESHOLD_ALPHA_UP = 0.001;   // slow rise when room gets louder (τ ≈ 10s)
+
 export enum StreamingState {
     ACTIVE,
     PAUSED,
@@ -34,10 +39,21 @@ export class Speech<T extends GoogleV2 | GoogleV1 | April> {
     private silent: boolean = true;
     private framesSinceChange: number = 0;
     private state: StreamingState = StreamingState.ACTIVE;
+    private suspended: boolean = false;
+    private noiseFloor: number = 0;
 
     // Getter for test compatibility
     public get getState(): StreamingState {
         return this.state;
+    }
+
+    public get effectiveThreshold(): number {
+        const FOUR_DAYS_MS = 4 * 24 * 60 * 60 * 1000;
+        const isStale = !this.inputConfig.thresholdLastSet
+            || (Date.now() - this.inputConfig.thresholdLastSet > FOUR_DAYS_MS);
+        return (this.inputConfig.autoThreshold || isStale)
+            ? this.noiseFloor + AUTO_THRESHOLD_HEADROOM
+            : this.inputConfig.threshold;
     }
 
     constructor(config: ConfigManager, clients: WebSocket[], input: InputConfig, engine: { new(config: ConfigManager, sampleRate: number, inputId: number, inputName: string, languages: string[], restart: () => void): T; }, restart: () => void, mockMode: boolean = false) {
@@ -47,6 +63,7 @@ export class Speech<T extends GoogleV2 | GoogleV1 | April> {
         this.clients = clients;
         this.restart = restart;
         this.mockMode = mockMode;
+        this.noiseFloor = input.threshold; // warm start at manual threshold
 
         // Process filter
         let removeWords = [];
@@ -129,6 +146,19 @@ export class Speech<T extends GoogleV2 | GoogleV1 | April> {
         this.processPCMBuffer(pcm);
     }
 
+    public suspend() {
+        this.suspended = true;
+        if (this.state === StreamingState.ACTIVE) {
+            this.engine.pause();
+            this.state = StreamingState.PAUSED;
+        }
+    }
+
+    public unsuspend() {
+        this.suspended = false;
+        // processPCMBuffer will call engine.resume() naturally when audio above threshold arrives
+    }
+
     private processPCMBuffer(pcm: Buffer): void {
         let min = 32767;
         let max = -32768;
@@ -155,7 +185,19 @@ export class Speech<T extends GoogleV2 | GoogleV1 | April> {
 
         this.volume = Math.log(this.amplitudeSum / this.amplitudeArray.length) * 18.939;
 
-        if (this.volume >= this.inputConfig.threshold) {
+        // Update noise floor EMA — runs even when suspended so settings page always sees live levels
+        if (this.volume < this.noiseFloor) {
+            this.noiseFloor = AUTO_THRESHOLD_ALPHA_DOWN * this.volume + (1 - AUTO_THRESHOLD_ALPHA_DOWN) * this.noiseFloor;
+        } else {
+            this.noiseFloor = AUTO_THRESHOLD_ALPHA_UP * this.volume + (1 - AUTO_THRESHOLD_ALPHA_UP) * this.noiseFloor;
+        }
+
+        // Stop here when suspended — don't write to the speech engine
+        if (this.suspended) return;
+
+        const effectiveThreshold = this.effectiveThreshold;
+
+        if (this.volume >= effectiveThreshold) {
             if (this.silent) {
                 this.silent = false;
                 this.framesSinceChange = 0;

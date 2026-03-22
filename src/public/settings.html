@@ -41,6 +41,8 @@
 				z-index: 10;
 				position: relative;
 				top: -14px;
+				display: inline-block;
+				pointer-events: none;
 			}
 
 			.transcription-filter:not(:focus) {
@@ -161,7 +163,13 @@
 									<a class="waves-effect waves-light red btn center-align" data-action="remove">Remove</a>
 								</div>
 							</div>
-							<span class="supporting-text">Noise Gate Threshold</span>
+							<div style="display:flex; align-items:center; gap:12px;">
+								<span class="supporting-text">Noise Gate Threshold</span>
+								<label style="display:flex; align-items:center; gap:4px; font-size:0.85rem; margin-bottom:0;">
+									<input id="template-auto-threshold" data-role="auto-threshold" type="checkbox" />
+									<span>Auto</span>
+								</label>
+							</div>
 							<div class="volume-indicator mb-4" data-role="volume">
 								<div class="volume-bar"></div>
 								<input id="template-threshold" data-role="threshold" type="range" style="width: 100%; margin-top: -7px" min="0" max="100" />

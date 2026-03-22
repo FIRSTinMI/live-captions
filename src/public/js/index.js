@@ -7,6 +7,30 @@ let clearingWaitForFinal = false;
 
 const deviceStats = [];
 
+// Watchdog state
+let lastFrameTime = 0;
+let micActiveLastSeen = 0;
+const WATCHDOG_TRIGGER_MS = 20000;
+const WATCHDOG_GRACE_MS = 15000;
+const pageLoadTime = Date.now();
+
+setInterval(() => {
+	const now = Date.now();
+	if (now - pageLoadTime < WATCHDOG_GRACE_MS) return;
+	if (now - micActiveLastSeen > 3000) return;
+	if (lastFrameTime > 0 && now - lastFrameTime < WATCHDOG_TRIGGER_MS) return;
+	if (lastFrameTime === 0 && now - pageLoadTime < WATCHDOG_TRIGGER_MS) return;
+	const reloads = parseInt(sessionStorage.getItem('watchdogReloads') || '0');
+	if (reloads < 1) {
+		sessionStorage.setItem('watchdogReloads', String(reloads + 1));
+		window.location.reload();
+	} else {
+		// Reload didn't fix it — restart the server and reload
+		sessionStorage.setItem('watchdogReloads', '0');
+		fetch('/restart', { method: 'POST' }).then(() => setTimeout(() => window.location.reload(), 3000));
+	}
+}, 5000);
+
 function updateConfig() {
 	return fetch("/config")
 		.then((res) => res.json())
@@ -138,6 +162,12 @@ let clearing = false;
 function handleCaptionFrame(frame) {
 	console.log(frame);
 	if (frame.type == "config") return window.location.reload();
+	if (frame.type == "mic_status") {
+		if (frame.devices && frame.devices.some(d => d.active)) {
+			micActiveLastSeen = Date.now();
+		}
+		return;
+	}
 	if (frame.text == "") return;
 	if (frame.type == "clear") {
 		console.log("clearing");
@@ -171,6 +201,10 @@ function handleCaptionFrame(frame) {
 
 	if (clearing) return; // Don't process frames while clearing
 
+	// Watchdog: record that captions are flowing
+	lastFrameTime = Date.now();
+	sessionStorage.setItem('watchdogReloads', '0');
+
 	const device = frame.device;
 
 	// Initilize defaults
@@ -180,10 +214,11 @@ function handleCaptionFrame(frame) {
 			lastFrameWasFinal: false,
 			currentDiv: undefined,
 			currentTimeout: undefined,
+			staleTimeout: undefined,
 			color: config.transcription.inputs.find((input) => input.id === device).color,
 		};
 
-	let { transcript, lastFrameWasFinal, currentDiv, currentTimeout, color } = deviceStats[device];
+	let { transcript, lastFrameWasFinal, currentDiv, currentTimeout, staleTimeout, color } = deviceStats[device];
 
 	clearTimeout(currentTimeout);
 
@@ -206,7 +241,16 @@ function handleCaptionFrame(frame) {
 	// Check if we've located the correct span
 	if (currentDiv != undefined) {
 		// Just append to that
-		if (!frame.isFinal) currentDiv.innerHTML = transcript + capitalize(frame.text);
+		if (!frame.isFinal) {
+			currentDiv.innerHTML = transcript + capitalize(frame.text);
+			// Reset stale timeout — if no final frame arrives, clear after 8s
+			clearTimeout(staleTimeout);
+			staleTimeout = setTimeout(() => {
+				deviceStats[device].currentDiv.innerHTML = "";
+				deviceStats[device].currentDiv = undefined;
+				deviceStats[device].staleTimeout = undefined;
+			}, 8000);
+		}
 	} else {
 		// Otherwise create a new span with the correct color
 		currentDiv = document.createElement("div");
@@ -220,6 +264,8 @@ function handleCaptionFrame(frame) {
 
 	if (frame.isFinal) {
 		lastFrameWasFinal = true;
+		clearTimeout(staleTimeout);
+		staleTimeout = undefined;
 
 		// If the sentence is finished we can commit it to the transcript
 		transcript += capitalize(frame.text) + "\n";
@@ -269,6 +315,7 @@ function handleCaptionFrame(frame) {
 		lastFrameWasFinal,
 		currentDiv,
 		currentTimeout,
+		staleTimeout,
 		color,
 	};
 }

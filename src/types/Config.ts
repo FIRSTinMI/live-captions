@@ -41,6 +41,8 @@ export interface InputConfig {
     color: string,
     driver: RtAudioApi.WINDOWS_ASIO | RtAudioApi.WINDOWS_DS | RtAudioApi.WINDOWS_WASAPI,
     threshold: number,
+    autoThreshold?: boolean,
+    thresholdLastSet?: number,
     languages: string[];
 }
 

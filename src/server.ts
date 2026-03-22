@@ -16,7 +16,7 @@ export class Server {
     private instance: HttpServer<typeof IncomingMessage, typeof ServerResponse> | undefined;
 
 
-    constructor(config: ConfigManager, clients: ws[], rtAudio: RtAudio, restart: () => void) {
+    constructor(config: ConfigManager, clients: ws[], rtAudio: RtAudio, restart: () => void, onNoClients: () => void = () => {}, onFirstClient: () => void = () => {}, onNoSettingsClients: () => void = () => {}, onFirstSettingsClient: () => void = () => {}) {
         this.config = config;
         this.clients = clients;
 
@@ -94,17 +94,27 @@ export class Server {
 
             ws.on('message', (msg) => {
                 if (msg.toString() === 'display') {
+                    const wasEmpty = this.clients.length === 0;
                     this.clients.push(ws);
                     type = 1;
+                    if (wasEmpty) onFirstClient();
                 } else if (msg.toString() === 'settings') {
+                    const wasEmpty = this.settingsClients.length === 0;
                     this.settingsClients.push(ws);
                     type = 2;
+                    if (wasEmpty) onFirstSettingsClient();
                 }
             });
 
             ws.on('close', () => {
-                if (type === 1) this.clients.splice(this.clients.indexOf(ws), 1);
-                if (type === 2) this.settingsClients.splice(this.settingsClients.indexOf(ws), 1);
+                if (type === 1) {
+                    this.clients.splice(this.clients.indexOf(ws), 1);
+                    if (this.clients.length === 0) onNoClients();
+                }
+                if (type === 2) {
+                    this.settingsClients.splice(this.settingsClients.indexOf(ws), 1);
+                    if (this.settingsClients.length === 0) onNoSettingsClients();
+                }
             });
         });
     }

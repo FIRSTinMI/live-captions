@@ -4,7 +4,7 @@
     "main": "./build/index.js",
     "bin": "./build/index.js",
     "scripts": {
-        "start": "npx tsx ./src/index.ts --skip-update-check",
+        "start": "bun run ./src/index.ts --skip-update-check",
         "start-gibberish": "tsc && node ./build/index.js --gibberish",
         "dist": "tsc && pkg .",
         "test": "bun test"

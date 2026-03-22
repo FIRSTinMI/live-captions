@@ -6,6 +6,7 @@ document.addEventListener("DOMContentLoaded", function () {
 	M.Tabs.init(document.querySelector(".tabs"), {
 		onShow: (elm) => {
 			window.history.replaceState(null, document.title, `/settings.html#${elm.id}`);
+			if (elm.id === 'transcription') connectToSocket();
 		},
 	});
 });
@@ -89,6 +90,10 @@ for (let elm of document.querySelectorAll("button")) {
 
 const container = document.getElementById("devices-container");
 
+function syncThresholdSlider(row) {
+	// No visual override needed — slider is updated live by the volumes WebSocket handler in auto mode
+}
+
 function addRow(device = null) {
 	const index = container.childElementCount;
 	if (device === null) {
@@ -98,6 +103,7 @@ function addRow(device = null) {
 			color: defaultColors[index >= defaultColors.length ? defaultColors.length - 1 : index],
 			channel: 0,
 			threshold: 10,
+			autoThreshold: false,
 			languages: ["en-us"],
 		};
 	}
@@ -128,7 +134,16 @@ function addRow(device = null) {
 	row.querySelector("#template-threshold").value = device.threshold;
 	row.querySelector("#template-threshold").setAttribute("id", `device-${index}-threshold`);
 
+	const FOUR_DAYS_MS = 4 * 24 * 60 * 60 * 1000;
+	const isStale = !device.thresholdLastSet || (Date.now() - device.thresholdLastSet > FOUR_DAYS_MS);
+	row.querySelector("#template-auto-threshold").checked = !!device.autoThreshold || isStale;
+	row.querySelector("#template-auto-threshold").setAttribute("id", `device-${index}-auto-threshold`);
+	row.setAttribute("data-threshold-last-set", device.thresholdLastSet ?? "");
+
 	row.querySelector('[data-role="volume"]').setAttribute("id", `device-${index}-volume`);
+
+	syncThresholdSlider(row);
+	row.querySelector('[data-role="auto-threshold"]').addEventListener("change", () => syncThresholdSlider(row));
 
 	// Add options to dropdown
 	const dropdown = row.querySelector('[data-role="id"]');
@@ -187,6 +202,11 @@ for (let btn of document.querySelectorAll(".apply-btn")) {
 				color: row.querySelector('[data-role="color"]').value,
 				driver: 7,
 				threshold: parseInt(row.querySelector('[data-role="threshold"]').value),
+				autoThreshold: row.querySelector('[data-role="auto-threshold"]').checked,
+				// Preserve old timestamp when auto is on; record now when user manually sets threshold
+				thresholdLastSet: row.querySelector('[data-role="auto-threshold"]').checked
+					? (row.getAttribute("data-threshold-last-set") ? parseInt(row.getAttribute("data-threshold-last-set")) : undefined)
+					: Date.now(),
 				languages: Array.from(row.querySelector('[data-role="language"]').selectedOptions).map((option) => option.value),
 			});
 		}
@@ -206,9 +226,15 @@ for (let btn of document.querySelectorAll(".apply-btn")) {
 	});
 }
 
+let settingsSocket = null;
+
 function connectToSocket() {
+	// Don't open a second socket if one is already open or connecting
+	if (settingsSocket && settingsSocket.readyState <= WebSocket.OPEN) return;
+
 	// Open connection
 	const socket = new WebSocket(`ws://${window.location.host}/ws/`);
+	settingsSocket = socket;
 
 	// Connection opened
 	socket.addEventListener("open", (evt) => {
@@ -221,6 +247,7 @@ function connectToSocket() {
 
 	socket.addEventListener("close", () => {
 		console.log("Socket lost connection, retying in 5 seconds");
+		settingsSocket = null;
 		setTimeout(connectToSocket, 5e3);
 	});
 
@@ -234,17 +261,29 @@ function connectToSocket() {
 		if (json.type === "volumes") {
 			for (let device of json.devices) {
 				const elm = document.getElementById(`device-${device.id}-volume`);
-				if (elm) {
-					elm.children[0].style.width = `${device.volume}%`;
-					if (device.volume > parseInt(document.getElementById(`device-${device.id}-threshold`).value)) {
-						elm.children[0].style.backgroundColor = "#4CAF50";
-					} else {
-						elm.children[0].style.backgroundColor = "";
-					}
+				if (!elm) continue;
+
+				const thresholdSlider = document.getElementById(`device-${device.id}-threshold`);
+				const indicator = elm.querySelector('[data-role="threshold-indicator"]');
+				const autoCheckbox = elm.closest('[data-role="device-row"]')?.querySelector('[data-role="auto-threshold"]');
+
+				const effectiveThreshold = device.threshold ?? (thresholdSlider ? parseInt(thresholdSlider.value) : 0);
+
+				// Update volume bar width and colour
+				elm.children[0].style.width = `${Math.max(0, device.volume)}%`;
+				elm.children[0].style.backgroundColor = device.volume > effectiveThreshold ? "#4CAF50" : "";
+
+				// Move the threshold indicator line to the threshold position
+				if (indicator) indicator.style.left = `${effectiveThreshold}%`;
+
+				// In auto mode, mirror the slider so the user can see where auto landed
+				if (thresholdSlider && autoCheckbox?.checked) {
+					thresholdSlider.value = effectiveThreshold;
+					thresholdSlider.dispatchEvent(new Event('input'));
 				}
 			}
 		}
 	});
 }
 
-document.getElementById("transcription-tab").addEventListener("click", () => connectToSocket());
+// connectToSocket is now triggered via onShow in the Materialize tabs init above
