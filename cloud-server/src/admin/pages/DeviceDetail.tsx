@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { trpc } from '../api';
 
@@ -19,6 +19,64 @@ function UsageChart({ rows }: { rows: { day: string; minutes: number }[] }) {
     );
 }
 
+function Field({ label, supporting, children }: { label: string; supporting?: string; children: React.ReactNode }) {
+    return (
+        <div className="flex flex-col gap-1">
+            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{label}</label>
+            {React.Children.map(children, child =>
+                React.isValidElement(child)
+                    ? React.cloneElement(child as React.ReactElement<React.HTMLAttributes<HTMLElement>>, {
+                        className: `w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white ${(child.props as React.HTMLAttributes<HTMLElement>).className ?? ''}`,
+                    })
+                    : child
+            )}
+            {supporting && <span className="text-xs text-gray-400">{supporting}</span>}
+        </div>
+    );
+}
+
+type SettingsTab = 'display' | 'transcription';
+
+type LocalSettings = {
+    display: {
+        position: number;
+        size: number;
+        lines: number;
+        chromaKey: string;
+        timeout: number;
+        align: 'left' | 'center' | 'right';
+    };
+    transcription: {
+        engine: 'googlev1' | 'googlev2' | 'april';
+        phraseSets: string;
+    };
+};
+
+const DEFAULTS: LocalSettings = {
+    display: { position: 0, size: 42, lines: 2, chromaKey: '#00B140', timeout: 5, align: 'center' },
+    transcription: { engine: 'googlev2', phraseSets: '' },
+};
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function initFromSettings(settings: any): LocalSettings {
+    return {
+        display: {
+            position: settings?.display?.position ?? DEFAULTS.display.position,
+            size: settings?.display?.size ?? DEFAULTS.display.size,
+            lines: settings?.display?.lines ?? DEFAULTS.display.lines,
+            chromaKey: settings?.display?.chromaKey ?? DEFAULTS.display.chromaKey,
+            timeout: settings?.display?.timeout ?? DEFAULTS.display.timeout,
+            align: settings?.display?.align ?? DEFAULTS.display.align,
+        },
+        transcription: {
+            engine: settings?.transcription?.engine ?? DEFAULTS.transcription.engine,
+            phraseSets: Array.isArray(settings?.transcription?.phraseSets)
+                ? settings.transcription.phraseSets.join('\n')
+                : DEFAULTS.transcription.phraseSets,
+        },
+    };
+}
+
 export function DeviceDetail() {
     const { id } = useParams<{ id: string }>();
     const deviceId = parseInt(id!);
@@ -32,16 +90,32 @@ export function DeviceDetail() {
     const [editName, setEditName] = useState('');
     const [editPin, setEditPin] = useState('');
     const [editApiKey, setEditApiKey] = useState('');
-    const [settingsJson, setSettingsJson] = useState('{\n  \n}');
-    const [pushError, setPushError] = useState('');
     const [updateMsg, setUpdateMsg] = useState('');
 
+    const [settingsTab, setSettingsTab] = useState<SettingsTab>('display');
+    const [settings, setSettings] = useState<LocalSettings>(DEFAULTS);
+    const [pushMsg, setPushMsg] = useState('');
+    const [pushError, setPushError] = useState('');
+
+    useEffect(() => {
+        if (device) setSettings(initFromSettings(device.settings));
+    }, [device?.id]);
+
     const update = trpc.admin.devices.update.useMutation({
-        onSuccess: () => { utils.admin.devices.get.invalidate({ id: deviceId }); setUpdateMsg('Saved'); setTimeout(() => setUpdateMsg(''), 2000); },
+        onSuccess: () => {
+            utils.admin.devices.get.invalidate({ id: deviceId });
+            setUpdateMsg('Saved');
+            setTimeout(() => setUpdateMsg(''), 2000);
+        },
     });
 
     const pushSettings = trpc.admin.devices.pushSettings.useMutation({
-        onSuccess: () => { setPushError(''); alert('Settings queued — device will apply on next heartbeat'); },
+        onSuccess: () => {
+            utils.admin.devices.get.invalidate({ id: deviceId });
+            setPushError('');
+            setPushMsg('Queued — device will apply on next heartbeat');
+            setTimeout(() => setPushMsg(''), 4000);
+        },
         onError: (e) => setPushError(e.message),
     });
 
@@ -49,13 +123,25 @@ export function DeviceDetail() {
         onSuccess: () => navigate('/admin/devices'),
     });
 
+    function setDisplay<K extends keyof LocalSettings['display']>(key: K, value: LocalSettings['display'][K]) {
+        setSettings(s => ({ ...s, display: { ...s.display, [key]: value } }));
+    }
+
+    function setTranscription<K extends keyof LocalSettings['transcription']>(key: K, value: LocalSettings['transcription'][K]) {
+        setSettings(s => ({ ...s, transcription: { ...s.transcription, [key]: value } }));
+    }
+
     function handlePushSettings() {
-        try {
-            const settings = JSON.parse(settingsJson);
-            pushSettings.mutate({ deviceId, settings });
-        } catch {
-            setPushError('Invalid JSON');
-        }
+        pushSettings.mutate({
+            deviceId,
+            settings: {
+                display: { ...settings.display },
+                transcription: {
+                    engine: settings.transcription.engine,
+                    phraseSets: settings.transcription.phraseSets.split('\n').map(s => s.trim()).filter(Boolean),
+                },
+            },
+        });
     }
 
     if (!device) return <div className="text-gray-500">Loading...</div>;
@@ -69,9 +155,9 @@ export function DeviceDetail() {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                {/* Device settings */}
+                {/* Device credentials */}
                 <div className="bg-white rounded-lg shadow p-6">
-                    <h3 className="font-semibold text-gray-900 mb-4">Device Settings</h3>
+                    <h3 className="font-semibold text-gray-900 mb-4">Device Credentials</h3>
                     <div className="space-y-3">
                         <div>
                             <label className="block text-xs font-medium text-gray-500 mb-1">Name</label>
@@ -86,7 +172,8 @@ export function DeviceDetail() {
                         <div>
                             <label className="block text-xs font-medium text-gray-500 mb-1">Google API Key JSON (leave blank to keep)</label>
                             <textarea value={editApiKey} onChange={e => setEditApiKey(e.target.value)}
-                                className="w-full border border-gray-300 rounded px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500" rows={3} placeholder='{"type":"service_account",...}' />
+                                className="w-full border border-gray-300 rounded px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500" rows={3}
+                                placeholder='{"client_email":"...","private_key":"...","project_id":"..."}' />
                         </div>
                         <div className="flex items-center gap-3">
                             <button
@@ -99,7 +186,7 @@ export function DeviceDetail() {
                     </div>
                 </div>
 
-                {/* Stats */}
+                {/* Usage */}
                 <div className="bg-white rounded-lg shadow p-6">
                     <h3 className="font-semibold text-gray-900 mb-1">Usage (last 30 days)</h3>
                     <p className="text-sm text-gray-500 mb-4">Total: {usage?.total.toFixed(1) ?? 0} minutes</p>
@@ -108,25 +195,94 @@ export function DeviceDetail() {
             </div>
 
             {/* Push settings */}
-            <div className="bg-white rounded-lg shadow p-6 mb-6">
-                <h3 className="font-semibold text-gray-900 mb-1">Push Settings to Device</h3>
-                <p className="text-sm text-gray-500 mb-3">Settings will be applied on the device's next heartbeat (within 5 minutes).</p>
-                <textarea
-                    value={settingsJson}
-                    onChange={e => setSettingsJson(e.target.value)}
-                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500 mb-3"
-                    rows={8}
-                    placeholder='{"display":{"size":42},"transcription":{"engine":"googlev2"}}'
-                />
-                {pushError && <p className="text-sm text-red-600 mb-2">{pushError}</p>}
-                <button onClick={handlePushSettings} disabled={pushSettings.isPending}
-                    className="bg-orange-600 text-white rounded px-4 py-2 text-sm font-medium hover:bg-orange-700 disabled:opacity-50">
-                    {pushSettings.isPending ? 'Queuing...' : 'Queue Settings Push'}
-                </button>
+            <div className="bg-white rounded-lg shadow mb-6">
+                <div className="px-6 py-4 border-b border-gray-200">
+                    <h3 className="font-semibold text-gray-900">Push Settings to Device</h3>
+                    <p className="text-xs text-gray-400 mt-0.5">
+                        Applied on next heartbeat (within 5 minutes){device.settings ? ' · showing last pushed values' : ''}
+                    </p>
+                </div>
+
+                <div className="flex border-b border-gray-200 px-6">
+                    {(['display', 'transcription'] as SettingsTab[]).map(tab => (
+                        <button
+                            key={tab}
+                            onClick={() => setSettingsTab(tab)}
+                            className={`py-3 px-4 text-sm font-medium border-b-2 -mb-px capitalize transition-colors ${
+                                settingsTab === tab
+                                    ? 'border-blue-600 text-blue-600'
+                                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                            }`}
+                        >{tab}</button>
+                    ))}
+                </div>
+
+                <div className="p-6">
+                    {settingsTab === 'display' && (
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                            <Field label="Position">
+                                <select value={settings.display.position} onChange={e => setDisplay('position', Number(e.target.value))}>
+                                    <option value={0}>Bottom</option>
+                                    <option value={1}>Top</option>
+                                    <option value={2}>Bottom (audience space)</option>
+                                    <option value={3}>Top (audience space)</option>
+                                </select>
+                            </Field>
+                            <Field label="Alignment">
+                                <select value={settings.display.align} onChange={e => setDisplay('align', e.target.value as 'left' | 'center' | 'right')}>
+                                    <option value="left">Left</option>
+                                    <option value="center">Center</option>
+                                    <option value="right">Right</option>
+                                </select>
+                            </Field>
+                            <Field label="Chroma Key">
+                                <input type="text" value={settings.display.chromaKey} onChange={e => setDisplay('chromaKey', e.target.value)} placeholder="#00B140" />
+                            </Field>
+                            <Field label="Text Size (px)">
+                                <input type="number" value={settings.display.size} onChange={e => setDisplay('size', Number(e.target.value))} />
+                            </Field>
+                            <Field label="Max Lines">
+                                <input type="number" value={settings.display.lines} onChange={e => setDisplay('lines', Number(e.target.value))} />
+                            </Field>
+                            <Field label="Timeout (s)">
+                                <input type="number" value={settings.display.timeout} onChange={e => setDisplay('timeout', Number(e.target.value))} />
+                            </Field>
+                        </div>
+                    )}
+
+                    {settingsTab === 'transcription' && (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <Field label="Transcription Engine">
+                                <select value={settings.transcription.engine} onChange={e => setTranscription('engine', e.target.value as 'googlev1' | 'googlev2' | 'april')}>
+                                    <option value="googlev1">Google V1</option>
+                                    <option value="googlev2">Google V2</option>
+                                    <option value="april">April ASR (local) — Beta</option>
+                                </select>
+                            </Field>
+                            <Field label="Phrase Sets" supporting="One per line. Must be configured in GCloud.">
+                                <textarea
+                                    value={settings.transcription.phraseSets}
+                                    onChange={e => setTranscription('phraseSets', e.target.value)}
+                                    rows={4}
+                                    className="font-mono resize-y"
+                                />
+                            </Field>
+                        </div>
+                    )}
+
+                    <div className="flex items-center gap-3 mt-6 pt-4 border-t border-gray-100">
+                        <button onClick={handlePushSettings} disabled={pushSettings.isPending}
+                            className="bg-orange-600 text-white rounded px-4 py-2 text-sm font-medium hover:bg-orange-700 disabled:opacity-50">
+                            {pushSettings.isPending ? 'Queuing...' : 'Push Settings to Device'}
+                        </button>
+                        {pushMsg && <span className="text-sm text-green-600">{pushMsg}</span>}
+                        {pushError && <span className="text-sm text-red-600">{pushError}</span>}
+                    </div>
+                </div>
             </div>
 
             {/* Error logs */}
-            <div className="bg-white rounded-lg shadow">
+            <div className="bg-white rounded-lg shadow mb-6">
                 <div className="px-6 py-4 border-b border-gray-200">
                     <h3 className="font-semibold text-gray-900">Recent Error Logs</h3>
                 </div>
@@ -149,7 +305,7 @@ export function DeviceDetail() {
             </div>
 
             {/* Danger zone */}
-            <div className="bg-white rounded-lg shadow p-6 mt-6 border border-red-100">
+            <div className="bg-white rounded-lg shadow p-6 border border-red-100">
                 <h3 className="font-semibold text-red-700 mb-3">Danger Zone</h3>
                 <button
                     onClick={() => { if (confirm(`Permanently delete "${device.name}"?`)) deleteDevice.mutate({ id: deviceId }); }}

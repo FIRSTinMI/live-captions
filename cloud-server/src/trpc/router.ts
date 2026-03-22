@@ -233,7 +233,7 @@ export function createRouter() {
                     }))
                     .mutation(async ({ input }) => {
                         const pinHash = await bcrypt.hash(input.pin, 10);
-                        const encryptedKey = encryptApiKey(input.apiKey, getEncryptionKey());
+                        const encryptedKey = encryptApiKey(JSON.stringify(JSON.parse(input.apiKey)), getEncryptionKey());
                         const [device] = await db.insert(schema.devices).values({
                             name: input.name,
                             pin: pinHash,
@@ -257,7 +257,7 @@ export function createRouter() {
                         };
                         if (input.name) updates.name = input.name;
                         if (input.pin) updates.pin = await bcrypt.hash(input.pin, 10);
-                        if (input.apiKey) updates.apiKey = encryptApiKey(input.apiKey, getEncryptionKey());
+                        if (input.apiKey) updates.apiKey = encryptApiKey(JSON.stringify(JSON.parse(input.apiKey)), getEncryptionKey());
                         if (input.apiKeyType) updates.apiKeyType = input.apiKeyType;
                         await db.update(schema.devices).set(updates).where(eq(schema.devices.id, input.id));
                     }),
@@ -278,6 +278,9 @@ export function createRouter() {
                             deviceId: input.deviceId,
                             settings: input.settings,
                         });
+                        await db.update(schema.devices)
+                            .set({ settings: input.settings, updatedAt: new Date() })
+                            .where(eq(schema.devices.id, input.deviceId));
                     }),
 
                 errors: adminProcedure
