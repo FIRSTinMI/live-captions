@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep -n \"volumes\\\\|mic_status\" /c/Users/Filip/live-captions/src/*.ts)",
+      "Bash(npm install:*)",
+      "Bash(node -e \"console.log\\(require\\(''./node_modules/@trpc/server/package.json''\\).version\\)\")",
+      "Bash(npx vite:*)",
+      "Bash(npx tsc:*)"
+    ]
+  }
+}

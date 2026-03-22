@@ -6,7 +6,9 @@
     "scripts": {
         "start": "bun run ./src/index.ts --skip-update-check",
         "start-gibberish": "tsc && node ./build/index.js --gibberish",
-        "dist": "tsc && pkg .",
+        "build:frontend": "vite build",
+        "dev:frontend": "vite",
+        "dist": "npm run build:frontend && tsc && pkg .",
         "test": "bun test"
     },
     "author": "",
@@ -14,32 +16,43 @@
     "dependencies": {
         "@google-cloud/speech": "^6.7.1",
         "@materializecss/materialize": "^2.2.2",
+        "@trpc/server": "^11.14.1",
         "audify": "^1.10.1",
         "bad-words": "^3.0.4",
         "body-parser": "^1.20.3",
         "colorts": "^0.1.63",
         "express": "^4.21.2",
         "express-ws": "^5.0.2",
-        "pumpify": "^2.0.1"
+        "pumpify": "^2.0.1",
+        "zod": "^4.3.6"
     },
     "devDependencies": {
+        "@tanstack/react-query": "^5.94.5",
+        "@trpc/client": "^11.14.1",
+        "@trpc/react-query": "^11.14.1",
         "@types/bad-words": "^3.0.3",
         "@types/cli-progress": "^3.11.6",
         "@types/express": "^4.17.25",
         "@types/express-ws": "^3.0.6",
         "@types/node": "^20.19.25",
         "@types/pumpify": "^1.4.5",
+        "@types/react": "^19.2.14",
+        "@types/react-dom": "^19.2.3",
+        "@vitejs/plugin-react": "^6.0.1",
         "bun-types": "latest",
         "lorem-ipsum": "^2.0.8",
         "pkg": "^5.8.1",
-        "typescript": "^5.9.3"
+        "react": "^19.2.4",
+        "react-dom": "^19.2.4",
+        "typescript": "^5.9.3",
+        "vite": "^8.0.1"
     },
     "pkg": {
         "targets": [
             "node18-windows-x64"
         ],
         "assets": [
-            "./src/public/**/*",
+            "./build/public/**/*",
             "./node_modules/audify/**/*",
             "./dist/april-asr/april-asr.exe"
         ],

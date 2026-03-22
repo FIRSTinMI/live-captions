@@ -13,5 +13,7 @@
         "types": [
             "bun-types"
         ]
-    }
+    },
+    "include": ["src"],
+    "exclude": ["src/frontend", "node_modules"]
 }

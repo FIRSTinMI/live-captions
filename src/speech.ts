@@ -1,5 +1,4 @@
 import { RtAudio, RtAudioErrorType, RtAudioFormat, RtAudioStreamFlags, RtAudioStreamParameters } from 'audify';
-import WebSocket from "ws";
 import BadWords from 'bad-words';
 import { ConfigManager } from "./util/configManager";
 import { InputConfig } from "./types/Config";
@@ -9,6 +8,7 @@ import { GoogleV2 } from './engines/GoogleV2';
 import { GoogleV1 } from './engines/GoogleV1';
 import { April } from './engines/April';
 import { transform } from './util/transformer';
+import { captionBus } from './util/eventBus';
 
 // Number of frames after silence is detected to continue streaming
 const THRESHOLD_CUTOFF_SMOOTHING = 10;
@@ -27,7 +27,6 @@ export enum StreamingState {
 export class Speech<T extends GoogleV2 | GoogleV1 | April> {
     private config: ConfigManager;
     public inputConfig: InputConfig;
-    private clients: WebSocket[];
     private engine: GoogleV2 | GoogleV1 | April;
     private rtAudio?: RtAudio;
     private filter = new BadWords({ placeHolder: ' ' });
@@ -56,11 +55,10 @@ export class Speech<T extends GoogleV2 | GoogleV1 | April> {
             : this.inputConfig.threshold;
     }
 
-    constructor(config: ConfigManager, clients: WebSocket[], input: InputConfig, engine: { new(config: ConfigManager, sampleRate: number, inputId: number, inputName: string, languages: string[], restart: () => void): T; }, restart: () => void, mockMode: boolean = false) {
+    constructor(config: ConfigManager, input: InputConfig, engine: { new(config: ConfigManager, sampleRate: number, inputId: number, inputName: string, languages: string[], restart: () => void): T; }, restart: () => void, mockMode: boolean = false) {
         input.sampleRate = 16000;
         this.config = config;
         this.inputConfig = input;
-        this.clients = clients;
         this.restart = restart;
         this.mockMode = mockMode;
         this.noiseFloor = input.threshold; // warm start at manual threshold
@@ -87,10 +85,7 @@ export class Speech<T extends GoogleV2 | GoogleV1 | April> {
             } catch (err) {
                 return console.error(`Error while trying to filter ${frame.text}`);
             }
-            let msg = JSON.stringify(frame);
-            for (let ws of this.clients) {
-                ws.send(msg);
-            }
+            captionBus.emit('frame', frame);
         });
 
         if (!this.mockMode) {
@@ -183,14 +178,23 @@ export class Speech<T extends GoogleV2 | GoogleV1 | April> {
         this.amplitudeArray.push(Math.ceil(amplitude * 100));
         this.amplitudeSum += this.amplitudeArray[this.amplitudeArray.length - 1];
 
-        this.volume = Math.log(this.amplitudeSum / this.amplitudeArray.length) * 18.939;
+        const rawVolume = Math.log(this.amplitudeSum / this.amplitudeArray.length) * 18.939;
+        this.volume = isFinite(rawVolume) ? rawVolume : 0;
 
-        // Update noise floor EMA — runs even when suspended so settings page always sees live levels
-        if (this.volume < this.noiseFloor) {
-            this.noiseFloor = AUTO_THRESHOLD_ALPHA_DOWN * this.volume + (1 - AUTO_THRESHOLD_ALPHA_DOWN) * this.noiseFloor;
-        } else {
-            this.noiseFloor = AUTO_THRESHOLD_ALPHA_UP * this.volume + (1 - AUTO_THRESHOLD_ALPHA_UP) * this.noiseFloor;
+        // Update noise floor EMA only during silence — never during active speech.
+        // This prevents: (a) long speech slowly raising the floor until it cuts out,
+        // (b) the floor chasing the speaker's voice instead of the ambient noise.
+        // During muting (volume → 0) the floor still fast-decays, re-calibrating on unmute.
+        if (this.volume < this.effectiveThreshold) {
+            if (this.volume < this.noiseFloor) {
+                // Room got quieter — decay quickly
+                this.noiseFloor = AUTO_THRESHOLD_ALPHA_DOWN * this.volume + (1 - AUTO_THRESHOLD_ALPHA_DOWN) * this.noiseFloor;
+            } else {
+                // Ambient noise crept up — rise slowly
+                this.noiseFloor = AUTO_THRESHOLD_ALPHA_UP * this.volume + (1 - AUTO_THRESHOLD_ALPHA_UP) * this.noiseFloor;
+            }
         }
+        // When volume >= effectiveThreshold (someone speaking): hold the floor steady.
 
         // Stop here when suspended — don't write to the speech engine
         if (this.suspended) return;

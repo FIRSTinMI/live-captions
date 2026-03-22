@@ -1,7 +1,6 @@
 import { existsSync, mkdirSync } from 'fs';
 import { RtAudio, RtAudioApi } from 'audify';
 import { Server } from './server';
-import ws from 'ws';
 import { Speech } from './speech';
 import { ConfigManager } from './util/configManager';
 import { InputConfig } from './types/Config';
@@ -10,13 +9,14 @@ import { update } from './util/updater';
 import { GoogleV2 } from './engines/GoogleV2';
 import { GoogleV1 } from './engines/GoogleV1';
 import { April, downloadDependencies } from './engines/April';
+import { createAppRouter } from './trpc/router';
+import { micBus } from './util/eventBus';
 
 export const PROGRAM_FOLDER = process.platform === 'win32'
     ? process.env.APPDATA + '/live-captions'
     : process.env.HOME + '/.config/live-captions';
 
 let server: Server;
-let clients: ws[] = [];
 
 let speechServices: Speech<GoogleV1 | GoogleV2 | April>[] = [];
 let isStarting: boolean = false;
@@ -75,7 +75,6 @@ async function start() {
         }
     }
     speechServices = [];
-    clients = [];
 
 
     // Create a asio interface
@@ -90,10 +89,13 @@ async function start() {
         }
     }
 
+    // Track subscription counts for pause/suspend scheduling
+    let displaySubCount = 0;
+    let settingsSubCount = 0;
+
     function schedulePauseIfEmpty() {
         // Pause only after 30s with no display or settings clients at all
-        const anyConnected = server.clients.length > 0 || server.settingsClients.length > 0;
-        if (anyConnected) {
+        if (displaySubCount > 0 || settingsSubCount > 0) {
             cancelPauseTimer();
         } else if (!noClientsPauseTimer) {
             noClientsPauseTimer = setTimeout(() => {
@@ -104,16 +106,32 @@ async function start() {
         }
     }
 
-    // Start web server
-    server = new Server(config, clients, rtAudio, start,
-        () => schedulePauseIfEmpty(),          // display client disconnected
-        () => {                                // display client connected — cancel timer AND unsuspend
+    const appRouter = createAppRouter({
+        config,
+        getSpeechServices: () => speechServices,
+        getRtAudio: () => rtAudio,
+        restart: start,
+        onDisplayConnect: () => {
+            displaySubCount++;
             cancelPauseTimer();
             speechServices.forEach(s => s.unsuspend());
         },
-        () => schedulePauseIfEmpty(),          // settings client disconnected
-        () => cancelPauseTimer()               // settings client connected — cancel timer only, don't unsuspend
-    );
+        onDisplayDisconnect: () => {
+            displaySubCount = Math.max(0, displaySubCount - 1);
+            schedulePauseIfEmpty();
+        },
+        onSettingsConnect: () => {
+            settingsSubCount++;
+            cancelPauseTimer();
+        },
+        onSettingsDisconnect: () => {
+            settingsSubCount = Math.max(0, settingsSubCount - 1);
+            schedulePauseIfEmpty();
+        },
+    });
+
+    // Start web server
+    server = new Server(config, rtAudio, appRouter);
     server.start();
 
 
@@ -121,28 +139,14 @@ async function start() {
 
     let volumeTickCount = 0;
     volumeInterval = setInterval(() => {
-        for (let client of server.settingsClients) {
-            client.send(JSON.stringify({
-                type: 'volumes',
-                devices: speechServices.map((s: Speech<GoogleV1 | GoogleV2 | April>) => ({
-                    id: s.inputConfig.id,
-                    volume: Math.round(s.volume),
-                    threshold: Math.round(s.effectiveThreshold)
-                }))
-            }));
-        }
         // Send mic active status to display clients once per second (every 20 × 50ms ticks)
         if (volumeTickCount % 20 === 0) {
-            const micStatus = JSON.stringify({
-                type: 'mic_status',
+            micBus.emit('status', {
                 devices: speechServices.map((s: Speech<GoogleV1 | GoogleV2 | April>) => ({
                     id: s.inputConfig.id,
                     active: s.volume >= s.effectiveThreshold
                 }))
             });
-            for (let client of server.clients) {
-                client.send(micStatus);
-            }
         }
         volumeTickCount++;
     }, 50);
@@ -160,7 +164,7 @@ async function start() {
 
     // For development testing simulating semi-realistic captions
     if (process.argv.includes('--gibberish')) {
-        require('./util/developmentGibberish').gibberish(clients, 2);
+        require('./util/developmentGibberish').gibberish(null, 2);
         isStarting = false;
         return;
     }
@@ -168,15 +172,15 @@ async function start() {
     // Start speech recognition
     for (let input of <InputConfig[]>config.transcription.inputs) {
         if (engine === 'googlev1') {
-            const speech = new Speech(config, clients, input, GoogleV1, start);
+            const speech = new Speech(config, input, GoogleV1, start);
             speech.startStreaming();
             speechServices.push(speech);
         } else if (engine === 'april') {
-            const speech = new Speech(config, clients, input, April, start);
+            const speech = new Speech(config, input, April, start);
             speech.startStreaming();
             speechServices.push(speech);
         } else {
-            const speech = new Speech(config, clients, input, GoogleV2, start);
+            const speech = new Speech(config, input, GoogleV2, start);
             speech.startStreaming();
             speechServices.push(speech);
         }

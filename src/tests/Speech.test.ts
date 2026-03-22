@@ -2,7 +2,6 @@ import { describe, it, expect, beforeAll, afterAll } from 'bun:test';
 import { Speech, StreamingState } from '../speech';
 import { GoogleV2 } from '../engines/GoogleV2';
 import { ConfigManager } from '../util/configManager';
-import WebSocket from 'ws';
 import { InputConfig } from '../types/Config';
 import { RtAudioApi } from 'audify';
 import { join } from 'path';
@@ -23,7 +22,6 @@ describe('Speech Class with Manual PCM Feeding', () => {
     });
 
     function createSpeechInstance(): Speech<GoogleV2> {
-        const mockClients: WebSocket[] = [];
         const inputConfig: InputConfig = {
             id: 1,
             device: 0,
@@ -44,7 +42,6 @@ describe('Speech Class with Manual PCM Feeding', () => {
         // This allows us to manually feed PCM data for testing
         return new Speech<GoogleV2>(
             configManager,
-            mockClients,
             inputConfig,
             GoogleV2,
             restartFn,
