@@ -89,6 +89,7 @@ export function Devices() {
                     <thead>
                         <tr className="text-left text-gray-500 border-b border-gray-200">
                             <th className="px-6 py-3 font-medium">Name</th>
+                            <th className="px-6 py-3 font-medium">Status</th>
                             <th className="px-6 py-3 font-medium">API</th>
                             <th className="px-6 py-3 font-medium">Last Seen</th>
                             <th className="px-6 py-3 font-medium">Last Heartbeat</th>
@@ -98,12 +99,18 @@ export function Devices() {
                     </thead>
                     <tbody>
                         {isLoading && (
-                            <tr><td colSpan={6} className="px-6 py-8 text-center text-gray-400">Loading...</td></tr>
+                            <tr><td colSpan={7} className="px-6 py-8 text-center text-gray-400">Loading...</td></tr>
                         )}
                         {devices?.map(d => (
                             <tr key={d.id} className="border-b border-gray-50 hover:bg-gray-50">
                                 <td className="px-6 py-3">
                                     <Link to={`/admin/devices/${d.id}`} className="text-blue-600 hover:underline font-medium">{d.name}</Link>
+                                </td>
+                                <td className="px-6 py-3">
+                                    {d.online
+                                        ? <span className="inline-flex items-center gap-1 text-xs font-medium text-green-700 bg-green-100 rounded-full px-2 py-0.5"><span className="w-1.5 h-1.5 rounded-full bg-green-500 inline-block"></span>Online</span>
+                                        : <span className="inline-flex items-center gap-1 text-xs font-medium text-gray-500 bg-gray-100 rounded-full px-2 py-0.5"><span className="w-1.5 h-1.5 rounded-full bg-gray-400 inline-block"></span>Offline</span>
+                                    }
                                 </td>
                                 <td className="px-6 py-3 text-gray-500">{d.apiKeyType}</td>
                                 <td className="px-6 py-3 text-gray-500">{relativeTime(d.lastSeenAt)}</td>
@@ -118,7 +125,7 @@ export function Devices() {
                             </tr>
                         ))}
                         {!isLoading && !devices?.length && (
-                            <tr><td colSpan={6} className="px-6 py-8 text-center text-gray-400">No devices yet. Click "+ Add Device" to create one.</td></tr>
+                            <tr><td colSpan={7} className="px-6 py-8 text-center text-gray-400">No devices yet. Click "+ Add Device" to create one.</td></tr>
                         )}
                     </tbody>
                 </table>

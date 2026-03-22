@@ -12,6 +12,7 @@ import {
     getEncryptionKey,
 } from '../auth';
 import { Context } from './context';
+import { relay } from '../relay';
 
 const t = initTRPC.context<Context>().create();
 
@@ -198,6 +199,7 @@ export function createRouter() {
                         name: d.name,
                         apiKeyType: d.apiKeyType,
                         hasApiKey: !!d.apiKey,
+                        online: relay.isOnline(d.id),
                         lastSeenAt: d.lastSeenAt,
                         lastHeartbeatAt: d.lastHeartbeatAt,
                         todayMinutes: usageMap.get(d.id) ?? 0,

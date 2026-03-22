@@ -86,12 +86,13 @@ export function useDeviceRelay(deviceId: number): [RelayState, (msg: unknown) =>
             try {
                 const msg = JSON.parse(event.data) as Record<string, unknown>;
                 if (msg.type === 'hello') {
-                    setState({
+                    setState(s => ({
                         online: (msg.online as boolean) ?? true,
                         config: (msg.config as RemoteConfig) ?? null,
                         physicalDevices: (msg.physicalDevices as PhysicalDevice[]) ?? [],
                         volumes: (msg.volumes as VolumeEntry[]) ?? [],
-                    });
+                        captions: s.captions,
+                    }));
                 } else if (msg.type === 'offline') {
                     setState(s => ({ ...s, online: false }));
                 } else if (msg.type === 'config') {
