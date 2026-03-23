@@ -8,15 +8,17 @@ on:
 jobs:
   build:
     runs-on: windows-latest
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Setup Node.js 22 (for Vite)
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '22'
           cache: 'npm'
 
       - name: Install dependencies
@@ -25,22 +27,37 @@ jobs:
       - name: Build frontend
         run: npm run build:frontend
 
+      - name: Install cloud-server dependencies
+        run: npm ci
+        working-directory: cloud-server
+
+      - name: Setup Node.js 18 (for pkg)
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Extract version
+        id: version
+        run: |
+          $version = "${{ github.ref_name }}" -replace '^v', ''
+          "value=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+        shell: pwsh
+
       - name: Compile TypeScript
-        run: npx tsc
+        run: npx tsc --build
 
       - name: Package executable
         run: npx pkg .
 
       - name: Rename executable
         run: |
-          $tag = "${{ github.ref_name }}"
-          mv dist/live-captions.exe "dist/live-captions-$tag-win.exe"
+          mv dist/live-captions.exe "dist/live-captions-${{ steps.version.outputs.value }}.exe"
         shell: pwsh
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/live-captions-${{ github.ref_name }}-win.exe
+          files: dist/live-captions-${{ steps.version.outputs.value }}.exe
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

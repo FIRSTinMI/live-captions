@@ -15,5 +15,6 @@
         ]
     },
     "include": ["src"],
-    "exclude": ["src/frontend", "node_modules"]
+    "exclude": ["src/frontend", "node_modules"],
+    "references": [{ "path": "./cloud-server" }]
 }
