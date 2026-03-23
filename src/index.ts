@@ -18,6 +18,7 @@ export const PROGRAM_FOLDER = process.platform === 'win32'
     : process.env.HOME + '/.config/live-captions';
 
 let server: Server;
+let cloudSync: CloudSync | null = null;
 
 let speechServices: Speech<GoogleV1 | GoogleV2 | April>[] = [];
 let isStarting: boolean = false;
@@ -107,7 +108,8 @@ async function start() {
         }
     }
 
-    const cloudSync = new CloudSync(config, () => speechServices, () => rtAudio.getDevices(), start);
+    cloudSync?.stopConnections();
+    cloudSync = new CloudSync(config, () => speechServices, () => rtAudio.getDevices(), start);
     await cloudSync.initialize();
 
     const appRouter = createAppRouter({

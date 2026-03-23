@@ -1,6 +1,6 @@
 import { initTRPC, TRPCError } from '@trpc/server';
 import { z } from 'zod';
-import { eq, and, isNull, inArray, desc, gte, sql } from 'drizzle-orm';
+import { eq, and, isNull, isNotNull, inArray, desc, gte, sql } from 'drizzle-orm';
 import bcrypt from 'bcrypt';
 import { db, schema } from '../db';
 import {
@@ -32,13 +32,17 @@ const deviceProcedure = t.procedure.use(isDevice);
 
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 
-async function getDecryptedApiKey(deviceId: number): Promise<string | null> {
+async function getDecryptedApiKeyForDevice(deviceId: number): Promise<{ key: string; keyType: string } | null> {
     const device = await db.query.devices.findFirst({
         where: eq(schema.devices.id, deviceId),
+        with: { apiKey: true },
     });
-    if (!device || !device.apiKey) return null;
+    if (!device?.apiKey) return null;
     try {
-        return decryptApiKey(device.apiKey, getEncryptionKey());
+        return {
+            key: decryptApiKey(device.apiKey.key, getEncryptionKey()),
+            keyType: device.apiKey.keyType,
+        };
     } catch {
         return null;
     }
@@ -52,7 +56,7 @@ async function getPendingSettings(deviceId: number) {
 
 export function createRouter() {
     return t.router({
-        // ─── Device routes ───────────────────────────────────────────────
+        // --- Device routes ---
         device: t.router({
             auth: publicProcedure
                 .input(z.object({ pin: z.string() }))
@@ -79,22 +83,25 @@ export function createRouter() {
             config: deviceProcedure.query(async ({ ctx }) => {
                 const device = await db.query.devices.findFirst({
                     where: eq(schema.devices.id, ctx.deviceId),
+                    with: { apiKey: true },
                 });
                 if (!device) throw new TRPCError({ code: 'NOT_FOUND' });
 
                 const withinWindow = device.lastHeartbeatAt &&
                     Date.now() - device.lastHeartbeatAt.getTime() < SEVEN_DAYS_MS;
                 let apiKey: string | null = null;
+                let apiKeyType = 'google-v2';
                 if (withinWindow && device.apiKey) {
                     try {
-                        apiKey = decryptApiKey(device.apiKey, getEncryptionKey());
+                        apiKey = decryptApiKey(device.apiKey.key, getEncryptionKey());
+                        apiKeyType = device.apiKey.keyType;
                     } catch { /* bad key */ }
                 }
 
                 const pending = await getPendingSettings(ctx.deviceId);
                 return {
                     apiKey,
-                    apiKeyType: device.apiKeyType,
+                    apiKeyType,
                     pendingSettings: pending.map(p => p.settings),
                 };
             }),
@@ -139,20 +146,17 @@ export function createRouter() {
                             .where(inArray(schema.settingsQueue.id, pending.map(p => p.id)));
                     }
 
-                    const apiKey = await getDecryptedApiKey(ctx.deviceId);
-                    const device = await db.query.devices.findFirst({
-                        where: eq(schema.devices.id, ctx.deviceId),
-                    });
+                    const keyData = await getDecryptedApiKeyForDevice(ctx.deviceId);
 
                     return {
-                        apiKey,
-                        apiKeyType: device?.apiKeyType ?? 'google-v2',
+                        apiKey: keyData?.key ?? null,
+                        apiKeyType: keyData?.keyType ?? 'google-v2',
                         pendingSettings: pending.map(p => p.settings),
                     };
                 }),
         }),
 
-        // ─── Admin routes ─────────────────────────────────────────────────
+        // --- Admin routes ---
         admin: t.router({
             login: publicProcedure
                 .input(z.object({ username: z.string(), password: z.string() }))
@@ -174,13 +178,80 @@ export function createRouter() {
                 return { id: user.id, username: user.username };
             }),
 
+            apiKeys: t.router({
+                list: adminProcedure.query(async () => {
+                    const keys = await db.query.apiKeys.findMany({
+                        orderBy: [desc(schema.apiKeys.createdAt)],
+                    });
+
+                    const deviceCounts = await db
+                        .select({
+                            apiKeyId: schema.devices.apiKeyId,
+                            count: sql<number>`count(*)`,
+                        })
+                        .from(schema.devices)
+                        .where(isNotNull(schema.devices.apiKeyId))
+                        .groupBy(schema.devices.apiKeyId);
+
+                    const countMap = new Map(deviceCounts.map(d => [d.apiKeyId!, Number(d.count)]));
+
+                    return keys.map(k => ({
+                        id: k.id,
+                        title: k.title,
+                        keyType: k.keyType,
+                        deviceCount: countMap.get(k.id) ?? 0,
+                        createdAt: k.createdAt,
+                        updatedAt: k.updatedAt,
+                    }));
+                }),
+
+                create: adminProcedure
+                    .input(z.object({
+                        title: z.string().min(1),
+                        key: z.string().min(1),
+                        keyType: z.enum(['google-v1', 'google-v2']),
+                    }))
+                    .mutation(async ({ input }) => {
+                        const encrypted = encryptApiKey(JSON.stringify(JSON.parse(input.key)), getEncryptionKey());
+                        const [apiKey] = await db.insert(schema.apiKeys).values({
+                            title: input.title,
+                            key: encrypted,
+                            keyType: input.keyType,
+                        }).returning({ id: schema.apiKeys.id, title: schema.apiKeys.title });
+                        return apiKey;
+                    }),
+
+                update: adminProcedure
+                    .input(z.object({
+                        id: z.number(),
+                        title: z.string().min(1).optional(),
+                        key: z.string().min(1).optional(),
+                        keyType: z.enum(['google-v1', 'google-v2']).optional(),
+                    }))
+                    .mutation(async ({ input }) => {
+                        const updates: Partial<typeof schema.apiKeys.$inferInsert> = {
+                            updatedAt: new Date(),
+                        };
+                        if (input.title) updates.title = input.title;
+                        if (input.keyType) updates.keyType = input.keyType;
+                        if (input.key) updates.key = encryptApiKey(JSON.stringify(JSON.parse(input.key)), getEncryptionKey());
+                        await db.update(schema.apiKeys).set(updates).where(eq(schema.apiKeys.id, input.id));
+                    }),
+
+                delete: adminProcedure
+                    .input(z.object({ id: z.number() }))
+                    .mutation(async ({ input }) => {
+                        await db.delete(schema.apiKeys).where(eq(schema.apiKeys.id, input.id));
+                    }),
+            }),
+
             devices: t.router({
                 list: adminProcedure.query(async () => {
                     const devs = await db.query.devices.findMany({
                         orderBy: [desc(schema.devices.createdAt)],
+                        with: { apiKey: true },
                     });
 
-                    // Get today's usage for each device
                     const today = new Date();
                     today.setHours(0, 0, 0, 0);
                     const usageToday = await db
@@ -197,8 +268,11 @@ export function createRouter() {
                     return devs.map(d => ({
                         id: d.id,
                         name: d.name,
-                        apiKeyType: d.apiKeyType,
-                        hasApiKey: !!d.apiKey,
+                        tag: d.tag,
+                        apiKeyId: d.apiKeyId,
+                        apiKeyTitle: d.apiKey?.title ?? null,
+                        apiKeyType: d.apiKey?.keyType ?? null,
+                        hasApiKey: !!d.apiKeyId,
                         online: relay.isOnline(d.id),
                         lastSeenAt: d.lastSeenAt,
                         lastHeartbeatAt: d.lastHeartbeatAt,
@@ -212,13 +286,17 @@ export function createRouter() {
                     .query(async ({ input }) => {
                         const device = await db.query.devices.findFirst({
                             where: eq(schema.devices.id, input.id),
+                            with: { apiKey: true },
                         });
                         if (!device) throw new TRPCError({ code: 'NOT_FOUND' });
                         return {
                             id: device.id,
                             name: device.name,
-                            apiKeyType: device.apiKeyType,
-                            hasApiKey: !!device.apiKey,
+                            tag: device.tag,
+                            apiKeyId: device.apiKeyId,
+                            apiKeyTitle: device.apiKey?.title ?? null,
+                            apiKeyType: device.apiKey?.keyType ?? null,
+                            hasApiKey: !!device.apiKeyId,
                             settings: device.settings,
                             lastSeenAt: device.lastSeenAt,
                             lastHeartbeatAt: device.lastHeartbeatAt,
@@ -229,18 +307,17 @@ export function createRouter() {
                 create: adminProcedure
                     .input(z.object({
                         name: z.string().min(1),
+                        tag: z.string().default(''),
                         pin: z.string().min(4).max(20),
-                        apiKey: z.string().min(1),
-                        apiKeyType: z.enum(['google-v1', 'google-v2']),
+                        apiKeyId: z.number().nullable().optional(),
                     }))
                     .mutation(async ({ input }) => {
                         const pinHash = await bcrypt.hash(input.pin, 10);
-                        const encryptedKey = encryptApiKey(JSON.stringify(JSON.parse(input.apiKey)), getEncryptionKey());
                         const [device] = await db.insert(schema.devices).values({
                             name: input.name,
+                            tag: input.tag,
                             pin: pinHash,
-                            apiKey: encryptedKey,
-                            apiKeyType: input.apiKeyType,
+                            apiKeyId: input.apiKeyId ?? null,
                         }).returning({ id: schema.devices.id, name: schema.devices.name });
                         return device;
                     }),
@@ -249,18 +326,18 @@ export function createRouter() {
                     .input(z.object({
                         id: z.number(),
                         name: z.string().min(1).optional(),
+                        tag: z.string().optional(),
                         pin: z.string().min(4).max(20).optional(),
-                        apiKey: z.string().min(1).optional(),
-                        apiKeyType: z.enum(['google-v1', 'google-v2']).optional(),
+                        apiKeyId: z.number().nullable().optional(),
                     }))
                     .mutation(async ({ input }) => {
                         const updates: Partial<typeof schema.devices.$inferInsert> = {
                             updatedAt: new Date(),
                         };
                         if (input.name) updates.name = input.name;
+                        if (input.tag !== undefined) updates.tag = input.tag;
                         if (input.pin) updates.pin = await bcrypt.hash(input.pin, 10);
-                        if (input.apiKey) updates.apiKey = encryptApiKey(JSON.stringify(JSON.parse(input.apiKey)), getEncryptionKey());
-                        if (input.apiKeyType) updates.apiKeyType = input.apiKeyType;
+                        if ('apiKeyId' in input) updates.apiKeyId = input.apiKeyId ?? null;
                         await db.update(schema.devices).set(updates).where(eq(schema.devices.id, input.id));
                     }),
 

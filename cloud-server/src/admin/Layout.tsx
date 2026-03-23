@@ -14,14 +14,15 @@ export function Layout({ children }: { children: React.ReactNode }) {
     const navLinks = [
         { to: '/admin/', label: 'Dashboard' },
         { to: '/admin/devices', label: 'Devices' },
+        { to: '/admin/api-keys', label: 'API Keys' },
         { to: '/admin/users', label: 'Users' },
     ];
 
     return (
-        <div className="flex h-screen bg-gray-100">
+        <div className="flex h-screen bg-gray-100 dark:bg-gray-900">
             {/* Sidebar */}
-            <aside className="w-56 bg-gray-900 text-white flex flex-col">
-                <div className="px-6 py-5 border-b border-gray-700">
+            <aside className="w-56 bg-gray-900 dark:bg-gray-950 text-white flex flex-col flex-shrink-0">
+                <div className="px-6 py-5 border-b border-gray-700 dark:border-gray-800">
                     <h1 className="text-lg font-bold">Live Captions</h1>
                     <p className="text-xs text-gray-400">Admin Panel</p>
                 </div>
@@ -40,7 +41,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                         );
                     })}
                 </nav>
-                <div className="px-3 py-4 border-t border-gray-700">
+                <div className="px-3 py-4 border-t border-gray-700 dark:border-gray-800">
                     <button
                         onClick={handleLogout}
                         className="w-full text-left px-3 py-2 text-sm text-gray-400 hover:text-white hover:bg-gray-700 rounded transition-colors"

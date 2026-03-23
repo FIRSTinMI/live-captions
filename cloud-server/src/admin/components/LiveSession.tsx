@@ -6,13 +6,13 @@ type LiveTab = 'live' | 'display' | 'transcription';
 function VolumeBar({ volume, threshold }: { volume: number; threshold: number }) {
     const active = volume >= threshold;
     return (
-        <div className="relative h-2 bg-gray-200 rounded-full overflow-visible">
+        <div className="relative h-2 bg-gray-200 dark:bg-gray-600 rounded-full overflow-visible">
             <div
                 className="h-full rounded-full transition-all duration-50"
                 style={{ width: `${Math.min(volume, 100)}%`, background: active ? '#4caf50' : '#ef4444' }}
             />
             <div
-                className="absolute top-[-3px] bottom-[-3px] w-0.5 bg-gray-700 rounded"
+                className="absolute top-[-3px] bottom-[-3px] w-0.5 bg-gray-700 dark:bg-gray-300 rounded"
                 style={{ left: `${Math.min(threshold, 100)}%` }}
             />
         </div>
@@ -20,9 +20,9 @@ function VolumeBar({ volume, threshold }: { volume: number; threshold: number })
 }
 
 function StateBadge({ state }: { state: number }) {
-    if (state === 0) return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">Streaming</span>;
-    if (state === 1) return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700">Paused</span>;
-    return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">Stopped</span>;
+    if (state === 0) return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400">Streaming</span>;
+    if (state === 1) return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400">Paused</span>;
+    return <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400">Stopped</span>;
 }
 
 type DisplayLocal = {
@@ -88,7 +88,7 @@ function CaptionLog({ captions, inputs }: { captions: CaptionEntry[]; inputs: Re
                         <span className="text-xs font-semibold shrink-0 mt-0.5" style={{ color, minWidth: 80 }}>
                             {speaker}
                         </span>
-                        <span className="text-gray-800 break-words min-w-0">{c.text}</span>
+                        <span className="text-gray-800 dark:text-gray-200 break-words min-w-0">{c.text}</span>
                         {!c.isFinal && <span className="text-gray-400 text-xs shrink-0 mt-0.5">…</span>}
                     </div>
                 );
@@ -129,11 +129,11 @@ function LiveTab({ state, send }: { state: RelayState; send: (msg: unknown) => v
                 <p className="text-center py-4 text-gray-400 text-sm">No inputs configured on this device.</p>
             )}
             {rows.map(row => (
-                <div key={row.id} className="bg-gray-50 rounded-lg p-4">
+                <div key={row.id} className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
                     <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-2">
-                            <div className="w-3 h-3 rounded-full border border-gray-300 flex-shrink-0" style={{ background: row.color }} />
-                            <span className="text-sm font-medium text-gray-800">{row.label}</span>
+                            <div className="w-3 h-3 rounded-full border border-gray-300 dark:border-gray-500 flex-shrink-0" style={{ background: row.color }} />
+                            <span className="text-sm font-medium text-gray-800 dark:text-gray-100">{row.label}</span>
                         </div>
                         <StateBadge state={row.devState} />
                     </div>
@@ -146,9 +146,9 @@ function LiveTab({ state, send }: { state: RelayState; send: (msg: unknown) => v
             ))}
 
             {/* Caption log */}
-            <div className="bg-gray-50 rounded-lg p-4">
+            <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
                 <div className="flex items-center justify-between mb-3">
-                    <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Live Transcript</h4>
+                    <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Live Transcript</h4>
                     <span className="text-xs text-gray-400">{state.captions.length} lines</span>
                 </div>
                 <CaptionLog captions={state.captions} inputs={inputs} />
@@ -183,9 +183,9 @@ function DisplayTab({ state, send }: { state: RelayState; send: (msg: unknown) =
         <div className="space-y-6">
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                 <div className="flex flex-col gap-1">
-                    <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">Position</label>
+                    <label className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Position</label>
                     <select
-                        className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                        className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 dark:text-white"
                         value={local.position}
                         onChange={e => {
                             const v = Number(e.target.value);
@@ -201,9 +201,9 @@ function DisplayTab({ state, send }: { state: RelayState; send: (msg: unknown) =
                 </div>
 
                 <div className="flex flex-col gap-1">
-                    <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">Alignment</label>
+                    <label className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Alignment</label>
                     <select
-                        className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                        className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 dark:text-white"
                         value={local.align}
                         onChange={e => {
                             const v = e.target.value;
@@ -218,10 +218,10 @@ function DisplayTab({ state, send }: { state: RelayState; send: (msg: unknown) =
                 </div>
 
                 <div className="flex flex-col gap-1">
-                    <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">Chroma Key</label>
+                    <label className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Chroma Key</label>
                     <input
                         type="text"
-                        className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
                         value={local.chromaKey}
                         onChange={e => setLocal(s => ({ ...s, chromaKey: e.target.value }))}
                         onBlur={e => sendSet('chromaKey', e.target.value)}
@@ -230,10 +230,10 @@ function DisplayTab({ state, send }: { state: RelayState; send: (msg: unknown) =
                 </div>
 
                 <div className="flex flex-col gap-1">
-                    <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">Text Size (px)</label>
+                    <label className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Text Size (px)</label>
                     <input
                         type="number"
-                        className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
                         value={local.size}
                         onChange={e => setLocal(s => ({ ...s, size: Number(e.target.value) }))}
                         onBlur={e => sendSet('size', e.target.value)}
@@ -241,10 +241,10 @@ function DisplayTab({ state, send }: { state: RelayState; send: (msg: unknown) =
                 </div>
 
                 <div className="flex flex-col gap-1">
-                    <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">Max Lines</label>
+                    <label className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Max Lines</label>
                     <input
                         type="number"
-                        className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
                         value={local.lines}
                         onChange={e => setLocal(s => ({ ...s, lines: Number(e.target.value) }))}
                         onBlur={e => sendSet('lines', e.target.value)}
@@ -252,10 +252,10 @@ function DisplayTab({ state, send }: { state: RelayState; send: (msg: unknown) =
                 </div>
 
                 <div className="flex flex-col gap-1">
-                    <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">Timeout (s)</label>
+                    <label className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Timeout (s)</label>
                     <input
                         type="number"
-                        className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
                         value={local.timeout}
                         onChange={e => setLocal(s => ({ ...s, timeout: Number(e.target.value) }))}
                         onBlur={e => sendSet('timeout', e.target.value)}
@@ -263,7 +263,7 @@ function DisplayTab({ state, send }: { state: RelayState; send: (msg: unknown) =
                 </div>
             </div>
 
-            <div className="flex gap-3 pt-2 border-t border-gray-100">
+            <div className="flex flex-wrap gap-3 pt-2 border-t border-gray-100 dark:border-gray-700">
                 <button
                     onClick={() => send({ type: 'hide', value: !state.config?.display.hidden })}
                     className="bg-gray-600 text-white rounded px-4 py-2 text-sm font-medium hover:bg-gray-700"
@@ -272,9 +272,15 @@ function DisplayTab({ state, send }: { state: RelayState; send: (msg: unknown) =
                 </button>
                 <button
                     onClick={() => send({ type: 'clear' })}
-                    className="bg-gray-200 text-gray-700 rounded px-4 py-2 text-sm font-medium hover:bg-gray-300"
+                    className="bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded px-4 py-2 text-sm font-medium hover:bg-gray-300 dark:hover:bg-gray-600"
                 >
                     Clear Captions
+                </button>
+                <button
+                    onClick={() => send({ type: 'reloadDisplay' })}
+                    className="bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded px-4 py-2 text-sm font-medium hover:bg-gray-300 dark:hover:bg-gray-600"
+                >
+                    Refresh Display Clients
                 </button>
             </div>
         </div>
@@ -330,7 +336,7 @@ function TranscriptionTab({ state, send }: { state: RelayState; send: (msg: unkn
         <div className="space-y-6">
             {/* Engine */}
             <div className="flex flex-col gap-1">
-                <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">Transcription Engine</label>
+                <label className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Transcription Engine</label>
                 <select
                     className="w-full max-w-xs border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                     value={local.engine}
@@ -351,10 +357,10 @@ function TranscriptionTab({ state, send }: { state: RelayState; send: (msg: unkn
 
             {/* Phrase Sets */}
             <div className="flex flex-col gap-1">
-                <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">Phrase Sets</label>
+                <label className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Phrase Sets</label>
                 <span className="text-xs text-gray-400">One per line. Must be configured in GCloud.</span>
                 <textarea
-                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y"
+                    className="w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y dark:bg-gray-700 dark:text-white"
                     rows={4}
                     value={local.phraseSets}
                     onChange={e => setLocal(s => ({ ...s, phraseSets: e.target.value }))}
@@ -368,7 +374,7 @@ function TranscriptionTab({ state, send }: { state: RelayState; send: (msg: unkn
             {/* Inputs */}
             <div>
                 <div className="flex items-center justify-between mb-3">
-                    <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">Inputs</label>
+                    <label className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Inputs</label>
                     <button
                         onClick={addInput}
                         className="text-xs bg-blue-50 text-blue-700 border border-blue-200 rounded px-2 py-1 hover:bg-blue-100"
@@ -381,9 +387,9 @@ function TranscriptionTab({ state, send }: { state: RelayState; send: (msg: unkn
                     {local.inputs.map((inp, idx) => {
                         const physDev = state.physicalDevices.find(d => d.id === inp.device);
                         return (
-                            <div key={inp.id} className="bg-gray-50 rounded-lg p-4 space-y-3">
+                            <div key={inp.id} className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 space-y-3">
                                 <div className="flex items-center justify-between">
-                                    <span className="text-sm font-medium text-gray-700">Input {idx + 1}</span>
+                                    <span className="text-sm font-medium text-gray-700 dark:text-gray-200">Input {idx + 1}</span>
                                     <button
                                         onClick={() => removeInput(idx)}
                                         className="text-xs text-red-500 hover:text-red-700"
@@ -394,10 +400,10 @@ function TranscriptionTab({ state, send }: { state: RelayState; send: (msg: unkn
 
                                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                                     <div className="flex flex-col gap-1">
-                                        <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">Speaker</label>
+                                        <label className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Speaker</label>
                                         <input
                                             type="text"
-                                            className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            className="w-full border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
                                             value={inp.speaker ?? ''}
                                             onChange={e => updateInput(idx, { speaker: e.target.value })}
                                             placeholder="Speaker name"
@@ -405,9 +411,9 @@ function TranscriptionTab({ state, send }: { state: RelayState; send: (msg: unkn
                                     </div>
 
                                     <div className="flex flex-col gap-1">
-                                        <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">Device</label>
+                                        <label className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Device</label>
                                         <select
-                                            className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                                            className="w-full border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 dark:text-white"
                                             value={inp.device}
                                             onChange={e => updateInput(idx, { device: Number(e.target.value) })}
                                         >
@@ -421,10 +427,10 @@ function TranscriptionTab({ state, send }: { state: RelayState; send: (msg: unkn
                                     </div>
 
                                     <div className="flex flex-col gap-1">
-                                        <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">Channel</label>
+                                        <label className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Channel</label>
                                         <input
                                             type="number"
-                                            className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            className="w-full border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
                                             min={1}
                                             max={physDev?.inputChannels ?? 64}
                                             value={inp.channel + 1}
@@ -433,7 +439,7 @@ function TranscriptionTab({ state, send }: { state: RelayState; send: (msg: unkn
                                     </div>
 
                                     <div className="flex flex-col gap-1">
-                                        <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">Color</label>
+                                        <label className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Color</label>
                                         <div className="flex items-center gap-2">
                                             <div
                                                 className="w-7 h-7 rounded border border-gray-300 flex-shrink-0 cursor-pointer"
@@ -452,7 +458,7 @@ function TranscriptionTab({ state, send }: { state: RelayState; send: (msg: unkn
                                             />
                                             <input
                                                 type="text"
-                                                className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                className="w-full border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
                                                 value={inp.color}
                                                 onChange={e => updateInput(idx, { color: e.target.value })}
                                             />
@@ -460,10 +466,10 @@ function TranscriptionTab({ state, send }: { state: RelayState; send: (msg: unkn
                                     </div>
 
                                     <div className="flex flex-col gap-1">
-                                        <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">Languages</label>
+                                        <label className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Languages</label>
                                         <input
                                             type="text"
-                                            className="w-full border border-gray-300 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            className="w-full border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
                                             value={inp.languages.join(', ')}
                                             onChange={e => updateInput(idx, {
                                                 languages: e.target.value.split(/[,\s]+/).map(l => l.trim()).filter(Boolean),
@@ -473,7 +479,7 @@ function TranscriptionTab({ state, send }: { state: RelayState; send: (msg: unkn
                                     </div>
 
                                     <div className="flex flex-col gap-1">
-                                        <label className="text-xs font-semibold uppercase tracking-wide text-gray-500">Threshold</label>
+                                        <label className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Threshold</label>
                                         <div className="flex items-center gap-2">
                                             <input
                                                 type="range"
@@ -533,20 +539,36 @@ export function LiveSession({ deviceId: _deviceId, state, send }: LiveSessionPro
     ];
 
     return (
-        <div className="bg-white rounded-lg shadow mb-6">
-            <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow mb-6">
+            <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between gap-4">
                 <div>
-                    <h3 className="font-semibold text-gray-900">Live Session</h3>
+                    <h3 className="font-semibold text-gray-900 dark:text-white">Live Session</h3>
                     <p className="text-xs text-gray-400 mt-0.5">Real-time view and control of the connected device</p>
                 </div>
-                <div>
+                <div className="flex items-center gap-2 flex-wrap justify-end">
+                    {state.online && (
+                        <>
+                            <button
+                                onClick={() => { if (confirm('Restart speech recognition on this device?')) send({ type: 'restart' }); }}
+                                className="bg-orange-600 text-white rounded px-3 py-1.5 text-xs font-medium hover:bg-orange-700"
+                            >
+                                Restart Recognition
+                            </button>
+                            <button
+                                onClick={() => send({ type: 'reloadDisplay' })}
+                                className="bg-gray-600 text-white rounded px-3 py-1.5 text-xs font-medium hover:bg-gray-700"
+                            >
+                                Refresh Display
+                            </button>
+                        </>
+                    )}
                     {state.online ? (
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-700">
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400">
                             <span className="inline-block w-2 h-2 rounded-full bg-green-500" />
                             Live
                         </span>
                     ) : (
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-500">
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400">
                             <span className="inline-block w-2 h-2 rounded-full bg-gray-400" />
                             Offline
                         </span>
@@ -555,7 +577,7 @@ export function LiveSession({ deviceId: _deviceId, state, send }: LiveSessionPro
             </div>
 
             {!state.online && (
-                <div className="px-6 py-3 bg-gray-50 border-b border-gray-100 text-sm text-gray-400">
+                <div className="px-6 py-3 bg-gray-50 dark:bg-gray-700 border-b border-gray-100 dark:border-gray-600 text-sm text-gray-400">
                     Device is offline - changes will not take effect until it reconnects.
                 </div>
             )}
@@ -568,7 +590,7 @@ export function LiveSession({ deviceId: _deviceId, state, send }: LiveSessionPro
 
             {(state.config !== null || !state.online) && (
                 <>
-                    <div className="flex border-b border-gray-200 px-6">
+                    <div className="flex border-b border-gray-200 dark:border-gray-700 px-6">
                         {tabs.map(t => (
                             <button
                                 key={t.key}
@@ -576,7 +598,7 @@ export function LiveSession({ deviceId: _deviceId, state, send }: LiveSessionPro
                                 className={`py-3 px-4 text-sm font-medium border-b-2 -mb-px transition-colors ${
                                     tab === t.key
                                         ? 'border-blue-600 text-blue-600'
-                                        : 'border-transparent text-gray-500 hover:text-gray-700'
+                                        : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
                                 }`}
                             >
                                 {t.label}

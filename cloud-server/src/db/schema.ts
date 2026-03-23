@@ -11,13 +11,22 @@ export const users = pgTable('users', {
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
+export const apiKeys = pgTable('api_keys', {
+    id: serial('id').primaryKey(),
+    title: text('title').notNull(),
+    key: text('key').notNull(), // AES-256 encrypted JSON credentials
+    keyType: apiKeyTypeEnum('key_type').notNull().default('google-v2'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
 export const devices = pgTable('devices', {
     id: serial('id').primaryKey(),
     name: text('name').notNull(),
+    tag: text('tag').notNull().default(''),
     pin: text('pin').notNull(),
     tokenHash: text('token_hash'),
-    apiKey: text('api_key').notNull().default(''),
-    apiKeyType: apiKeyTypeEnum('api_key_type').notNull().default('google-v2'),
+    apiKeyId: integer('api_key_id').references(() => apiKeys.id, { onDelete: 'set null' }),
     settings: jsonb('settings'),
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
@@ -49,10 +58,15 @@ export const settingsQueue = pgTable('settings_queue', {
 });
 
 // Relations
-export const devicesRelations = relations(devices, ({ many }) => ({
+export const apiKeysRelations = relations(apiKeys, ({ many }) => ({
+    devices: many(devices),
+}));
+
+export const devicesRelations = relations(devices, ({ many, one }) => ({
     usageLogs: many(usageLogs),
     errorLogs: many(errorLogs),
     settingsQueue: many(settingsQueue),
+    apiKey: one(apiKeys, { fields: [devices.apiKeyId], references: [apiKeys.id] }),
 }));
 
 export const usageLogsRelations = relations(usageLogs, ({ one }) => ({

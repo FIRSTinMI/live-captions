@@ -7,6 +7,7 @@ import { Login } from './pages/Login';
 import { Dashboard } from './pages/Dashboard';
 import { Devices } from './pages/Devices';
 import { DeviceDetail } from './pages/DeviceDetail';
+import { ApiKeys } from './pages/ApiKeys';
 import { Users } from './pages/Users';
 import { Layout } from './Layout';
 
@@ -47,6 +48,7 @@ export function App() {
                                             <Route path="/" element={<Dashboard />} />
                                             <Route path="/devices" element={<Devices />} />
                                             <Route path="/devices/:id" element={<DeviceDetail />} />
+                                            <Route path="/api-keys" element={<ApiKeys />} />
                                             <Route path="/users" element={<Users />} />
                                         </Routes>
                                     </Layout>

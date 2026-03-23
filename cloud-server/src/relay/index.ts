@@ -72,6 +72,8 @@ class RelayManager {
         } else if (msg.type === 'volumes') {
             if (msg.devices) s.volumes = msg.devices as typeof s.volumes;
             this.broadcast(deviceId, msg);
+        } else if (msg.type === 'caption') {
+            this.broadcast(deviceId, msg);
         }
     }
 

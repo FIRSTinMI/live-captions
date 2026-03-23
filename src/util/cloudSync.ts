@@ -78,6 +78,11 @@ export class CloudSync {
         return { deviceName: result.deviceName };
     }
 
+    public stopConnections() {
+        this.stopHeartbeat();
+        this.disconnectRelay();
+    }
+
     public disconnect() {
         this.stopHeartbeat();
         this.disconnectRelay();
@@ -138,6 +143,11 @@ export class CloudSync {
         ws.onopen = () => {
             this.relayConnected = true;
             console.log(color('Relay WS connected').green.toString());
+
+            // Pull latest config (including API key) in case it changed while offline
+            this.syncConfig().catch(err =>
+                console.error(color('Cloud sync on reconnect failed:').yellow.toString(), err)
+            );
 
             // Send hello
             this.relaySend({
@@ -278,6 +288,9 @@ export class CloudSync {
 
         } else if (type === 'clear') {
             displayCtrlBus.emit('event', { type: 'clear' });
+
+        } else if (type === 'reloadDisplay') {
+            displayCtrlBus.emit('event', { type: 'config' });
         }
     }
 
