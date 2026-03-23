@@ -8,7 +8,7 @@
         "start-gibberish": "tsc && node ./build/index.js --gibberish",
         "build:frontend": "vite build",
         "dev:frontend": "vite",
-        "dist": "npm run build:frontend && tsc && pkg .",
+        "dist": "npm run build:frontend && tsc && npx @yao-pkg/pkg .",
         "test": "bun test"
     },
     "author": "",
@@ -40,9 +40,9 @@
         "@types/react": "^19.2.14",
         "@types/react-dom": "^19.2.3",
         "@vitejs/plugin-react": "^6.0.1",
+        "@yao-pkg/pkg": "^6.14.1",
         "bun-types": "latest",
         "lorem-ipsum": "^2.0.8",
-        "pkg": "^5.8.1",
         "react": "^19.2.4",
         "react-dom": "^19.2.4",
         "typescript": "^5.9.3",
@@ -50,7 +50,7 @@
     },
     "pkg": {
         "targets": [
-            "node18-windows-x64"
+            "node22-windows-x64"
         ],
         "assets": [
             "./build/public/**/*",

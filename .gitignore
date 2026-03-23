@@ -7,11 +7,7 @@ src/public
 .venv
 .vscode
 april-asr.spec
-
-# Environment files - never commit secrets
 .env
 .env.local
 .env*.local
-
-# Cloud server drizzle output dir should stay (it's committed migration SQL)
-# but the built public dir is covered by the build/ rule above
+tsconfig.tsbuildinfo

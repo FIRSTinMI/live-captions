@@ -31,11 +31,6 @@ jobs:
         run: npm ci
         working-directory: cloud-server
 
-      - name: Setup Node.js 18 (for pkg)
-        uses: actions/setup-node@v4
-        with:
-          node-version: '18'
-
       - name: Extract version
         id: version
         run: |
@@ -47,7 +42,7 @@ jobs:
         run: npx tsc --build
 
       - name: Package executable
-        run: npx pkg .
+        run: npx @yao-pkg/pkg .
 
       - name: Rename executable
         run: |
