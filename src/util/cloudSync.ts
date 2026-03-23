@@ -291,6 +291,14 @@ export class CloudSync {
 
         } else if (type === 'reloadDisplay') {
             displayCtrlBus.emit('event', { type: 'config' });
+
+        } else if (type === 'pushSettings') {
+            const settings = msg.settings as Record<string, unknown>;
+            this.mergeSettings(settings);
+            this.config.save();
+            displayCtrlBus.emit('event', { type: 'config' });
+            // Report back so server clears pushedSettings
+            this.relaySend({ type: 'config', config: this.config.get() });
         }
     }
 

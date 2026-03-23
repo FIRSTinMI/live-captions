@@ -32,6 +32,19 @@ export function createServer() {
     app.get('/health', (_req, res) => res.json({ ok: true }));
     app.get('/', (_req, res) => res.redirect('/admin'));
 
+    // Save device config to DB whenever the device reports its current state
+    relay.setConfigSaveHandler((deviceId, config, source) => {
+        db.update(schema.devices)
+            .set({
+                settings: config,
+                // Clear pending push when device acks with a live config message
+                ...(source === 'config' ? { pushedSettings: null } : {}),
+                updatedAt: new Date(),
+            })
+            .where(eq(schema.devices.id, deviceId))
+            .catch(() => { /* best-effort */ });
+    });
+
     // Attach WebSocket server to the http server (no extra framework needed)
     const httpServer = http.createServer(app);
     const wss = new WebSocketServer({ noServer: true });

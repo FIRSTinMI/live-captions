@@ -6,38 +6,11 @@ import { LiveSession } from '../components/LiveSession';
 
 const inp = 'w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 dark:text-white';
 
-function UsageChart({ rows }: { rows: { day: string; minutes: number }[] }) {
-    if (!rows.length) return <p className="text-gray-400 text-sm py-4">No usage data</p>;
-    const max = Math.max(...rows.map(r => r.minutes), 1);
-    return (
-        <div className="flex items-end gap-1 h-24">
-            {rows.map(r => (
-                <div key={r.day} className="flex-1 flex flex-col items-center gap-1" title={`${r.day}: ${r.minutes.toFixed(1)} min`}>
-                    <div
-                        className="w-full bg-blue-500 rounded-t"
-                        style={{ height: `${(r.minutes / max) * 100}%`, minHeight: r.minutes > 0 ? '2px' : '0' }}
-                    />
-                </div>
-            ))}
-        </div>
-    );
-}
-
 type SettingsTab = 'display' | 'transcription';
 
 type LocalSettings = {
-    display: {
-        position: number;
-        size: number;
-        lines: number;
-        chromaKey: string;
-        timeout: number;
-        align: 'left' | 'center' | 'right';
-    };
-    transcription: {
-        engine: 'googlev1' | 'googlev2' | 'april';
-        phraseSets: string;
-    };
+    display: { position: number; size: number; lines: number; chromaKey: string; timeout: number; align: 'left' | 'center' | 'right' };
+    transcription: { engine: 'googlev1' | 'googlev2' | 'april'; phraseSets: string };
 };
 
 const DEFAULTS: LocalSettings = {
@@ -60,23 +33,24 @@ function initFromSettings(settings: any): LocalSettings {
             engine: settings?.transcription?.engine ?? DEFAULTS.transcription.engine,
             phraseSets: Array.isArray(settings?.transcription?.phraseSets)
                 ? settings.transcription.phraseSets.join('\n')
-                : DEFAULTS.transcription.phraseSets,
+                : (settings?.transcription?.phraseSets ?? DEFAULTS.transcription.phraseSets),
         },
     };
 }
 
-function Field({ label, supporting, children }: { label: string; supporting?: string; children: React.ReactNode }) {
+function UsageChart({ rows }: { rows: { day: string; minutes: number }[] }) {
+    if (!rows.length) return <p className="text-gray-400 text-sm py-4">No usage data</p>;
+    const max = Math.max(...rows.map(r => r.minutes), 1);
     return (
-        <div className="flex flex-col gap-1">
-            <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">{label}</label>
-            {React.Children.map(children, child =>
-                React.isValidElement(child)
-                    ? React.cloneElement(child as React.ReactElement<React.HTMLAttributes<HTMLElement>>, {
-                        className: `w-full border border-gray-300 dark:border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-700 dark:text-white ${(child.props as React.HTMLAttributes<HTMLElement>).className ?? ''}`,
-                    })
-                    : child
-            )}
-            {supporting && <span className="text-xs text-gray-400 dark:text-gray-500">{supporting}</span>}
+        <div className="flex items-end gap-1 h-24">
+            {rows.map(r => (
+                <div key={r.day} className="flex-1 flex flex-col items-center gap-1" title={`${r.day}: ${r.minutes.toFixed(1)} min`}>
+                    <div
+                        className="w-full bg-blue-500 rounded-t"
+                        style={{ height: `${(r.minutes / max) * 100}%`, minHeight: r.minutes > 0 ? '2px' : '0' }}
+                    />
+                </div>
+            ))}
         </div>
     );
 }
@@ -105,15 +79,16 @@ export function DeviceDetail() {
 
     const [settingsTab, setSettingsTab] = useState<SettingsTab>('display');
     const [settings, setSettings] = useState<LocalSettings>(DEFAULTS);
-    const [pushMsg, setPushMsg] = useState('');
-    const [pushError, setPushError] = useState('');
+    const [settingsMsg, setSettingsMsg] = useState('');
+    const [settingsError, setSettingsError] = useState('');
 
     useEffect(() => {
         if (device) {
             setEditName(device.name);
             setEditTag(device.tag);
             setEditApiKeyId(device.apiKeyId ? String(device.apiKeyId) : '');
-            setSettings(initFromSettings(device.settings));
+            // Pushed settings take priority (they're the "intended" state)
+            setSettings(initFromSettings(device.pushedSettings ?? device.settings));
         }
     }, [device?.id]);
 
@@ -140,27 +115,19 @@ export function DeviceDetail() {
         onError: e => { setUpdateError(e.message); setUpdateMsg(''); },
     });
 
-    const pushSettings = trpc.admin.devices.pushSettings.useMutation({
+    const saveSettings = trpc.admin.devices.saveSettings.useMutation({
         onSuccess: () => {
             utils.admin.devices.get.invalidate({ id: deviceId });
-            setPushError('');
-            setPushMsg('Queued - device will apply on next heartbeat');
-            setTimeout(() => setPushMsg(''), 4000);
+            setSettingsError('');
+            setSettingsMsg(relayState.online ? 'Pushed to device' : 'Saved — will sync on next connection');
+            setTimeout(() => setSettingsMsg(''), 3000);
         },
-        onError: (e) => setPushError(e.message),
+        onError: e => { setSettingsError(e.message); setSettingsMsg(''); },
     });
 
     const deleteDevice = trpc.admin.devices.delete.useMutation({
         onSuccess: () => navigate('/admin/devices'),
     });
-
-    function setDisplay<K extends keyof LocalSettings['display']>(key: K, value: LocalSettings['display'][K]) {
-        setSettings(s => ({ ...s, display: { ...s.display, [key]: value } }));
-    }
-
-    function setTranscription<K extends keyof LocalSettings['transcription']>(key: K, value: LocalSettings['transcription'][K]) {
-        setSettings(s => ({ ...s, transcription: { ...s.transcription, [key]: value } }));
-    }
 
     function handleSave() {
         update.mutate({
@@ -176,8 +143,8 @@ export function DeviceDetail() {
         createApiKey.mutate({ title: newKeyTitle, key: newKeyJson, keyType: newKeyType });
     }
 
-    function handlePushSettings() {
-        pushSettings.mutate({
+    function handleSaveSettings() {
+        saveSettings.mutate({
             deviceId,
             settings: {
                 display: { ...settings.display },
@@ -187,6 +154,14 @@ export function DeviceDetail() {
                 },
             },
         });
+    }
+
+    function setDisplay<K extends keyof LocalSettings['display']>(key: K, value: LocalSettings['display'][K]) {
+        setSettings(s => ({ ...s, display: { ...s.display, [key]: value } }));
+    }
+
+    function setTranscription<K extends keyof LocalSettings['transcription']>(key: K, value: LocalSettings['transcription'][K]) {
+        setSettings(s => ({ ...s, transcription: { ...s.transcription, [key]: value } }));
     }
 
     if (!device) return <div className="text-gray-500 dark:text-gray-400">Loading...</div>;
@@ -289,100 +264,90 @@ export function DeviceDetail() {
             {/* Live Session */}
             <LiveSession deviceId={deviceId} state={relayState} send={relaySend} />
 
-            {/* Push settings (collapsible, queued for offline use) */}
-            <details className="bg-white dark:bg-gray-800 rounded-lg shadow mb-6 group">
-                <summary className="px-6 py-4 cursor-pointer list-none flex items-center justify-between select-none">
+            {/* Remote Settings */}
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow mb-6">
+                <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
                     <div>
-                        <h3 className="font-semibold text-gray-900 dark:text-white inline">Push Settings</h3>
-                        <span className="text-xs text-gray-400 ml-2">(queued, for offline use)</span>
+                        <h3 className="font-semibold text-gray-900 dark:text-white">Remote Settings</h3>
                         <p className="text-xs text-gray-400 mt-0.5">
-                            Applied on next heartbeat (within 5 minutes){device.settings ? ' - showing last pushed values' : ''}
+                            {device.pushedSettings
+                                ? 'Pending push — not yet acknowledged by device'
+                                : device.settings
+                                    ? 'Synced with device'
+                                    : 'No settings synced yet'}
                         </p>
                     </div>
-                    <svg className="w-4 h-4 text-gray-400 transition-transform group-open:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
-                </summary>
+                    {device.pushedSettings && (
+                        <span className="text-xs bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400 px-2 py-1 rounded font-medium">Pending</span>
+                    )}
+                    {!device.pushedSettings && device.settings && (
+                        <span className="text-xs bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-2 py-1 rounded font-medium">Synced</span>
+                    )}
+                </div>
 
-                <div className="border-t border-gray-200 dark:border-gray-700">
-                    <div className="flex border-b border-gray-200 dark:border-gray-700 px-6">
-                        {(['display', 'transcription'] as SettingsTab[]).map(tab => (
-                            <button
-                                key={tab}
-                                onClick={() => setSettingsTab(tab)}
-                                className={`py-3 px-4 text-sm font-medium border-b-2 -mb-px capitalize transition-colors ${
-                                    settingsTab === tab
-                                        ? 'border-blue-600 text-blue-600'
-                                        : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
-                                }`}
-                            >{tab}</button>
-                        ))}
-                    </div>
+                <div className="flex border-b border-gray-200 dark:border-gray-700 px-6">
+                    {(['display', 'transcription'] as SettingsTab[]).map(tab => (
+                        <button key={tab} onClick={() => setSettingsTab(tab)}
+                            className={`py-3 px-4 text-sm font-medium border-b-2 -mb-px capitalize transition-colors ${
+                                settingsTab === tab
+                                    ? 'border-blue-600 text-blue-600'
+                                    : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+                            }`}>{tab}</button>
+                    ))}
+                </div>
 
-                    <div className="p-6">
-                        {settingsTab === 'display' && (
-                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                                <Field label="Position">
-                                    <select value={settings.display.position} onChange={e => setDisplay('position', Number(e.target.value))}>
-                                        <option value={0}>Bottom</option>
-                                        <option value={1}>Top</option>
-                                        <option value={2}>Bottom (audience space)</option>
-                                        <option value={3}>Top (audience space)</option>
-                                    </select>
-                                </Field>
-                                <Field label="Alignment">
-                                    <select value={settings.display.align} onChange={e => setDisplay('align', e.target.value as 'left' | 'center' | 'right')}>
-                                        <option value="left">Left</option>
-                                        <option value="center">Center</option>
-                                        <option value="right">Right</option>
-                                    </select>
-                                </Field>
-                                <Field label="Chroma Key">
-                                    <input type="text" value={settings.display.chromaKey} onChange={e => setDisplay('chromaKey', e.target.value)} placeholder="#00B140" />
-                                </Field>
-                                <Field label="Text Size (px)">
-                                    <input type="number" value={settings.display.size} onChange={e => setDisplay('size', Number(e.target.value))} />
-                                </Field>
-                                <Field label="Max Lines">
-                                    <input type="number" value={settings.display.lines} onChange={e => setDisplay('lines', Number(e.target.value))} />
-                                </Field>
-                                <Field label="Timeout (s)">
-                                    <input type="number" value={settings.display.timeout} onChange={e => setDisplay('timeout', Number(e.target.value))} />
-                                </Field>
-                            </div>
-                        )}
-
-                        {settingsTab === 'transcription' && (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <Field label="Transcription Engine">
-                                    <select value={settings.transcription.engine} onChange={e => setTranscription('engine', e.target.value as 'googlev1' | 'googlev2' | 'april')}>
-                                        <option value="googlev1">Google V1</option>
-                                        <option value="googlev2">Google V2</option>
-                                        <option value="april">April ASR (local) - Beta</option>
-                                    </select>
-                                </Field>
-                                <Field label="Phrase Sets" supporting="One per line. Must be configured in GCloud.">
-                                    <textarea
-                                        value={settings.transcription.phraseSets}
-                                        onChange={e => setTranscription('phraseSets', e.target.value)}
-                                        rows={4}
-                                        className="font-mono resize-y"
-                                    />
-                                </Field>
-                            </div>
-                        )}
-
-                        <div className="flex items-center gap-3 mt-6 pt-4 border-t border-gray-100 dark:border-gray-700">
-                            <button onClick={handlePushSettings} disabled={pushSettings.isPending}
-                                className="bg-orange-600 text-white rounded px-4 py-2 text-sm font-medium hover:bg-orange-700 disabled:opacity-50">
-                                {pushSettings.isPending ? 'Queuing...' : 'Push Settings to Device'}
-                            </button>
-                            {pushMsg && <span className="text-sm text-green-600 dark:text-green-400">{pushMsg}</span>}
-                            {pushError && <span className="text-sm text-red-600">{pushError}</span>}
+                <div className="p-6">
+                    {settingsTab === 'display' && (
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                            {[
+                                { label: 'Position', el: <select value={settings.display.position} onChange={e => setDisplay('position', Number(e.target.value))} className={inp}>
+                                    <option value={0}>Bottom</option><option value={1}>Top</option>
+                                    <option value={2}>Bottom (audience)</option><option value={3}>Top (audience)</option>
+                                </select> },
+                                { label: 'Alignment', el: <select value={settings.display.align} onChange={e => setDisplay('align', e.target.value as 'left' | 'center' | 'right')} className={inp}>
+                                    <option value="left">Left</option><option value="center">Center</option><option value="right">Right</option>
+                                </select> },
+                                { label: 'Chroma Key', el: <input type="text" value={settings.display.chromaKey} onChange={e => setDisplay('chromaKey', e.target.value)} className={inp} placeholder="#00B140" /> },
+                                { label: 'Text Size (px)', el: <input type="number" value={settings.display.size} onChange={e => setDisplay('size', Number(e.target.value))} className={inp} /> },
+                                { label: 'Max Lines', el: <input type="number" value={settings.display.lines} onChange={e => setDisplay('lines', Number(e.target.value))} className={inp} /> },
+                                { label: 'Timeout (s)', el: <input type="number" value={settings.display.timeout} onChange={e => setDisplay('timeout', Number(e.target.value))} className={inp} /> },
+                            ].map(({ label, el }) => (
+                                <div key={label} className="flex flex-col gap-1">
+                                    <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">{label}</label>
+                                    {el}
+                                </div>
+                            ))}
                         </div>
+                    )}
+                    {settingsTab === 'transcription' && (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div className="flex flex-col gap-1">
+                                <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Engine</label>
+                                <select value={settings.transcription.engine} onChange={e => setTranscription('engine', e.target.value as 'googlev1' | 'googlev2' | 'april')} className={inp}>
+                                    <option value="googlev2">Google V2</option>
+                                    <option value="googlev1">Google V1</option>
+                                    <option value="april">April ASR (local) - Beta</option>
+                                </select>
+                            </div>
+                            <div className="flex flex-col gap-1">
+                                <label className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Phrase Sets</label>
+                                <span className="text-xs text-gray-400 dark:text-gray-500">One per line. Must be configured in GCloud.</span>
+                                <textarea value={settings.transcription.phraseSets} onChange={e => setTranscription('phraseSets', e.target.value)}
+                                    rows={4} className={`${inp} font-mono resize-y`} />
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="flex items-center gap-3 mt-6 pt-4 border-t border-gray-100 dark:border-gray-700">
+                        <button onClick={handleSaveSettings} disabled={saveSettings.isPending}
+                            className="bg-blue-600 text-white rounded px-4 py-2 text-sm font-medium hover:bg-blue-700 disabled:opacity-50">
+                            {saveSettings.isPending ? 'Saving...' : relayState.online ? 'Save & Push Now' : 'Save (sync on next connection)'}
+                        </button>
+                        {settingsMsg && <span className="text-sm text-green-600 dark:text-green-400">{settingsMsg}</span>}
+                        {settingsError && <span className="text-sm text-red-600">{settingsError}</span>}
                     </div>
                 </div>
-            </details>
+            </div>
 
             {/* Error logs */}
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow mb-6">

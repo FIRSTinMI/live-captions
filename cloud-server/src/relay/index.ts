@@ -11,6 +11,16 @@ class RelayManager {
     private deviceSockets = new Map<number, WebSocket>();
     private adminSockets = new Map<number, Set<WebSocket>>();
     readonly state = new Map<number, DeviceRelayState>();
+    private configSaveHandler: ((deviceId: number, config: unknown, source: 'hello' | 'config') => void) | null = null;
+
+    setConfigSaveHandler(handler: (deviceId: number, config: unknown, source: 'hello' | 'config') => void) {
+        this.configSaveHandler = handler;
+    }
+
+    sendToDevice(deviceId: number, msg: unknown) {
+        const ws = this.deviceSockets.get(deviceId);
+        if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify(msg));
+    }
 
     connectDevice(deviceId: number, ws: WebSocket) {
         const existing = this.deviceSockets.get(deviceId);
@@ -65,9 +75,13 @@ class RelayManager {
         if (msg.type === 'hello') {
             if (msg.config !== undefined) s.config = msg.config;
             if (msg.physicalDevices) s.physicalDevices = msg.physicalDevices as typeof s.physicalDevices;
+            if (msg.config !== undefined) this.configSaveHandler?.(deviceId, msg.config, 'hello');
             this.broadcast(deviceId, { type: 'hello', ...s, online: true });
         } else if (msg.type === 'config') {
-            if (msg.config !== undefined) s.config = msg.config;
+            if (msg.config !== undefined) {
+                s.config = msg.config;
+                this.configSaveHandler?.(deviceId, msg.config, 'config');
+            }
             this.broadcast(deviceId, msg);
         } else if (msg.type === 'volumes') {
             if (msg.devices) s.volumes = msg.devices as typeof s.volumes;

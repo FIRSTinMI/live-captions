@@ -1,6 +1,6 @@
 import { initTRPC, TRPCError } from '@trpc/server';
 import { z } from 'zod';
-import { eq, and, isNull, isNotNull, inArray, desc, gte, sql } from 'drizzle-orm';
+import { eq, and, isNotNull, desc, gte, sql } from 'drizzle-orm';
 import bcrypt from 'bcrypt';
 import { db, schema } from '../db';
 import {
@@ -48,11 +48,6 @@ async function getDecryptedApiKeyForDevice(deviceId: number): Promise<{ key: str
     }
 }
 
-async function getPendingSettings(deviceId: number) {
-    return db.query.settingsQueue.findMany({
-        where: and(eq(schema.settingsQueue.deviceId, deviceId), isNull(schema.settingsQueue.appliedAt)),
-    });
-}
 
 export function createRouter() {
     return t.router({
@@ -98,11 +93,10 @@ export function createRouter() {
                     } catch { /* bad key */ }
                 }
 
-                const pending = await getPendingSettings(ctx.deviceId);
                 return {
                     apiKey,
                     apiKeyType,
-                    pendingSettings: pending.map(p => p.settings),
+                    pendingSettings: device.pushedSettings ? [device.pushedSettings] : [],
                 };
             }),
 
@@ -139,19 +133,15 @@ export function createRouter() {
                         );
                     }
 
-                    const pending = await getPendingSettings(ctx.deviceId);
-                    if (pending.length > 0) {
-                        await db.update(schema.settingsQueue)
-                            .set({ appliedAt: now })
-                            .where(inArray(schema.settingsQueue.id, pending.map(p => p.id)));
-                    }
-
-                    const keyData = await getDecryptedApiKeyForDevice(ctx.deviceId);
+                    const [device, keyData] = await Promise.all([
+                        db.query.devices.findFirst({ where: eq(schema.devices.id, ctx.deviceId) }),
+                        getDecryptedApiKeyForDevice(ctx.deviceId),
+                    ]);
 
                     return {
                         apiKey: keyData?.key ?? null,
                         apiKeyType: keyData?.keyType ?? 'google-v2',
-                        pendingSettings: pending.map(p => p.settings),
+                        pendingSettings: device?.pushedSettings ? [device.pushedSettings] : [],
                     };
                 }),
         }),
@@ -298,6 +288,7 @@ export function createRouter() {
                             apiKeyType: device.apiKey?.keyType ?? null,
                             hasApiKey: !!device.apiKeyId,
                             settings: device.settings,
+                            pushedSettings: device.pushedSettings,
                             lastSeenAt: device.lastSeenAt,
                             lastHeartbeatAt: device.lastHeartbeatAt,
                             createdAt: device.createdAt,
@@ -347,19 +338,19 @@ export function createRouter() {
                         await db.delete(schema.devices).where(eq(schema.devices.id, input.id));
                     }),
 
-                pushSettings: adminProcedure
+                saveSettings: adminProcedure
                     .input(z.object({
                         deviceId: z.number(),
                         settings: z.record(z.any()),
                     }))
                     .mutation(async ({ input }) => {
-                        await db.insert(schema.settingsQueue).values({
-                            deviceId: input.deviceId,
-                            settings: input.settings,
-                        });
                         await db.update(schema.devices)
-                            .set({ settings: input.settings, updatedAt: new Date() })
+                            .set({ pushedSettings: input.settings, updatedAt: new Date() })
                             .where(eq(schema.devices.id, input.deviceId));
+                        // If online, push immediately — no waiting for next heartbeat
+                        if (relay.isOnline(input.deviceId)) {
+                            relay.sendToDevice(input.deviceId, { type: 'pushSettings', settings: input.settings });
+                        }
                     }),
 
                 errors: adminProcedure

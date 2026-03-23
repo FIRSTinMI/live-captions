@@ -27,7 +27,8 @@ export const devices = pgTable('devices', {
     pin: text('pin').notNull(),
     tokenHash: text('token_hash'),
     apiKeyId: integer('api_key_id').references(() => apiKeys.id, { onDelete: 'set null' }),
-    settings: jsonb('settings'),
+    settings: jsonb('settings'),       // last reported by device (read-only from admin)
+    pushedSettings: jsonb('pushed_settings'), // admin override, cleared when device acks
     createdAt: timestamp('created_at').defaultNow().notNull(),
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
     lastSeenAt: timestamp('last_seen_at'),
@@ -49,14 +50,6 @@ export const errorLogs = pgTable('error_logs', {
     occurredAt: timestamp('occurred_at').defaultNow().notNull(),
 });
 
-export const settingsQueue = pgTable('settings_queue', {
-    id: serial('id').primaryKey(),
-    deviceId: integer('device_id').notNull().references(() => devices.id, { onDelete: 'cascade' }),
-    settings: jsonb('settings').notNull(),
-    appliedAt: timestamp('applied_at'),
-    createdAt: timestamp('created_at').defaultNow().notNull(),
-});
-
 // Relations
 export const apiKeysRelations = relations(apiKeys, ({ many }) => ({
     devices: many(devices),
@@ -65,7 +58,6 @@ export const apiKeysRelations = relations(apiKeys, ({ many }) => ({
 export const devicesRelations = relations(devices, ({ many, one }) => ({
     usageLogs: many(usageLogs),
     errorLogs: many(errorLogs),
-    settingsQueue: many(settingsQueue),
     apiKey: one(apiKeys, { fields: [devices.apiKeyId], references: [apiKeys.id] }),
 }));
 
@@ -77,6 +69,3 @@ export const errorLogsRelations = relations(errorLogs, ({ one }) => ({
     device: one(devices, { fields: [errorLogs.deviceId], references: [devices.id] }),
 }));
 
-export const settingsQueueRelations = relations(settingsQueue, ({ one }) => ({
-    device: one(devices, { fields: [settingsQueue.deviceId], references: [devices.id] }),
-}));
