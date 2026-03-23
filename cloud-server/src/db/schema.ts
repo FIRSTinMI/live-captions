@@ -2,6 +2,8 @@ import { pgTable, serial, text, timestamp, integer, numeric, jsonb, pgEnum } fro
 import { relations } from 'drizzle-orm';
 
 export const apiKeyTypeEnum = pgEnum('api_key_type', ['google-v1', 'google-v2']);
+export const adminCredentialRoleEnum = pgEnum('admin_credential_role', ['client', 'admin']);
+export const phraseSetStateEnum = pgEnum('phrase_set_state', ['unknown', 'synced', 'pending', 'drifted', 'missing']);
 
 export const users = pgTable('users', {
     id: serial('id').primaryKey(),
@@ -67,5 +69,53 @@ export const usageLogsRelations = relations(usageLogs, ({ one }) => ({
 
 export const errorLogsRelations = relations(errorLogs, ({ one }) => ({
     device: one(devices, { fields: [errorLogs.deviceId], references: [devices.id] }),
+}));
+
+// ── Phrase set management ──────────────────────────────────────────────────
+
+export const googleCredentialProfiles = pgTable('google_credential_profiles', {
+    id: serial('id').primaryKey(),
+    label: text('label').notNull(),
+    role: adminCredentialRoleEnum('role').notNull(),
+    projectId: text('project_id').notNull(),
+    scopes: text('scopes').notNull().default('https://www.googleapis.com/auth/cloud-platform'),
+    credentials: text('credentials').notNull(), // AES-256 encrypted JSON service account
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const phraseSetDefinitions = pgTable('phrase_set_definitions', {
+    id: serial('id').primaryKey(),
+    name: text('name').notNull(),
+    phrases: jsonb('phrases').$type<{ value: string; boost?: number }[]>().notNull().default([]),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const phraseSetDeployments = pgTable('phrase_set_deployments', {
+    id: serial('id').primaryKey(),
+    definitionId: integer('definition_id').notNull().references(() => phraseSetDefinitions.id, { onDelete: 'restrict' }),
+    adminCredentialProfileId: integer('admin_credential_profile_id').notNull().references(() => googleCredentialProfiles.id, { onDelete: 'restrict' }),
+    projectId: text('project_id').notNull(),
+    location: text('location').notNull().default('global'),
+    resourceName: text('resource_name').notNull(),
+    state: phraseSetStateEnum('state').notNull().default('unknown'),
+    lastVerifiedAt: timestamp('last_verified_at'),
+    importedFrom: text('imported_from'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const googleCredentialProfilesRelations = relations(googleCredentialProfiles, ({ many }) => ({
+    deployments: many(phraseSetDeployments),
+}));
+
+export const phraseSetDefinitionsRelations = relations(phraseSetDefinitions, ({ many }) => ({
+    deployments: many(phraseSetDeployments),
+}));
+
+export const phraseSetDeploymentsRelations = relations(phraseSetDeployments, ({ one }) => ({
+    definition: one(phraseSetDefinitions, { fields: [phraseSetDeployments.definitionId], references: [phraseSetDefinitions.id] }),
+    adminCredentialProfile: one(googleCredentialProfiles, { fields: [phraseSetDeployments.adminCredentialProfileId], references: [googleCredentialProfiles.id] }),
 }));
 

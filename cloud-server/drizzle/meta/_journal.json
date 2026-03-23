@@ -22,6 +22,13 @@
       "when": 1774285739184,
       "tag": "0002_spicy_sir_ram",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1774300912420,
+      "tag": "0003_wakeful_tyger_tiger",
+      "breakpoints": true
     }
   ]
 }

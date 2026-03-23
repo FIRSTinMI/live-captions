@@ -16,6 +16,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         { to: '/admin/devices', label: 'Devices' },
         { to: '/admin/api-keys', label: 'API Keys' },
         { to: '/admin/users', label: 'Users' },
+        { to: '/admin/phrase-sets', label: 'Phrase Sets' },
     ];
 
     return (

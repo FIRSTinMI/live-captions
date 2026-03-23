@@ -9,6 +9,8 @@ import { Devices } from './pages/Devices';
 import { DeviceDetail } from './pages/DeviceDetail';
 import { ApiKeys } from './pages/ApiKeys';
 import { Users } from './pages/Users';
+import { AdminCredentials } from './pages/AdminCredentials';
+import { PhraseSets } from './pages/PhraseSets';
 import { Layout } from './Layout';
 
 const queryClient = new QueryClient({
@@ -50,6 +52,8 @@ export function App() {
                                             <Route path="/devices/:id" element={<DeviceDetail />} />
                                             <Route path="/api-keys" element={<ApiKeys />} />
                                             <Route path="/users" element={<Users />} />
+                                            <Route path="/credentials" element={<AdminCredentials />} />
+                                            <Route path="/phrase-sets" element={<PhraseSets />} />
                                         </Routes>
                                     </Layout>
                                 </RequireAuth>

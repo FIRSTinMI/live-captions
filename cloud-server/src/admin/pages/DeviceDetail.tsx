@@ -100,6 +100,28 @@ export function DeviceDetail() {
         createApiKey.mutate({ title: newKeyTitle, key: newKeyJson, keyType: newKeyType });
     }
 
+    const { data: allDeployments } = trpc.admin.phraseSetDeployments.list.useQuery({});
+    const [selectedDepIds, setSelectedDepIds] = useState<number[]>(() => {
+        return (device as any)?.pushedSettings?.transcription?.phraseSetDeploymentIds ?? [];
+    });
+    useEffect(() => {
+        const pushed = (device as any)?.pushedSettings?.transcription?.phraseSetDeploymentIds ?? [];
+        setSelectedDepIds(pushed);
+    }, [device?.id]);
+
+    const pushPhraseSets = trpc.admin.phraseSetDeployments.pushToDevice.useMutation({
+        onSuccess: () => {
+            utils.admin.devices.get.invalidate({ id: deviceId });
+            setUpdateMsg('Phrase sets pushed');
+            setTimeout(() => setUpdateMsg(''), 2000);
+        },
+        onError: e => setUpdateError(e.message),
+    });
+
+    function toggleDep(id: number) {
+        setSelectedDepIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+    }
+
     if (!device) return <div className="text-gray-500 dark:text-gray-400">Loading...</div>;
 
     return (
@@ -207,6 +229,64 @@ export function DeviceDetail() {
 
             {/* Live Session */}
             <LiveSession deviceId={deviceId} state={relayState} send={relaySend} offlineSettings={device.pushedSettings ?? device.settings} />
+
+            {/* Phrase Sets */}
+            {allDeployments && allDeployments.length > 0 && (
+                <div className="bg-white dark:bg-gray-800 rounded-lg shadow mb-6 p-6">
+                    <div className="flex items-center justify-between mb-4">
+                        <div>
+                            <h3 className="font-semibold text-gray-900 dark:text-white">Phrase Sets</h3>
+                            <p className="text-xs text-gray-400 mt-0.5">Select which phrase sets to push to this device.</p>
+                        </div>
+                        <button
+                            onClick={() => pushPhraseSets.mutate({ deviceId, deploymentIds: selectedDepIds })}
+                            disabled={pushPhraseSets.isPending}
+                            className="bg-blue-600 text-white rounded px-4 py-2 text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
+                        >
+                            {pushPhraseSets.isPending ? 'Pushing...' : 'Push to device'}
+                        </button>
+                    </div>
+                    <div className="space-y-2">
+                        {allDeployments.map(dep => {
+                            const warn = dep.state === 'drifted' || dep.state === 'unknown';
+                            const blocked = dep.state === 'missing' || dep.state === 'pending';
+                            const stateColors: Record<string, string> = {
+                                synced:  'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300',
+                                pending: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300',
+                                drifted: 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300',
+                                missing: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300',
+                                unknown: 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300',
+                            };
+                            return (
+                                <label key={dep.id} className={`flex items-center gap-3 p-2 rounded border cursor-pointer ${
+                                    blocked ? 'opacity-50 cursor-not-allowed border-gray-200 dark:border-gray-700'
+                                    : warn ? 'border-orange-200 dark:border-orange-700'
+                                    : 'border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/30'
+                                }`}>
+                                    <input
+                                        type="checkbox"
+                                        disabled={blocked}
+                                        checked={selectedDepIds.includes(dep.id)}
+                                        onChange={() => toggleDep(dep.id)}
+                                        className="rounded"
+                                    />
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-sm font-medium text-gray-900 dark:text-white">{dep.definitionName}</span>
+                                            <span className={`text-xs font-semibold px-1.5 py-0.5 rounded-full ${stateColors[dep.state ?? 'unknown'] ?? stateColors.unknown}`}>
+                                                {dep.state ?? 'unknown'}
+                                            </span>
+                                        </div>
+                                        <p className="text-xs text-gray-400 font-mono truncate">{dep.resourceName}</p>
+                                    </div>
+                                    {warn && <span className="text-xs text-orange-500">⚠ out of sync</span>}
+                                    {blocked && <span className="text-xs text-red-500">unavailable</span>}
+                                </label>
+                            );
+                        })}
+                    </div>
+                </div>
+            )}
 
             {/* Error logs */}
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow mb-6">

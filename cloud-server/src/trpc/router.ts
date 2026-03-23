@@ -13,6 +13,14 @@ import {
 } from '../auth';
 import { Context } from './context';
 import { relay } from '../relay';
+import {
+    listPhraseSets,
+    getPhraseSet,
+    createPhraseSet,
+    updatePhraseSet,
+    deletePhraseSet,
+} from '../util/phraseSetService';
+import { discoverForProfile } from '../util/phraseSetDiscovery';
 
 const t = initTRPC.context<Context>().create();
 
@@ -453,6 +461,482 @@ export function createRouter() {
                             throw new TRPCError({ code: 'BAD_REQUEST', message: 'Cannot delete yourself' });
                         }
                         await db.delete(schema.users).where(eq(schema.users.id, input.id));
+                    }),
+            }),
+
+            // ── Admin credential profiles (for GCP PhraseSet CRUD) ────────────
+
+            adminCredentials: t.router({
+                list: adminProcedure.query(async () => {
+                    const rows = await db.query.googleCredentialProfiles.findMany({
+                        orderBy: [desc(schema.googleCredentialProfiles.createdAt)],
+                    });
+                    // Never return the encrypted credentials field
+                    return rows.map(r => ({
+                        id: r.id,
+                        label: r.label,
+                        role: r.role,
+                        projectId: r.projectId,
+                        scopes: r.scopes,
+                        createdAt: r.createdAt,
+                        updatedAt: r.updatedAt,
+                    }));
+                }),
+
+                create: adminProcedure
+                    .input(z.object({
+                        label: z.string().min(1),
+                        role: z.enum(['client', 'admin']),
+                        projectId: z.string().min(1),
+                        scopes: z.string().default('https://www.googleapis.com/auth/cloud-platform'),
+                        credentials: z.string().min(1), // raw service account JSON
+                    }))
+                    .mutation(async ({ input }) => {
+                        // Validate that the credentials string is valid JSON
+                        try { JSON.parse(input.credentials); } catch {
+                            throw new TRPCError({ code: 'BAD_REQUEST', message: 'credentials must be valid JSON' });
+                        }
+                        const encrypted = encryptApiKey(input.credentials, getEncryptionKey());
+                        const [row] = await db.insert(schema.googleCredentialProfiles).values({
+                            label: input.label,
+                            role: input.role,
+                            projectId: input.projectId,
+                            scopes: input.scopes,
+                            credentials: encrypted,
+                        }).returning({ id: schema.googleCredentialProfiles.id });
+
+                        // Kick off discovery for this profile after creation (non-blocking)
+                        if (input.role === 'admin') {
+                            discoverForProfile(row.id).catch(err =>
+                                console.error(`[phrase-sets] Post-create discovery error for profile ${row.id}:`, err)
+                            );
+                        }
+
+                        return { id: row.id };
+                    }),
+
+                update: adminProcedure
+                    .input(z.object({
+                        id: z.number(),
+                        label: z.string().min(1).optional(),
+                        credentials: z.string().min(1).optional(),
+                    }))
+                    .mutation(async ({ input }) => {
+                        const updates: Partial<typeof schema.googleCredentialProfiles.$inferInsert> = {
+                            updatedAt: new Date(),
+                        };
+                        if (input.label) updates.label = input.label;
+                        if (input.credentials) {
+                            try { JSON.parse(input.credentials); } catch {
+                                throw new TRPCError({ code: 'BAD_REQUEST', message: 'credentials must be valid JSON' });
+                            }
+                            updates.credentials = encryptApiKey(input.credentials, getEncryptionKey());
+                        }
+                        await db.update(schema.googleCredentialProfiles)
+                            .set(updates)
+                            .where(eq(schema.googleCredentialProfiles.id, input.id));
+                    }),
+
+                delete: adminProcedure
+                    .input(z.object({ id: z.number() }))
+                    .mutation(async ({ input }) => {
+                        const deployments = await db.query.phraseSetDeployments.findMany({
+                            where: eq(schema.phraseSetDeployments.adminCredentialProfileId, input.id),
+                        });
+                        if (deployments.length > 0) {
+                            throw new TRPCError({
+                                code: 'PRECONDITION_FAILED',
+                                message: `Cannot delete: ${deployments.length} deployment(s) reference this credential. Remove deployments first.`,
+                            });
+                        }
+                        await db.delete(schema.googleCredentialProfiles)
+                            .where(eq(schema.googleCredentialProfiles.id, input.id));
+                    }),
+
+                rediscover: adminProcedure
+                    .input(z.object({ id: z.number() }))
+                    .mutation(async ({ input }) => {
+                        const result = await discoverForProfile(input.id);
+                        return result;
+                    }),
+            }),
+
+            // ── Phrase set definitions ─────────────────────────────────────────
+
+            phraseSetDefinitions: t.router({
+                list: adminProcedure.query(async () => {
+                    const defs = await db.query.phraseSetDefinitions.findMany({
+                        orderBy: [desc(schema.phraseSetDefinitions.createdAt)],
+                        with: { deployments: true },
+                    });
+
+                    return defs.map(d => {
+                        const states = d.deployments.map(dep => dep.state);
+                        const worstState = states.includes('missing') ? 'missing'
+                            : states.includes('drifted') ? 'drifted'
+                            : states.includes('pending') ? 'pending'
+                            : states.includes('unknown') ? 'unknown'
+                            : states.length > 0 ? 'synced'
+                            : null;
+                        return {
+                            id: d.id,
+                            name: d.name,
+                            phrases: d.phrases,
+                            deploymentCount: d.deployments.length,
+                            worstState,
+                            createdAt: d.createdAt,
+                            updatedAt: d.updatedAt,
+                        };
+                    });
+                }),
+
+                create: adminProcedure
+                    .input(z.object({
+                        name: z.string().min(1),
+                        phrases: z.array(z.object({
+                            value: z.string().min(1),
+                            boost: z.number().optional(),
+                        })).default([]),
+                    }))
+                    .mutation(async ({ input }) => {
+                        const [row] = await db.insert(schema.phraseSetDefinitions).values({
+                            name: input.name,
+                            phrases: input.phrases,
+                        }).returning({ id: schema.phraseSetDefinitions.id });
+                        return { id: row.id };
+                    }),
+
+                update: adminProcedure
+                    .input(z.object({
+                        id: z.number(),
+                        name: z.string().min(1).optional(),
+                        phrases: z.array(z.object({
+                            value: z.string().min(1),
+                            boost: z.number().optional(),
+                        })).optional(),
+                    }))
+                    .mutation(async ({ input }) => {
+                        const updates: Partial<typeof schema.phraseSetDefinitions.$inferInsert> = {
+                            updatedAt: new Date(),
+                        };
+                        if (input.name) updates.name = input.name;
+                        if (input.phrases !== undefined) {
+                            updates.phrases = input.phrases;
+                            // Mark all deployments for this definition as pending
+                            await db.update(schema.phraseSetDeployments)
+                                .set({ state: 'pending', updatedAt: new Date() })
+                                .where(eq(schema.phraseSetDeployments.definitionId, input.id));
+                        }
+                        await db.update(schema.phraseSetDefinitions)
+                            .set(updates)
+                            .where(eq(schema.phraseSetDefinitions.id, input.id));
+                    }),
+
+                delete: adminProcedure
+                    .input(z.object({ id: z.number() }))
+                    .mutation(async ({ input }) => {
+                        const deployments = await db.query.phraseSetDeployments.findMany({
+                            where: eq(schema.phraseSetDeployments.definitionId, input.id),
+                        });
+                        if (deployments.length > 0) {
+                            throw new TRPCError({
+                                code: 'PRECONDITION_FAILED',
+                                message: `Cannot delete: ${deployments.length} deployment(s) exist. Remove deployments first.`,
+                            });
+                        }
+                        await db.delete(schema.phraseSetDefinitions)
+                            .where(eq(schema.phraseSetDefinitions.id, input.id));
+                    }),
+            }),
+
+            // ── Phrase set deployments ─────────────────────────────────────────
+
+            phraseSetDeployments: t.router({
+                list: adminProcedure
+                    .input(z.object({ definitionId: z.number().optional() }))
+                    .query(async ({ input }) => {
+                        const rows = await db.query.phraseSetDeployments.findMany({
+                            ...(input.definitionId
+                                ? { where: eq(schema.phraseSetDeployments.definitionId, input.definitionId) }
+                                : {}),
+                            orderBy: [desc(schema.phraseSetDeployments.createdAt)],
+                            with: { definition: true, adminCredentialProfile: true },
+                        });
+                        return rows.map(r => ({
+                            id: r.id,
+                            definitionId: r.definitionId,
+                            definitionName: r.definition?.name ?? '',
+                            adminCredentialProfileId: r.adminCredentialProfileId,
+                            adminCredentialLabel: r.adminCredentialProfile?.label ?? '',
+                            projectId: r.projectId,
+                            location: r.location,
+                            resourceName: r.resourceName,
+                            state: r.state,
+                            lastVerifiedAt: r.lastVerifiedAt,
+                            importedFrom: r.importedFrom,
+                            createdAt: r.createdAt,
+                        }));
+                    }),
+
+                deploy: adminProcedure
+                    .input(z.object({
+                        definitionId: z.number(),
+                        adminCredentialProfileId: z.number(),
+                        projectId: z.string().min(1),
+                        location: z.string().default('global'),
+                        resourceId: z.string().min(1),
+                    }))
+                    .mutation(async ({ input }) => {
+                        const def = await db.query.phraseSetDefinitions.findFirst({
+                            where: eq(schema.phraseSetDefinitions.id, input.definitionId),
+                        });
+                        if (!def) throw new TRPCError({ code: 'NOT_FOUND', message: 'Definition not found' });
+
+                        const profile = await db.query.googleCredentialProfiles.findFirst({
+                            where: eq(schema.googleCredentialProfiles.id, input.adminCredentialProfileId),
+                        });
+                        if (!profile) throw new TRPCError({ code: 'NOT_FOUND', message: 'Credential profile not found' });
+
+                        const credJson = decryptApiKey(profile.credentials, getEncryptionKey());
+
+                        // Check if a deployment already exists for this resource
+                        const existing = await db.query.phraseSetDeployments.findFirst({
+                            where: and(
+                                eq(schema.phraseSetDeployments.definitionId, input.definitionId),
+                                eq(schema.phraseSetDeployments.projectId, input.projectId),
+                                eq(schema.phraseSetDeployments.location, input.location),
+                            ),
+                        });
+
+                        let resourceName: string;
+                        const expectedResourceName = `projects/${input.projectId}/locations/${input.location}/phraseSets/${input.resourceId}`;
+
+                        try {
+                            if (existing) {
+                                await updatePhraseSet(profile.projectId, profile.scopes, credJson, existing.resourceName, def.phrases as { value: string; boost?: number }[]);
+                                resourceName = existing.resourceName;
+                            } else {
+                                resourceName = await createPhraseSet(
+                                    input.projectId,
+                                    profile.scopes,
+                                    credJson,
+                                    input.location,
+                                    input.resourceId,
+                                    def.phrases as { value: string; boost?: number }[],
+                                );
+                            }
+                        } catch (err: any) {
+                            throw new TRPCError({
+                                code: 'INTERNAL_SERVER_ERROR',
+                                message: `GCP error: ${err?.message ?? String(err)}`,
+                            });
+                        }
+
+                        if (existing) {
+                            await db.update(schema.phraseSetDeployments)
+                                .set({ state: 'synced', lastVerifiedAt: new Date(), updatedAt: new Date() })
+                                .where(eq(schema.phraseSetDeployments.id, existing.id));
+                            return { id: existing.id, resourceName };
+                        } else {
+                            const [row] = await db.insert(schema.phraseSetDeployments).values({
+                                definitionId: input.definitionId,
+                                adminCredentialProfileId: input.adminCredentialProfileId,
+                                projectId: input.projectId,
+                                location: input.location,
+                                resourceName,
+                                state: 'synced',
+                                lastVerifiedAt: new Date(),
+                            }).returning({ id: schema.phraseSetDeployments.id });
+                            return { id: row.id, resourceName };
+                        }
+                    }),
+
+                verify: adminProcedure
+                    .input(z.object({ id: z.number() }))
+                    .mutation(async ({ input }) => {
+                        const deployment = await db.query.phraseSetDeployments.findFirst({
+                            where: eq(schema.phraseSetDeployments.id, input.id),
+                            with: { definition: true, adminCredentialProfile: true },
+                        });
+                        if (!deployment) throw new TRPCError({ code: 'NOT_FOUND' });
+
+                        const credJson = decryptApiKey(deployment.adminCredentialProfile.credentials, getEncryptionKey());
+
+                        let newState: typeof deployment.state;
+                        try {
+                            const remote = await getPhraseSet(
+                                deployment.adminCredentialProfile.projectId,
+                                deployment.adminCredentialProfile.scopes,
+                                credJson,
+                                deployment.resourceName,
+                            );
+
+                            // Compare phrase content
+                            const localPhrases = (deployment.definition?.phrases ?? []) as { value: string; boost?: number }[];
+                            const remoteValues = new Set(remote.phrases.map(p => p.value));
+                            const localValues = new Set(localPhrases.map(p => p.value));
+                            const isDrifted = remoteValues.size !== localValues.size
+                                || [...localValues].some(v => !remoteValues.has(v));
+
+                            newState = isDrifted ? 'drifted' : 'synced';
+                        } catch (err: any) {
+                            const msg = String(err?.message ?? err);
+                            newState = msg.includes('404') || msg.toLowerCase().includes('not found') ? 'missing' : 'unknown';
+                        }
+
+                        await db.update(schema.phraseSetDeployments)
+                            .set({ state: newState, lastVerifiedAt: new Date(), updatedAt: new Date() })
+                            .where(eq(schema.phraseSetDeployments.id, input.id));
+
+                        return { state: newState };
+                    }),
+
+                undeploy: adminProcedure
+                    .input(z.object({ id: z.number(), deleteFromGcp: z.boolean().default(false) }))
+                    .mutation(async ({ input }) => {
+                        const deployment = await db.query.phraseSetDeployments.findFirst({
+                            where: eq(schema.phraseSetDeployments.id, input.id),
+                            with: { adminCredentialProfile: true },
+                        });
+                        if (!deployment) throw new TRPCError({ code: 'NOT_FOUND' });
+
+                        if (input.deleteFromGcp) {
+                            try {
+                                const credJson = decryptApiKey(deployment.adminCredentialProfile.credentials, getEncryptionKey());
+                                await deletePhraseSet(
+                                    deployment.adminCredentialProfile.projectId,
+                                    deployment.adminCredentialProfile.scopes,
+                                    credJson,
+                                    deployment.resourceName,
+                                );
+                            } catch (err: any) {
+                                // If already missing on GCP, still proceed with local removal
+                                const msg = String(err?.message ?? err);
+                                if (!msg.includes('404') && !msg.toLowerCase().includes('not found')) {
+                                    throw new TRPCError({
+                                        code: 'INTERNAL_SERVER_ERROR',
+                                        message: `GCP delete failed: ${msg}`,
+                                    });
+                                }
+                            }
+                        }
+
+                        await db.delete(schema.phraseSetDeployments)
+                            .where(eq(schema.phraseSetDeployments.id, input.id));
+                    }),
+
+                syncAll: adminProcedure
+                    .input(z.object({ definitionId: z.number() }))
+                    .mutation(async ({ input }) => {
+                        const def = await db.query.phraseSetDefinitions.findFirst({
+                            where: eq(schema.phraseSetDefinitions.id, input.definitionId),
+                        });
+                        if (!def) throw new TRPCError({ code: 'NOT_FOUND', message: 'Definition not found' });
+
+                        const deployments = await db.query.phraseSetDeployments.findMany({
+                            where: eq(schema.phraseSetDeployments.definitionId, input.definitionId),
+                            with: { adminCredentialProfile: true },
+                        });
+
+                        const errors: { id: number; error: string }[] = [];
+                        for (const dep of deployments) {
+                            try {
+                                const credJson = decryptApiKey(dep.adminCredentialProfile.credentials, getEncryptionKey());
+                                await updatePhraseSet(
+                                    dep.adminCredentialProfile.projectId,
+                                    dep.adminCredentialProfile.scopes,
+                                    credJson,
+                                    dep.resourceName,
+                                    def.phrases as { value: string; boost?: number }[],
+                                );
+                                await db.update(schema.phraseSetDeployments)
+                                    .set({ state: 'synced', lastVerifiedAt: new Date(), updatedAt: new Date() })
+                                    .where(eq(schema.phraseSetDeployments.id, dep.id));
+                            } catch (err: any) {
+                                errors.push({ id: dep.id, error: err?.message ?? String(err) });
+                            }
+                        }
+
+                        return {
+                            synced: deployments.length - errors.length,
+                            errors,
+                        };
+                    }),
+
+                pushToDevice: adminProcedure
+                    .input(z.object({
+                        deviceId: z.number(),
+                        deploymentIds: z.array(z.number()),
+                    }))
+                    .mutation(async ({ input }) => {
+                        if (input.deploymentIds.length === 0) {
+                            // Push empty array to clear phrase sets on device
+                            relay.sendToDevice(input.deviceId, {
+                                type: 'setArray',
+                                key: 'transcription.phraseSets',
+                                value: [],
+                            });
+                            await db.update(schema.devices)
+                                .set({
+                                    pushedSettings: { transcription: { phraseSets: [], phraseSetDeploymentIds: [] } },
+                                    updatedAt: new Date(),
+                                })
+                                .where(eq(schema.devices.id, input.deviceId));
+                            return { pushed: 0, warnings: [] as string[] };
+                        }
+
+                        const deployments = await db.query.phraseSetDeployments.findMany({
+                            where: (d, { inArray }) => inArray(d.id, input.deploymentIds),
+                        });
+
+                        const missing = deployments.filter(d => d.state === 'missing');
+                        if (missing.length > 0) {
+                            throw new TRPCError({
+                                code: 'BAD_REQUEST',
+                                message: `${missing.length} deployment(s) are missing from GCP and cannot be pushed: ${missing.map(d => d.resourceName).join(', ')}`,
+                            });
+                        }
+
+                        const pending = deployments.filter(d => d.state === 'pending');
+                        if (pending.length > 0) {
+                            throw new TRPCError({
+                                code: 'BAD_REQUEST',
+                                message: `${pending.length} deployment(s) have unsynchronised changes. Deploy to GCP first: ${pending.map(d => d.resourceName).join(', ')}`,
+                            });
+                        }
+
+                        const warnings = deployments
+                            .filter(d => d.state === 'drifted' || d.state === 'unknown')
+                            .map(d => `${d.resourceName} (${d.state})`);
+
+                        const resourceNames = deployments.map(d => d.resourceName);
+
+                        relay.sendToDevice(input.deviceId, {
+                            type: 'setArray',
+                            key: 'transcription.phraseSets',
+                            value: resourceNames,
+                        });
+
+                        // Store assignment in pushedSettings so offline devices receive it on heartbeat
+                        // and so the admin panel can display what's currently assigned
+                        const device = await db.query.devices.findFirst({
+                            where: eq(schema.devices.id, input.deviceId),
+                            columns: { pushedSettings: true },
+                        });
+                        const existingSettings = (device?.pushedSettings as Record<string, unknown>) ?? {};
+                        const merged = {
+                            ...existingSettings,
+                            transcription: {
+                                ...((existingSettings.transcription as Record<string, unknown>) ?? {}),
+                                phraseSets: resourceNames,
+                                phraseSetDeploymentIds: input.deploymentIds,
+                            },
+                        };
+                        await db.update(schema.devices)
+                            .set({ pushedSettings: merged, updatedAt: new Date() })
+                            .where(eq(schema.devices.id, input.deviceId));
+
+                        return { pushed: resourceNames.length, warnings };
                     }),
             }),
         }),

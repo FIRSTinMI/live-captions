@@ -4,6 +4,7 @@ import bcrypt from 'bcrypt';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import { db, schema } from './db';
 import { createServer } from './server';
+import { discoverAllPhraseSets } from './util/phraseSetDiscovery';
 
 const PORT = parseInt(process.env.PORT ?? '3001', 10);
 
@@ -36,6 +37,12 @@ async function main() {
     }
 
     await seedInitialAdmin();
+
+    // Auto-discover GCP phrase sets for all configured admin credential profiles.
+    // Runs silently; errors per profile are caught inside discoverAllPhraseSets.
+    discoverAllPhraseSets().catch(err =>
+        console.error('[phrase-sets] Unexpected discovery error:', err)
+    );
 
     const server = createServer();
     server.listen(PORT, () => {
