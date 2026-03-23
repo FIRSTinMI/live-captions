@@ -48,21 +48,6 @@ function deepMergeSettings(target: Record<string, unknown>, source: Record<strin
     return result;
 }
 
-async function getDecryptedApiKeyForDevice(deviceId: number): Promise<{ key: string; keyType: string } | null> {
-    const device = await db.query.devices.findFirst({
-        where: eq(schema.devices.id, deviceId),
-        with: { apiKey: true },
-    });
-    if (!device?.apiKey) return null;
-    try {
-        return {
-            key: decryptApiKey(device.apiKey.key, getEncryptionKey()),
-            keyType: device.apiKey.keyType,
-        };
-    } catch {
-        return null;
-    }
-}
 
 
 export function createRouter() {
@@ -92,11 +77,9 @@ export function createRouter() {
                 });
                 if (!device) throw new TRPCError({ code: 'NOT_FOUND' });
 
-                const withinWindow = device.lastHeartbeatAt &&
-                    Date.now() - device.lastHeartbeatAt.getTime() < SEVEN_DAYS_MS;
                 let apiKey: string | null = null;
                 let apiKeyType = 'google-v2';
-                if (withinWindow && device.apiKey) {
+                if (device.apiKey) {
                     try {
                         apiKey = decryptApiKey(device.apiKey.key, getEncryptionKey());
                         apiKeyType = device.apiKey.keyType;
@@ -144,14 +127,11 @@ export function createRouter() {
                         );
                     }
 
-                    const [device, keyData] = await Promise.all([
-                        db.query.devices.findFirst({ where: eq(schema.devices.id, ctx.deviceId) }),
-                        getDecryptedApiKeyForDevice(ctx.deviceId),
-                    ]);
+                    const device = await db.query.devices.findFirst({
+                        where: eq(schema.devices.id, ctx.deviceId),
+                    });
 
                     return {
-                        apiKey: keyData?.key ?? null,
-                        apiKeyType: keyData?.keyType ?? 'google-v2',
                         pendingSettings: device?.pushedSettings ? [device.pushedSettings] : [],
                     };
                 }),

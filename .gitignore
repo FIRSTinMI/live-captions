@@ -8,7 +8,7 @@ src/public
 .vscode
 april-asr.spec
 
-# Environment files — never commit secrets
+# Environment files - never commit secrets
 .env
 .env.local
 .env*.local

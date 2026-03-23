@@ -584,7 +584,7 @@ export function LiveSession({ deviceId, state, send, offlineSettings }: LiveSess
     const saveSettingsMutation = trpc.admin.devices.saveSettings.useMutation({
         onSuccess: () => {
             utils.admin.devices.get.invalidate({ id: deviceId });
-            setSaveMsg(state.online ? 'Pushed to device' : 'Saved — will sync on next connection');
+            setSaveMsg(state.online ? 'Pushed to device' : 'Saved - will sync on next connection');
             setTimeout(() => setSaveMsg(''), 3000);
         },
     });

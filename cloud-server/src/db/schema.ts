@@ -24,7 +24,7 @@ export const devices = pgTable('devices', {
     id: serial('id').primaryKey(),
     name: text('name').notNull(),
     tag: text('tag').notNull().default(''),
-    pin: text('pin').notNull(), // stored plain — 6-digit code shown to operators
+    pin: text('pin').notNull(), // stored plain - 6-digit code shown to operators
     tokenHash: text('token_hash'),
     apiKeyId: integer('api_key_id').references(() => apiKeys.id, { onDelete: 'set null' }),
     settings: jsonb('settings'),       // last reported by device (read-only from admin)

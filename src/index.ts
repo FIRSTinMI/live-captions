@@ -10,7 +10,13 @@ import { GoogleV2 } from './engines/GoogleV2';
 import { GoogleV1 } from './engines/GoogleV1';
 import { April, downloadDependencies } from './engines/April';
 import { createAppRouter } from './trpc/router';
-import { micBus } from './util/eventBus';
+import { micBus, errorBus } from './util/eventBus';
+
+// Fallback listener so Node.js doesn't crash if no other handler is registered
+// (e.g. when cloud sync init fails and subscribeErrors() is never called)
+errorBus.on('error', (err) => {
+    console.error('Speech engine error (unrelayed):', err.message, err.context ?? '');
+});
 import { CloudSync } from './util/cloudSync';
 
 export const PROGRAM_FOLDER = process.platform === 'win32'

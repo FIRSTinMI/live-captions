@@ -101,8 +101,16 @@ export class CloudSync {
             this.connectRelay();
             this.subscribeErrors();
             console.log(color('Cloud sync initialized').green.toString());
-        } catch (err) {
+        } catch (err: any) {
             console.error(color('Cloud sync init failed:').red.toString(), err);
+            // Device was removed from the server — stale token, clear it so the UI
+            // shows the PIN input instead of falsely showing "connected"
+            if (err?.data?.code === 'UNAUTHORIZED' || err?.shape?.message === 'UNAUTHORIZED') {
+                console.log(color('Device token rejected — clearing stale token').yellow.toString());
+                this.config.server.cloud.deviceToken = null;
+                this.config.server.cloud.deviceName = null;
+                this.config.save();
+            }
         }
     }
 
@@ -359,7 +367,6 @@ export class CloudSync {
             }));
             const result = await this.client.device.heartbeat.mutate({ minutesUsed, errors });
 
-            this.applyApiKey(result.apiKey, result.apiKeyType);
             if (result.pendingSettings?.length) {
                 this.applyPendingSettings(result.pendingSettings as Record<string, unknown>[]);
             }
@@ -369,17 +376,7 @@ export class CloudSync {
     }
 
     private applyApiKey(apiKey: string | null, apiKeyType: string) {
-        if (!apiKey) {
-            // Key withheld - clear credentials so recognition stops
-            if (this.config.server.cloud.deviceToken) {
-                console.warn(color('Cloud: API key withheld (heartbeat overdue). Recognition paused.').yellow.toString());
-                this.config.server.google.credentials.client_email = '';
-                this.config.server.google.credentials.private_key = '';
-                this.config.save();
-            }
-            return;
-        }
-
+        if (!apiKey) return;
         try {
             const creds = JSON.parse(apiKey);
             this.config.server.google.credentials = {

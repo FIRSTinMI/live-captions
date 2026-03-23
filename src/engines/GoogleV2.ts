@@ -134,7 +134,7 @@ export class GoogleV2 {
                     if (err.toString().includes('305') || err.details?.includes('Max duration')) {
                         this.recognizeStream?.destroy();
                         this.resume();
-                    } else if (err.code === 16 ||
+                    } else if (err.code === 16 || err.code === 7 ||
                         err.toString().includes('does not contain a client_email field') ||
                         err.toString().includes('does not contain a private_key field')) {
                         console.error(color('Google API Authentication Failed').bold.red.toString());
@@ -163,7 +163,8 @@ export class GoogleV2 {
     }
 
     public write(pcm: Buffer) {
-        if (this.dead || this.recognizeStream?.closed || this.recognizeStream?.destroyed) {
+        if (this.dead) return; // intentionally paused, drop audio silently
+        if (this.recognizeStream?.closed || this.recognizeStream?.destroyed) {
             console.error('Tried to write to a dead GoogleV2 instance');
             this.recognizeStream?.destroy();
             this.speech?.close();
