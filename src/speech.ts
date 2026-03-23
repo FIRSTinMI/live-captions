@@ -21,7 +21,8 @@ const AUTO_THRESHOLD_ALPHA_UP = 0.001;   // slow rise when room gets louder (τ 
 export enum StreamingState {
     ACTIVE,
     PAUSED,
-    DESTROYED
+    DESTROYED,
+    ERRORED
 }
 
 export class Speech<T extends GoogleV2 | GoogleV1 | April> {
@@ -86,6 +87,10 @@ export class Speech<T extends GoogleV2 | GoogleV1 | April> {
         this.filter.removeWords(...removeWords);
 
         this.engine = new engine(config, input.sampleRate, input.id, input.speaker ?? "Unknown", input.languages ?? ['en-us'], this.restart);
+
+        this.engine.emitter.on('engineError', () => {
+            this.state = StreamingState.ERRORED;
+        });
 
         this.engine.emitter.on('frame', (frame: Frame) => {
             frame.text = transform(frame.text, config.transformations);
@@ -220,10 +225,11 @@ export class Speech<T extends GoogleV2 | GoogleV1 | April> {
             if (this.state === StreamingState.ACTIVE) {
                 this.engine.write(pcm);
                 this.usageSeconds += 480 / 16000; // one frame = 480 samples @ 16kHz
-            } else {
+            } else if (this.state === StreamingState.PAUSED) {
                 this.engine.resume();
                 this.state = StreamingState.ACTIVE;
             }
+            // ERRORED/DESTROYED: don't write or auto-resume — needs a restart
         } else {
             if (this.state === StreamingState.ACTIVE) {
                 if (!this.silent) {
