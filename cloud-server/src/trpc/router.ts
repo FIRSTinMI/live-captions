@@ -287,6 +287,7 @@ export function createRouter() {
                             apiKeyTitle: device.apiKey?.title ?? null,
                             apiKeyType: device.apiKey?.keyType ?? null,
                             hasApiKey: !!device.apiKeyId,
+                            groupId: device.groupId,
                             settings: device.settings,
                             pushedSettings: device.pushedSettings,
                             lastSeenAt: device.lastSeenAt,
@@ -318,6 +319,7 @@ export function createRouter() {
                         name: z.string().min(1).optional(),
                         tag: z.string().optional(),
                         apiKeyId: z.number().nullable().optional(),
+                        groupId: z.number().nullable().optional(),
                     }))
                     .mutation(async ({ input }) => {
                         const updates: Partial<typeof schema.devices.$inferInsert> = {
@@ -326,6 +328,7 @@ export function createRouter() {
                         if (input.name) updates.name = input.name;
                         if (input.tag !== undefined) updates.tag = input.tag;
                         if ('apiKeyId' in input) updates.apiKeyId = input.apiKeyId ?? null;
+                        if ('groupId' in input) updates.groupId = input.groupId ?? null;
                         await db.update(schema.devices).set(updates).where(eq(schema.devices.id, input.id));
                     }),
 
@@ -422,6 +425,156 @@ export function createRouter() {
                         .groupBy(schema.usageLogs.deviceId);
                     return rows.map(r => ({ deviceId: r.deviceId, minutesThisMonth: Number(r.total) }));
                 }),
+            }),
+
+            deviceGroups: t.router({
+                list: adminProcedure.query(async () => {
+                    const groups = await db.query.deviceGroups.findMany({
+                        orderBy: [schema.deviceGroups.name],
+                        with: { devices: { columns: { id: true } } },
+                    });
+                    return groups.map(g => ({
+                        id: g.id,
+                        name: g.name,
+                        deviceCount: g.devices.length,
+                        createdAt: g.createdAt,
+                    }));
+                }),
+
+                get: adminProcedure
+                    .input(z.object({ id: z.number() }))
+                    .query(async ({ input }) => {
+                        const group = await db.query.deviceGroups.findFirst({
+                            where: eq(schema.deviceGroups.id, input.id),
+                            with: {
+                                devices: {
+                                    with: { apiKey: true },
+                                },
+                            },
+                        });
+                        if (!group) throw new TRPCError({ code: 'NOT_FOUND' });
+                        return {
+                            id: group.id,
+                            name: group.name,
+                            createdAt: group.createdAt,
+                            devices: group.devices.map(d => ({
+                                id: d.id,
+                                name: d.name,
+                                tag: d.tag,
+                                online: relay.isOnline(d.id),
+                                settings: d.settings,
+                                pushedSettings: d.pushedSettings,
+                            })),
+                        };
+                    }),
+
+                create: adminProcedure
+                    .input(z.object({ name: z.string().min(1) }))
+                    .mutation(async ({ input }) => {
+                        const [group] = await db.insert(schema.deviceGroups)
+                            .values({ name: input.name })
+                            .returning({ id: schema.deviceGroups.id, name: schema.deviceGroups.name });
+                        return group;
+                    }),
+
+                update: adminProcedure
+                    .input(z.object({ id: z.number(), name: z.string().min(1) }))
+                    .mutation(async ({ input }) => {
+                        await db.update(schema.deviceGroups)
+                            .set({ name: input.name, updatedAt: new Date() })
+                            .where(eq(schema.deviceGroups.id, input.id));
+                    }),
+
+                delete: adminProcedure
+                    .input(z.object({ id: z.number() }))
+                    .mutation(async ({ input }) => {
+                        // Unassign all devices in this group first
+                        await db.update(schema.devices)
+                            .set({ groupId: null, updatedAt: new Date() })
+                            .where(eq(schema.devices.groupId, input.id));
+                        await db.delete(schema.deviceGroups).where(eq(schema.deviceGroups.id, input.id));
+                    }),
+
+                saveSettings: adminProcedure
+                    .input(z.object({
+                        groupId: z.number(),
+                        settings: z.record(z.any()),
+                    }))
+                    .mutation(async ({ input }) => {
+                        const devices = await db.query.devices.findMany({
+                            where: eq(schema.devices.groupId, input.groupId),
+                            columns: { id: true, pushedSettings: true },
+                        });
+                        for (const device of devices) {
+                            const merged = deepMergeSettings(
+                                (device.pushedSettings as Record<string, unknown>) ?? {},
+                                input.settings
+                            );
+                            await db.update(schema.devices)
+                                .set({ pushedSettings: merged, updatedAt: new Date() })
+                                .where(eq(schema.devices.id, device.id));
+                            if (relay.isOnline(device.id)) {
+                                relay.sendToDevice(device.id, { type: 'pushSettings', settings: merged });
+                            }
+                        }
+                    }),
+
+                pushPhraseSets: adminProcedure
+                    .input(z.object({
+                        groupId: z.number(),
+                        deploymentIds: z.array(z.number()),
+                    }))
+                    .mutation(async ({ input }) => {
+                        const groupDevices = await db.query.devices.findMany({
+                            where: eq(schema.devices.groupId, input.groupId),
+                            columns: { id: true, pushedSettings: true },
+                        });
+
+                        if (input.deploymentIds.length === 0) {
+                            for (const device of groupDevices) {
+                                const merged = {
+                                    ...((device.pushedSettings as Record<string, unknown>) ?? {}),
+                                    transcription: {
+                                        ...(((device.pushedSettings as Record<string, unknown>)?.transcription as Record<string, unknown>) ?? {}),
+                                        phraseSets: [],
+                                        phraseSetDeploymentIds: [],
+                                    },
+                                };
+                                await db.update(schema.devices)
+                                    .set({ pushedSettings: merged, updatedAt: new Date() })
+                                    .where(eq(schema.devices.id, device.id));
+                                relay.sendToDevice(device.id, { type: 'setArray', key: 'transcription.phraseSets', value: [] });
+                            }
+                            return { pushed: 0 };
+                        }
+
+                        const deployments = await db.query.phraseSetDeployments.findMany({
+                            where: (d, { inArray }) => inArray(d.id, input.deploymentIds),
+                        });
+
+                        const missing = deployments.filter(d => d.state === 'missing');
+                        if (missing.length > 0) throw new TRPCError({ code: 'BAD_REQUEST', message: `${missing.length} deployment(s) are missing from GCP` });
+                        const pending = deployments.filter(d => d.state === 'pending');
+                        if (pending.length > 0) throw new TRPCError({ code: 'BAD_REQUEST', message: `${pending.length} deployment(s) have unsynchronised changes` });
+
+                        const resourceNames = deployments.map(d => d.resourceName);
+
+                        for (const device of groupDevices) {
+                            relay.sendToDevice(device.id, { type: 'setArray', key: 'transcription.phraseSets', value: resourceNames });
+                            const merged = {
+                                ...((device.pushedSettings as Record<string, unknown>) ?? {}),
+                                transcription: {
+                                    ...(((device.pushedSettings as Record<string, unknown>)?.transcription as Record<string, unknown>) ?? {}),
+                                    phraseSets: resourceNames,
+                                    phraseSetDeploymentIds: input.deploymentIds,
+                                },
+                            };
+                            await db.update(schema.devices)
+                                .set({ pushedSettings: merged, updatedAt: new Date() })
+                                .where(eq(schema.devices.id, device.id));
+                        }
+                        return { pushed: resourceNames.length };
+                    }),
             }),
 
             users: t.router({

@@ -11,6 +11,8 @@ import { ApiKeys } from './pages/ApiKeys';
 import { Users } from './pages/Users';
 import { AdminCredentials } from './pages/AdminCredentials';
 import { PhraseSets } from './pages/PhraseSets';
+import { DeviceGroups } from './pages/DeviceGroups';
+import { DeviceGroupDetail } from './pages/DeviceGroupDetail';
 import { Layout } from './Layout';
 
 const queryClient = new QueryClient({
@@ -54,6 +56,8 @@ export function App() {
                                             <Route path="/users" element={<Users />} />
                                             <Route path="/credentials" element={<AdminCredentials />} />
                                             <Route path="/phrase-sets" element={<PhraseSets />} />
+                                            <Route path="/device-groups" element={<DeviceGroups />} />
+                                            <Route path="/device-groups/:id" element={<DeviceGroupDetail />} />
                                         </Routes>
                                     </Layout>
                                 </RequireAuth>

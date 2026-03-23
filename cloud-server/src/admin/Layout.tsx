@@ -14,6 +14,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
     const navLinks = [
         { to: '/admin/', label: 'Dashboard' },
         { to: '/admin/devices', label: 'Devices' },
+        { to: '/admin/device-groups', label: 'Device Groups' },
         { to: '/admin/api-keys', label: 'API Keys' },
         { to: '/admin/users', label: 'Users' },
         { to: '/admin/phrase-sets', label: 'Phrase Sets' },

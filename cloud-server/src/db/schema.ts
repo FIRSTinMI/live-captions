@@ -22,6 +22,13 @@ export const apiKeys = pgTable('api_keys', {
     updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
+export const deviceGroups = pgTable('device_groups', {
+    id: serial('id').primaryKey(),
+    name: text('name').notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
 export const devices = pgTable('devices', {
     id: serial('id').primaryKey(),
     name: text('name').notNull(),
@@ -29,6 +36,7 @@ export const devices = pgTable('devices', {
     pin: text('pin').notNull(), // stored plain - 6-digit code shown to operators
     tokenHash: text('token_hash'),
     apiKeyId: integer('api_key_id').references(() => apiKeys.id, { onDelete: 'set null' }),
+    groupId: integer('group_id').references(() => deviceGroups.id, { onDelete: 'set null' }),
     settings: jsonb('settings'),       // last reported by device (read-only from admin)
     pushedSettings: jsonb('pushed_settings'), // admin override, cleared when device acks
     createdAt: timestamp('created_at').defaultNow().notNull(),
@@ -57,10 +65,15 @@ export const apiKeysRelations = relations(apiKeys, ({ many }) => ({
     devices: many(devices),
 }));
 
+export const deviceGroupsRelations = relations(deviceGroups, ({ many }) => ({
+    devices: many(devices),
+}));
+
 export const devicesRelations = relations(devices, ({ many, one }) => ({
     usageLogs: many(usageLogs),
     errorLogs: many(errorLogs),
     apiKey: one(apiKeys, { fields: [devices.apiKeyId], references: [apiKeys.id] }),
+    group: one(deviceGroups, { fields: [devices.groupId], references: [deviceGroups.id] }),
 }));
 
 export const usageLogsRelations = relations(usageLogs, ({ one }) => ({

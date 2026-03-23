@@ -103,10 +103,10 @@ export class CloudSync {
             console.log(color('Cloud sync initialized').green.toString());
         } catch (err: any) {
             console.error(color('Cloud sync init failed:').red.toString(), err);
-            // Device was removed from the server — stale token, clear it so the UI
+            // Device was removed from the server - stale token, clear it so the UI
             // shows the PIN input instead of falsely showing "connected"
             if (err?.data?.code === 'UNAUTHORIZED' || err?.shape?.message === 'UNAUTHORIZED') {
-                console.log(color('Device token rejected — clearing stale token').yellow.toString());
+                console.log(color('Device token rejected - clearing stale token').yellow.toString());
                 this.config.server.cloud.deviceToken = null;
                 this.config.server.cloud.deviceName = null;
                 this.config.save();

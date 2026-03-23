@@ -229,7 +229,7 @@ export class Speech<T extends GoogleV2 | GoogleV1 | April> {
                 this.engine.resume();
                 this.state = StreamingState.ACTIVE;
             }
-            // ERRORED/DESTROYED: don't write or auto-resume — needs a restart
+            // ERRORED/DESTROYED: don't write or auto-resume - needs a restart
         } else {
             if (this.state === StreamingState.ACTIVE) {
                 if (!this.silent) {

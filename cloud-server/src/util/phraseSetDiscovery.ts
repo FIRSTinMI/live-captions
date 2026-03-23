@@ -7,7 +7,7 @@ import { listPhraseSets, getPhraseSet } from './phraseSetService';
  * Discovers GCP PhraseSets for a single admin credential profile and upserts
  * any that are not already tracked as deployments.
  *
- * Safe to call multiple times — existing deployments are never overwritten.
+ * Safe to call multiple times - existing deployments are never overwritten.
  */
 export async function discoverForProfile(profileId: number): Promise<{ imported: number }> {
     const profile = await db.query.googleCredentialProfiles.findFirst({
@@ -100,7 +100,7 @@ export async function discoverAllPhraseSets(): Promise<void> {
     }
 
     if (profiles.length === 0) {
-        console.log('[phrase-sets] No admin credential profiles configured — skipping discovery');
+        console.log('[phrase-sets] No admin credential profiles configured - skipping discovery');
         return;
     }
 
