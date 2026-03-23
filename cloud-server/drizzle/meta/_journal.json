@@ -15,6 +15,13 @@
       "when": 1774233385689,
       "tag": "0001_cynical_thena",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1774285739184,
+      "tag": "0002_spicy_sir_ram",
+      "breakpoints": true
     }
   ]
 }

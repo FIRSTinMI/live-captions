@@ -32,6 +32,22 @@ const deviceProcedure = t.procedure.use(isDevice);
 
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 
+function generatePin(): string {
+    return Math.floor(100000 + Math.random() * 900000).toString();
+}
+
+function deepMergeSettings(target: Record<string, unknown>, source: Record<string, unknown>): Record<string, unknown> {
+    const result = { ...target };
+    for (const key of Object.keys(source)) {
+        if (source[key] !== null && typeof source[key] === 'object' && !Array.isArray(source[key]) && target[key] !== null && typeof target[key] === 'object') {
+            result[key] = deepMergeSettings(target[key] as Record<string, unknown>, source[key] as Record<string, unknown>);
+        } else {
+            result[key] = source[key];
+        }
+    }
+    return result;
+}
+
 async function getDecryptedApiKeyForDevice(deviceId: number): Promise<{ key: string; keyType: string } | null> {
     const device = await db.query.devices.findFirst({
         where: eq(schema.devices.id, deviceId),
@@ -57,13 +73,7 @@ export function createRouter() {
                 .input(z.object({ pin: z.string() }))
                 .mutation(async ({ input }) => {
                     const allDevices = await db.query.devices.findMany();
-                    let matched: typeof allDevices[0] | null = null;
-                    for (const device of allDevices) {
-                        if (await bcrypt.compare(input.pin, device.pin)) {
-                            matched = device;
-                            break;
-                        }
-                    }
+                    const matched = allDevices.find(d => d.pin === input.pin) ?? null;
                     if (!matched) throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Invalid PIN' });
 
                     const token = generateDeviceToken();
@@ -106,6 +116,7 @@ export function createRouter() {
                     errors: z.array(z.object({
                         message: z.string(),
                         context: z.record(z.any()).optional(),
+                        occurredAt: z.string().optional(),
                     })).default([]),
                 }))
                 .mutation(async ({ ctx, input }) => {
@@ -128,7 +139,7 @@ export function createRouter() {
                                 deviceId: ctx.deviceId,
                                 message: e.message,
                                 context: e.context ?? {},
-                                occurredAt: now,
+                                occurredAt: e.occurredAt ? new Date(e.occurredAt) : now,
                             }))
                         );
                     }
@@ -283,6 +294,7 @@ export function createRouter() {
                             id: device.id,
                             name: device.name,
                             tag: device.tag,
+                            pin: device.pin,
                             apiKeyId: device.apiKeyId,
                             apiKeyTitle: device.apiKey?.title ?? null,
                             apiKeyType: device.apiKey?.keyType ?? null,
@@ -299,17 +311,16 @@ export function createRouter() {
                     .input(z.object({
                         name: z.string().min(1),
                         tag: z.string().default(''),
-                        pin: z.string().min(4).max(20),
                         apiKeyId: z.number().nullable().optional(),
                     }))
                     .mutation(async ({ input }) => {
-                        const pinHash = await bcrypt.hash(input.pin, 10);
+                        const pin = generatePin();
                         const [device] = await db.insert(schema.devices).values({
                             name: input.name,
                             tag: input.tag,
-                            pin: pinHash,
+                            pin,
                             apiKeyId: input.apiKeyId ?? null,
-                        }).returning({ id: schema.devices.id, name: schema.devices.name });
+                        }).returning({ id: schema.devices.id, name: schema.devices.name, pin: schema.devices.pin });
                         return device;
                     }),
 
@@ -318,7 +329,6 @@ export function createRouter() {
                         id: z.number(),
                         name: z.string().min(1).optional(),
                         tag: z.string().optional(),
-                        pin: z.string().min(4).max(20).optional(),
                         apiKeyId: z.number().nullable().optional(),
                     }))
                     .mutation(async ({ input }) => {
@@ -327,9 +337,18 @@ export function createRouter() {
                         };
                         if (input.name) updates.name = input.name;
                         if (input.tag !== undefined) updates.tag = input.tag;
-                        if (input.pin) updates.pin = await bcrypt.hash(input.pin, 10);
                         if ('apiKeyId' in input) updates.apiKeyId = input.apiKeyId ?? null;
                         await db.update(schema.devices).set(updates).where(eq(schema.devices.id, input.id));
+                    }),
+
+                regeneratePin: adminProcedure
+                    .input(z.object({ id: z.number() }))
+                    .mutation(async ({ input }) => {
+                        const pin = generatePin();
+                        await db.update(schema.devices)
+                            .set({ pin, updatedAt: new Date() })
+                            .where(eq(schema.devices.id, input.id));
+                        return { pin };
                     }),
 
                 delete: adminProcedure
@@ -344,12 +363,19 @@ export function createRouter() {
                         settings: z.record(z.any()),
                     }))
                     .mutation(async ({ input }) => {
+                        const existing = await db.query.devices.findFirst({
+                            where: eq(schema.devices.id, input.deviceId),
+                            columns: { pushedSettings: true },
+                        });
+                        const merged = deepMergeSettings(
+                            (existing?.pushedSettings as Record<string, unknown>) ?? {},
+                            input.settings
+                        );
                         await db.update(schema.devices)
-                            .set({ pushedSettings: input.settings, updatedAt: new Date() })
+                            .set({ pushedSettings: merged, updatedAt: new Date() })
                             .where(eq(schema.devices.id, input.deviceId));
-                        // If online, push immediately — no waiting for next heartbeat
                         if (relay.isOnline(input.deviceId)) {
-                            relay.sendToDevice(input.deviceId, { type: 'pushSettings', settings: input.settings });
+                            relay.sendToDevice(input.deviceId, { type: 'pushSettings', settings: merged });
                         }
                     }),
 
@@ -361,6 +387,12 @@ export function createRouter() {
                             orderBy: [desc(schema.errorLogs.occurredAt)],
                             limit: input.limit,
                         });
+                    }),
+
+                clearErrors: adminProcedure
+                    .input(z.object({ deviceId: z.number() }))
+                    .mutation(async ({ input }) => {
+                        await db.delete(schema.errorLogs).where(eq(schema.errorLogs.deviceId, input.deviceId));
                     }),
 
                 usage: adminProcedure

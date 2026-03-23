@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import type { RelayState, RemoteInput, PhysicalDevice, CaptionEntry } from '../hooks/useDeviceRelay';
+import { trpc } from '../api';
 
 type LiveTab = 'live' | 'display' | 'transcription';
 
@@ -157,23 +158,33 @@ function LiveTab({ state, send }: { state: RelayState; send: (msg: unknown) => v
     );
 }
 
-function DisplayTab({ state, send }: { state: RelayState; send: (msg: unknown) => void }) {
+function DisplayTab({ state, send, offlineSettings, onSave, isSaving, saveMsg }: {
+    state: RelayState;
+    send: (msg: unknown) => void;
+    offlineSettings?: unknown;
+    onSave: (settings: Record<string, unknown>) => void;
+    isSaving: boolean;
+    saveMsg: string;
+}) {
     const [local, setLocal] = useState<DisplayLocal>(DEFAULT_DISPLAY);
     const [initialized, setInitialized] = useState(false);
 
     useEffect(() => {
-        if (state.config?.display && !initialized) {
-            setLocal({
-                position: state.config.display.position ?? DEFAULT_DISPLAY.position,
-                size: state.config.display.size ?? DEFAULT_DISPLAY.size,
-                lines: state.config.display.lines ?? DEFAULT_DISPLAY.lines,
-                chromaKey: state.config.display.chromaKey ?? DEFAULT_DISPLAY.chromaKey,
-                timeout: state.config.display.timeout ?? DEFAULT_DISPLAY.timeout,
-                align: state.config.display.align ?? DEFAULT_DISPLAY.align,
-            });
-            setInitialized(true);
+        if (!initialized) {
+            const src = (state.config ?? offlineSettings) as { display?: Partial<DisplayLocal> } | null;
+            if (src?.display) {
+                setLocal({
+                    position: src.display.position ?? DEFAULT_DISPLAY.position,
+                    size: src.display.size ?? DEFAULT_DISPLAY.size,
+                    lines: src.display.lines ?? DEFAULT_DISPLAY.lines,
+                    chromaKey: src.display.chromaKey ?? DEFAULT_DISPLAY.chromaKey,
+                    timeout: src.display.timeout ?? DEFAULT_DISPLAY.timeout,
+                    align: src.display.align ?? DEFAULT_DISPLAY.align,
+                });
+                setInitialized(true);
+            }
         }
-    }, [state.config]);
+    }, [state.config, offlineSettings]);
 
     function sendSet(key: string, value: string) {
         send({ type: 'set', key: `display.${key}`, value });
@@ -283,11 +294,28 @@ function DisplayTab({ state, send }: { state: RelayState; send: (msg: unknown) =
                     Refresh Display Clients
                 </button>
             </div>
+            <div className="flex items-center gap-3 pt-2 border-t border-gray-100 dark:border-gray-700">
+                <button
+                    onClick={() => onSave({ display: local })}
+                    disabled={isSaving}
+                    className="bg-blue-600 text-white rounded px-4 py-2 text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
+                >
+                    {isSaving ? 'Saving...' : state.online ? 'Save & Push' : 'Save (sync on next connection)'}
+                </button>
+                {saveMsg && <span className="text-sm text-green-600 dark:text-green-400">{saveMsg}</span>}
+            </div>
         </div>
     );
 }
 
-function TranscriptionTab({ state, send }: { state: RelayState; send: (msg: unknown) => void }) {
+function TranscriptionTab({ state, send, offlineSettings, onSave, isSaving, saveMsg }: {
+    state: RelayState;
+    send: (msg: unknown) => void;
+    offlineSettings?: unknown;
+    onSave: (settings: Record<string, unknown>) => void;
+    isSaving: boolean;
+    saveMsg: string;
+}) {
     const [local, setLocal] = useState<TranscriptionLocal>({
         engine: 'googlev2',
         phraseSets: '',
@@ -296,17 +324,20 @@ function TranscriptionTab({ state, send }: { state: RelayState; send: (msg: unkn
     const [initialized, setInitialized] = useState(false);
 
     useEffect(() => {
-        if (state.config?.transcription && !initialized) {
-            setLocal({
-                engine: state.config.transcription.engine ?? 'googlev2',
-                phraseSets: Array.isArray(state.config.transcription.phraseSets)
-                    ? state.config.transcription.phraseSets.join('\n')
-                    : '',
-                inputs: state.config.transcription.inputs ? [...state.config.transcription.inputs] : [],
-            });
-            setInitialized(true);
+        if (!initialized) {
+            const src = (state.config ?? offlineSettings) as { transcription?: { engine?: string; phraseSets?: string[]; inputs?: RemoteInput[] } } | null;
+            if (src?.transcription) {
+                setLocal({
+                    engine: src.transcription.engine ?? 'googlev2',
+                    phraseSets: Array.isArray(src.transcription.phraseSets)
+                        ? src.transcription.phraseSets.join('\n')
+                        : '',
+                    inputs: src.transcription.inputs ? [...src.transcription.inputs] : [],
+                });
+                setInitialized(true);
+            }
         }
-    }, [state.config]);
+    }, [state.config, offlineSettings]);
 
     function updateInput(index: number, patch: Partial<RemoteInput>) {
         setLocal(s => {
@@ -519,6 +550,21 @@ function TranscriptionTab({ state, send }: { state: RelayState; send: (msg: unkn
                     </div>
                 )}
             </div>
+            <div className="flex items-center gap-3 pt-4 border-t border-gray-100 dark:border-gray-700 mt-4">
+                <button
+                    onClick={() => onSave({
+                        transcription: {
+                            engine: local.engine,
+                            phraseSets: local.phraseSets.split('\n').map(l => l.trim()).filter(Boolean),
+                        },
+                    })}
+                    disabled={isSaving}
+                    className="bg-blue-600 text-white rounded px-4 py-2 text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
+                >
+                    {isSaving ? 'Saving...' : state.online ? 'Save & Push' : 'Save (sync on next connection)'}
+                </button>
+                {saveMsg && <span className="text-sm text-green-600 dark:text-green-400">{saveMsg}</span>}
+            </div>
         </div>
     );
 }
@@ -527,10 +573,25 @@ interface LiveSessionProps {
     deviceId: number;
     state: RelayState;
     send: (msg: unknown) => void;
+    offlineSettings?: unknown;
 }
 
-export function LiveSession({ deviceId: _deviceId, state, send }: LiveSessionProps) {
+export function LiveSession({ deviceId, state, send, offlineSettings }: LiveSessionProps) {
     const [tab, setTab] = useState<LiveTab>('live');
+    const utils = trpc.useUtils();
+    const [saveMsg, setSaveMsg] = useState('');
+
+    const saveSettingsMutation = trpc.admin.devices.saveSettings.useMutation({
+        onSuccess: () => {
+            utils.admin.devices.get.invalidate({ id: deviceId });
+            setSaveMsg(state.online ? 'Pushed to device' : 'Saved — will sync on next connection');
+            setTimeout(() => setSaveMsg(''), 3000);
+        },
+    });
+
+    function handleSaveSettings(settings: Record<string, unknown>) {
+        saveSettingsMutation.mutate({ deviceId, settings });
+    }
 
     const tabs: { key: LiveTab; label: string }[] = [
         { key: 'live', label: 'Live' },
@@ -608,8 +669,8 @@ export function LiveSession({ deviceId: _deviceId, state, send }: LiveSessionPro
 
                     <div className="p-6">
                         {tab === 'live' && <LiveTab state={state} send={send} />}
-                        {tab === 'display' && <DisplayTab state={state} send={send} />}
-                        {tab === 'transcription' && <TranscriptionTab state={state} send={send} />}
+                        {tab === 'display' && <DisplayTab state={state} send={send} offlineSettings={offlineSettings} onSave={handleSaveSettings} isSaving={saveSettingsMutation.isPending} saveMsg={saveMsg} />}
+                        {tab === 'transcription' && <TranscriptionTab state={state} send={send} offlineSettings={offlineSettings} onSave={handleSaveSettings} isSaving={saveSettingsMutation.isPending} saveMsg={saveMsg} />}
                     </div>
                 </>
             )}

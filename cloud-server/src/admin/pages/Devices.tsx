@@ -17,7 +17,7 @@ function relativeTime(date: Date | string | null): string {
 function CreateDeviceModal({ onClose }: { onClose: () => void }) {
     const utils = trpc.useUtils();
     const { data: apiKeys } = trpc.admin.apiKeys.list.useQuery();
-    const [form, setForm] = useState({ name: '', tag: '', pin: '', apiKeyId: '' });
+    const [form, setForm] = useState({ name: '', tag: '', apiKeyId: '' });
     const [error, setError] = useState('');
 
     const create = trpc.admin.devices.create.useMutation({
@@ -39,11 +39,6 @@ function CreateDeviceModal({ onClose }: { onClose: () => void }) {
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Tag / Event Code</label>
                         <input type="text" value={form.tag} onChange={e => setForm(f => ({ ...f, tag: e.target.value }))}
                             className={inp} placeholder="e.g. MI2025FIM" />
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">PIN (min 4 chars)</label>
-                        <input type="text" value={form.pin} onChange={e => setForm(f => ({ ...f, pin: e.target.value }))}
-                            className={inp} placeholder="1234" />
                     </div>
                     <div>
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">API Key</label>
@@ -71,7 +66,6 @@ function CreateDeviceModal({ onClose }: { onClose: () => void }) {
                         onClick={() => create.mutate({
                             name: form.name,
                             tag: form.tag,
-                            pin: form.pin,
                             apiKeyId: form.apiKeyId ? parseInt(form.apiKeyId) : null,
                         })}
                         disabled={create.isPending}

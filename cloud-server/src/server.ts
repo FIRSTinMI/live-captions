@@ -33,6 +33,11 @@ export function createServer() {
     app.get('/', (_req, res) => res.redirect('/admin'));
 
     // Save device config to DB whenever the device reports its current state
+    relay.setErrorLogHandler((deviceId, message, context, occurredAt) => {
+        db.insert(schema.errorLogs).values({ deviceId, message, context: context as object, occurredAt })
+            .catch(() => { /* best-effort */ });
+    });
+
     relay.setConfigSaveHandler((deviceId, config, source) => {
         db.update(schema.devices)
             .set({

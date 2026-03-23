@@ -12,9 +12,14 @@ class RelayManager {
     private adminSockets = new Map<number, Set<WebSocket>>();
     readonly state = new Map<number, DeviceRelayState>();
     private configSaveHandler: ((deviceId: number, config: unknown, source: 'hello' | 'config') => void) | null = null;
+    private errorLogHandler: ((deviceId: number, message: string, context: unknown, occurredAt: Date) => void) | null = null;
 
     setConfigSaveHandler(handler: (deviceId: number, config: unknown, source: 'hello' | 'config') => void) {
         this.configSaveHandler = handler;
+    }
+
+    setErrorLogHandler(handler: (deviceId: number, message: string, context: unknown, occurredAt: Date) => void) {
+        this.errorLogHandler = handler;
     }
 
     sendToDevice(deviceId: number, msg: unknown) {
@@ -88,6 +93,9 @@ class RelayManager {
             this.broadcast(deviceId, msg);
         } else if (msg.type === 'caption') {
             this.broadcast(deviceId, msg);
+        } else if (msg.type === 'error') {
+            const occurredAt = msg.occurredAt ? new Date(msg.occurredAt as string) : new Date();
+            this.errorLogHandler?.(deviceId, msg.message as string, msg.context ?? {}, occurredAt);
         }
     }
 

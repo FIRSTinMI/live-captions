@@ -2,6 +2,7 @@ import { ConfigManager } from "../util/configManager";
 import { Frame } from "../types/Frame";
 import { APIError, SpeechResultData } from "../types/GoogleAPI";
 import color from "colorts";
+import { errorBus } from "../util/eventBus";
 import { v2 } from '@google-cloud/speech';
 const SpeechClient = v2.SpeechClient;
 import { CancellableStream } from 'google-gax';
@@ -138,6 +139,10 @@ export class GoogleV2 {
                         err.toString().includes('does not contain a private_key field')) {
                         console.error(color('Google API Authentication Failed').bold.red.toString());
                         console.error(err.details);
+                        errorBus.emit('error', {
+                            message: `Google API authentication failed: ${err.details ?? err.message}`,
+                            context: { code: err.code, inputId: this.inputId },
+                        });
                         this.pause();
                     } else if (err.message.includes('Cannot call write after a stream was destroyed')) {
                         console.log(color(`${err.message}: ${err.code}.  Restarting...`).red.toString());
@@ -145,6 +150,10 @@ export class GoogleV2 {
                         this.resume();
                     } else {
                         console.error(err);
+                        errorBus.emit('error', {
+                            message: err.details ?? err.message ?? String(err),
+                            context: { code: err.code, inputId: this.inputId },
+                        });
                     }
                 })
                 .on('data', (data: any) => this.handleRecognitionEvent(data));

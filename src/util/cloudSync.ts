@@ -6,7 +6,7 @@ import { GoogleV1 } from '../engines/GoogleV1';
 import { GoogleV2 } from '../engines/GoogleV2';
 import { April } from '../engines/April';
 import { CLOUD_SERVER_URL } from './cloudConfig';
-import { displayCtrlBus, captionBus } from '../util/eventBus';
+import { displayCtrlBus, captionBus, errorBus } from '../util/eventBus';
 import type { Frame } from '../types/Frame';
 import color from 'colorts';
 
@@ -17,6 +17,7 @@ const RELAY_RECONNECT_DELAY_MS = 5000; // 5s
 interface QueuedError {
     message: string;
     context?: Record<string, unknown>;
+    occurredAt: string;
 }
 
 export class CloudSync {
@@ -35,6 +36,7 @@ export class CloudSync {
     private volumeInterval: NodeJS.Timeout | null = null;
     private relayConnected = false;
     private captionHandler: ((frame: Frame) => void) | null = null;
+    private errorHandler: ((payload: { message: string; context?: Record<string, unknown> }) => void) | null = null;
 
     constructor(
         config: ConfigManager,
@@ -60,11 +62,8 @@ export class CloudSync {
     }
 
     public queueError(message: string, context?: Record<string, unknown>) {
-        this.errorQueue.push({ message, context });
-        // Cap queue size
-        if (this.errorQueue.length > 50) {
-            this.errorQueue.shift();
-        }
+        this.errorQueue.push({ message, context, occurredAt: new Date().toISOString() });
+        if (this.errorQueue.length > 50) this.errorQueue.shift();
     }
 
     public async connect(pin: string): Promise<{ deviceName: string }> {
@@ -75,17 +74,20 @@ export class CloudSync {
         await this.syncConfig();
         this.startHeartbeat();
         this.connectRelay();
+        this.subscribeErrors();
         return { deviceName: result.deviceName };
     }
 
     public stopConnections() {
         this.stopHeartbeat();
         this.disconnectRelay();
+        this.unsubscribeErrors();
     }
 
     public disconnect() {
         this.stopHeartbeat();
         this.disconnectRelay();
+        this.unsubscribeErrors();
         this.config.server.cloud.deviceToken = null;
         this.config.server.cloud.deviceName = null;
         this.config.save();
@@ -97,9 +99,31 @@ export class CloudSync {
             await this.syncConfig();
             this.startHeartbeat();
             this.connectRelay();
+            this.subscribeErrors();
             console.log(color('Cloud sync initialized').green.toString());
         } catch (err) {
             console.error(color('Cloud sync init failed:').red.toString(), err);
+        }
+    }
+
+    private subscribeErrors() {
+        if (this.errorHandler) return; // already subscribed
+        this.errorHandler = ({ message, context }) => {
+            if (this.relayConnected) {
+                // Send immediately; server persists it directly
+                this.relaySend({ type: 'error', message, context: context ?? {}, occurredAt: new Date().toISOString() });
+            } else {
+                // Queue for next heartbeat
+                this.queueError(message, context);
+            }
+        };
+        errorBus.on('error', this.errorHandler);
+    }
+
+    private unsubscribeErrors() {
+        if (this.errorHandler) {
+            errorBus.off('error', this.errorHandler);
+            this.errorHandler = null;
         }
     }
 
@@ -328,7 +352,11 @@ export class CloudSync {
             const minutesUsed = services.reduce((sum, s) => sum + s.getUsageMinutes(), 0);
             services.forEach(s => s.resetUsageMinutes());
 
-            const errors = this.errorQueue.splice(0);
+            const errors = this.errorQueue.splice(0).map(e => ({
+                message: e.message,
+                context: e.context,
+                occurredAt: e.occurredAt,
+            }));
             const result = await this.client.device.heartbeat.mutate({ minutesUsed, errors });
 
             this.applyApiKey(result.apiKey, result.apiKeyType);

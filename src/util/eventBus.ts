@@ -25,3 +25,4 @@ class TypedEmitter<TEvents extends Record<string, any>> extends EventEmitter {
 export const captionBus = new TypedEmitter<{ frame: Frame }>();
 export const micBus = new TypedEmitter<{ status: MicStatusPayload }>();
 export const displayCtrlBus = new TypedEmitter<{ event: DisplayControlEvent }>();
+export const errorBus = new TypedEmitter<{ error: { message: string; context?: Record<string, unknown> } }>();
