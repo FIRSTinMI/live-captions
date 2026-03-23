@@ -99,9 +99,11 @@ export class GoogleV2 {
             },
             languageCodes: this.languages,
             model: 'latest_long',
-            adaptation: {
-                phraseSets: this.config.transcription.phraseSets.map(s => ({ phraseSet: s }))
-            },
+            ...(this.config.transcription.phraseSets.length > 0 ? {
+                adaptation: {
+                    phraseSets: this.config.transcription.phraseSets.map(s => ({ phraseSet: s }))
+                }
+            } : {}),
             features: {
                 enableAutomaticPunctuation: true
             },
@@ -151,10 +153,12 @@ export class GoogleV2 {
                         this.resume();
                     } else {
                         console.error(err);
+                        this.emitter.emit('engineError');
                         errorBus.emit('error', {
                             message: err.details ?? err.message ?? String(err),
                             context: { code: err.code, inputId: this.inputId },
                         });
+                        this.pause();
                     }
                 })
                 .on('data', (data: any) => this.handleRecognitionEvent(data));
