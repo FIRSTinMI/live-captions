@@ -20,7 +20,15 @@ export function createServer() {
     app.use(bodyParser.json());
 
     const router = createRouter();
-    app.use('/trpc', createExpressMiddleware({ router, createContext }));
+    app.use('/trpc', createExpressMiddleware({
+        router,
+        createContext,
+        onError: ({ path, error }) => {
+            if (error.code === 'INTERNAL_SERVER_ERROR') {
+                console.error(`[trpc] Error on ${path}:`, error.cause ?? error);
+            }
+        },
+    }));
 
     // Serve admin panel static files
     const adminDir = path.join(__dirname, 'public', 'admin');
