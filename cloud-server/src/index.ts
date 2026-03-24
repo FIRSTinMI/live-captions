@@ -29,6 +29,10 @@ async function main() {
     // Run DB migrations
     const migrationsFolder = path.join(__dirname, 'drizzle');
     try {
+        // Log the migration files found so we can verify they're present in the image
+        const fs = await import('fs');
+        const migrationFiles = fs.readdirSync(migrationsFolder).filter(f => f.endsWith('.sql'));
+        console.log(`[db] Found ${migrationFiles.length} migration file(s): ${migrationFiles.join(', ')}`);
         await migrate(db, { migrationsFolder });
         console.log('[db] Migrations applied');
     } catch (err) {

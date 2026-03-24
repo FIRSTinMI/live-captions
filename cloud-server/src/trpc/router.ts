@@ -238,7 +238,7 @@ export function createRouter() {
                 list: adminProcedure.query(async () => {
                     const devs = await db.query.devices.findMany({
                         orderBy: [desc(schema.devices.createdAt)],
-                        with: { apiKey: true },
+                        with: { apiKey: true, groupMemberships: true },
                     });
 
                     const today = new Date();
@@ -262,6 +262,7 @@ export function createRouter() {
                         apiKeyTitle: d.apiKey?.title ?? null,
                         apiKeyType: d.apiKey?.keyType ?? null,
                         hasApiKey: !!d.apiKeyId,
+                        groupIds: d.groupMemberships.map(m => m.groupId),
                         online: relay.isOnline(d.id),
                         lastSeenAt: d.lastSeenAt,
                         lastHeartbeatAt: d.lastHeartbeatAt,
@@ -275,7 +276,7 @@ export function createRouter() {
                     .query(async ({ input }) => {
                         const device = await db.query.devices.findFirst({
                             where: eq(schema.devices.id, input.id),
-                            with: { apiKey: true },
+                            with: { apiKey: true, groupMemberships: true },
                         });
                         if (!device) throw new TRPCError({ code: 'NOT_FOUND' });
                         return {
@@ -287,7 +288,7 @@ export function createRouter() {
                             apiKeyTitle: device.apiKey?.title ?? null,
                             apiKeyType: device.apiKey?.keyType ?? null,
                             hasApiKey: !!device.apiKeyId,
-                            groupId: device.groupId,
+                            groupIds: device.groupMemberships.map(m => m.groupId),
                             settings: device.settings,
                             pushedSettings: device.pushedSettings,
                             lastSeenAt: device.lastSeenAt,
@@ -319,7 +320,7 @@ export function createRouter() {
                         name: z.string().min(1).optional(),
                         tag: z.string().optional(),
                         apiKeyId: z.number().nullable().optional(),
-                        groupId: z.number().nullable().optional(),
+                        groupIds: z.array(z.number()).optional(),
                     }))
                     .mutation(async ({ input }) => {
                         const updates: Partial<typeof schema.devices.$inferInsert> = {
@@ -328,8 +329,16 @@ export function createRouter() {
                         if (input.name) updates.name = input.name;
                         if (input.tag !== undefined) updates.tag = input.tag;
                         if ('apiKeyId' in input) updates.apiKeyId = input.apiKeyId ?? null;
-                        if ('groupId' in input) updates.groupId = input.groupId ?? null;
                         await db.update(schema.devices).set(updates).where(eq(schema.devices.id, input.id));
+                        if (input.groupIds !== undefined) {
+                            await db.delete(schema.deviceGroupMemberships)
+                                .where(eq(schema.deviceGroupMemberships.deviceId, input.id));
+                            if (input.groupIds.length > 0) {
+                                await db.insert(schema.deviceGroupMemberships)
+                                    .values(input.groupIds.map(gid => ({ deviceId: input.id, groupId: gid })))
+                                    .onConflictDoNothing();
+                            }
+                        }
                     }),
 
                 regeneratePin: adminProcedure
@@ -431,12 +440,12 @@ export function createRouter() {
                 list: adminProcedure.query(async () => {
                     const groups = await db.query.deviceGroups.findMany({
                         orderBy: [schema.deviceGroups.name],
-                        with: { devices: { columns: { id: true } } },
+                        with: { memberships: { columns: { deviceId: true } } },
                     });
                     return groups.map(g => ({
                         id: g.id,
                         name: g.name,
-                        deviceCount: g.devices.length,
+                        deviceCount: g.memberships.length,
                         createdAt: g.createdAt,
                     }));
                 }),
@@ -447,8 +456,8 @@ export function createRouter() {
                         const group = await db.query.deviceGroups.findFirst({
                             where: eq(schema.deviceGroups.id, input.id),
                             with: {
-                                devices: {
-                                    with: { apiKey: true },
+                                memberships: {
+                                    with: { device: { with: { apiKey: true } } },
                                 },
                             },
                         });
@@ -457,13 +466,13 @@ export function createRouter() {
                             id: group.id,
                             name: group.name,
                             createdAt: group.createdAt,
-                            devices: group.devices.map(d => ({
-                                id: d.id,
-                                name: d.name,
-                                tag: d.tag,
-                                online: relay.isOnline(d.id),
-                                settings: d.settings,
-                                pushedSettings: d.pushedSettings,
+                            devices: group.memberships.map(m => ({
+                                id: m.device.id,
+                                name: m.device.name,
+                                tag: m.device.tag,
+                                online: relay.isOnline(m.device.id),
+                                settings: m.device.settings,
+                                pushedSettings: m.device.pushedSettings,
                             })),
                         };
                     }),
@@ -488,10 +497,7 @@ export function createRouter() {
                 delete: adminProcedure
                     .input(z.object({ id: z.number() }))
                     .mutation(async ({ input }) => {
-                        // Unassign all devices in this group first
-                        await db.update(schema.devices)
-                            .set({ groupId: null, updatedAt: new Date() })
-                            .where(eq(schema.devices.groupId, input.id));
+                        // Memberships are deleted via cascade on the FK
                         await db.delete(schema.deviceGroups).where(eq(schema.deviceGroups.id, input.id));
                     }),
 
@@ -501,10 +507,11 @@ export function createRouter() {
                         settings: z.record(z.any()),
                     }))
                     .mutation(async ({ input }) => {
-                        const devices = await db.query.devices.findMany({
-                            where: eq(schema.devices.groupId, input.groupId),
-                            columns: { id: true, pushedSettings: true },
+                        const memberships = await db.query.deviceGroupMemberships.findMany({
+                            where: eq(schema.deviceGroupMemberships.groupId, input.groupId),
+                            with: { device: { columns: { id: true, pushedSettings: true } } },
                         });
+                        const devices = memberships.map(m => m.device);
                         for (const device of devices) {
                             const merged = deepMergeSettings(
                                 (device.pushedSettings as Record<string, unknown>) ?? {},
@@ -525,10 +532,11 @@ export function createRouter() {
                         deploymentIds: z.array(z.number()),
                     }))
                     .mutation(async ({ input }) => {
-                        const groupDevices = await db.query.devices.findMany({
-                            where: eq(schema.devices.groupId, input.groupId),
-                            columns: { id: true, pushedSettings: true },
+                        const memberships = await db.query.deviceGroupMemberships.findMany({
+                            where: eq(schema.deviceGroupMemberships.groupId, input.groupId),
+                            with: { device: { columns: { id: true, pushedSettings: true } } },
                         });
+                        const groupDevices = memberships.map(m => m.device);
 
                         if (input.deploymentIds.length === 0) {
                             for (const device of groupDevices) {

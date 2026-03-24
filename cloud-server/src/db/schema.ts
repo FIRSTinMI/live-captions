@@ -1,4 +1,4 @@
-import { pgTable, serial, text, timestamp, integer, numeric, jsonb, pgEnum } from 'drizzle-orm/pg-core';
+import { pgTable, serial, text, timestamp, integer, numeric, jsonb, pgEnum, primaryKey } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 
 export const apiKeyTypeEnum = pgEnum('api_key_type', ['google-v1', 'google-v2']);
@@ -36,7 +36,6 @@ export const devices = pgTable('devices', {
     pin: text('pin').notNull(), // stored plain - 6-digit code shown to operators
     tokenHash: text('token_hash'),
     apiKeyId: integer('api_key_id').references(() => apiKeys.id, { onDelete: 'set null' }),
-    groupId: integer('group_id').references(() => deviceGroups.id, { onDelete: 'set null' }),
     settings: jsonb('settings'),       // last reported by device (read-only from admin)
     pushedSettings: jsonb('pushed_settings'), // admin override, cleared when device acks
     createdAt: timestamp('created_at').defaultNow().notNull(),
@@ -44,6 +43,11 @@ export const devices = pgTable('devices', {
     lastSeenAt: timestamp('last_seen_at'),
     lastHeartbeatAt: timestamp('last_heartbeat_at'),
 });
+
+export const deviceGroupMemberships = pgTable('device_group_memberships', {
+    deviceId: integer('device_id').notNull().references(() => devices.id, { onDelete: 'cascade' }),
+    groupId: integer('group_id').notNull().references(() => deviceGroups.id, { onDelete: 'cascade' }),
+}, (t) => [primaryKey({ columns: [t.deviceId, t.groupId] })]);
 
 export const usageLogs = pgTable('usage_logs', {
     id: serial('id').primaryKey(),
@@ -66,14 +70,19 @@ export const apiKeysRelations = relations(apiKeys, ({ many }) => ({
 }));
 
 export const deviceGroupsRelations = relations(deviceGroups, ({ many }) => ({
-    devices: many(devices),
+    memberships: many(deviceGroupMemberships),
 }));
 
 export const devicesRelations = relations(devices, ({ many, one }) => ({
     usageLogs: many(usageLogs),
     errorLogs: many(errorLogs),
     apiKey: one(apiKeys, { fields: [devices.apiKeyId], references: [apiKeys.id] }),
-    group: one(deviceGroups, { fields: [devices.groupId], references: [deviceGroups.id] }),
+    groupMemberships: many(deviceGroupMemberships),
+}));
+
+export const deviceGroupMembershipsRelations = relations(deviceGroupMemberships, ({ one }) => ({
+    device: one(devices, { fields: [deviceGroupMemberships.deviceId], references: [devices.id] }),
+    group: one(deviceGroups, { fields: [deviceGroupMemberships.groupId], references: [deviceGroups.id] }),
 }));
 
 export const usageLogsRelations = relations(usageLogs, ({ one }) => ({

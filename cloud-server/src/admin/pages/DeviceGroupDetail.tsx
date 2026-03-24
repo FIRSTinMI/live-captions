@@ -246,6 +246,7 @@ export function DeviceGroupDetail() {
     if (!group) return <div className="text-gray-500 dark:text-gray-400">Loading...</div>;
 
     const memberIds = new Set(group.devices.map(d => d.id));
+    // A device can be in multiple groups, so non-members = devices not already in THIS group
     const nonMembers = allDevices?.filter(d => !memberIds.has(d.id)) ?? [];
 
     return (
@@ -276,7 +277,13 @@ export function DeviceGroupDetail() {
                                     <span className="text-xs text-gray-400">{d.online ? 'Online' : 'Offline'}</span>
                                 </div>
                                 <button
-                                    onClick={() => { if (confirm(`Remove "${d.name}" from this group?`)) removeDevice.mutate({ id: d.id, groupId: null }); }}
+                                    onClick={() => {
+                                        if (confirm(`Remove "${d.name}" from this group?`)) {
+                                            const dev = allDevices?.find(x => x.id === d.id);
+                                            const currentGroupIds = dev?.groupIds ?? [];
+                                            removeDevice.mutate({ id: d.id, groupIds: currentGroupIds.filter(g => g !== groupId) });
+                                        }
+                                    }}
                                     className="text-xs text-red-500 hover:text-red-700"
                                 >
                                     Remove
@@ -299,7 +306,14 @@ export function DeviceGroupDetail() {
                             ))}
                         </select>
                         <button
-                            onClick={() => { if (addDeviceId) assignDevice.mutate({ id: parseInt(addDeviceId), groupId }); }}
+                            onClick={() => {
+                                if (addDeviceId) {
+                                    const devId = parseInt(addDeviceId);
+                                    const dev = allDevices?.find(x => x.id === devId);
+                                    const currentGroupIds = dev?.groupIds ?? [];
+                                    assignDevice.mutate({ id: devId, groupIds: [...currentGroupIds, groupId] });
+                                }
+                            }}
                             disabled={!addDeviceId || assignDevice.isPending}
                             className="bg-blue-600 text-white rounded px-4 py-2 text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
                         >
