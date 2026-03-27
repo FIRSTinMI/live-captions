@@ -21,20 +21,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
         { to: '/admin/phrase-sets', label: 'Phrase Sets' },
     ];
 
-    return (
-        <div className="flex h-screen bg-gray-100 dark:bg-gray-900">
-            {/* Mobile backdrop */}
-            {sidebarOpen && (
-                <div
-                    className="fixed inset-0 z-30 bg-black/50 md:hidden"
-                    onClick={() => setSidebarOpen(false)}
-                />
-            )}
-
-            {/* Sidebar */}
-            <aside className={`fixed inset-y-0 left-0 z-40 w-56 bg-gray-900 dark:bg-gray-950 text-white flex flex-col flex-shrink-0 transition-transform duration-200
-                md:static md:translate-x-0
-                ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+    function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
+        return (
+            <>
                 <div className="px-6 py-5 border-b border-gray-700 dark:border-gray-800">
                     <h1 className="text-lg font-bold">Live Captions</h1>
                     <p className="text-xs text-gray-400">Admin Panel</p>
@@ -47,7 +36,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                             <Link
                                 key={link.to}
                                 to={link.to}
-                                onClick={() => setSidebarOpen(false)}
+                                onClick={onNavigate}
                                 className={`block px-3 py-2 rounded text-sm font-medium transition-colors ${active ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-gray-700'}`}
                             >
                                 {link.label}
@@ -63,10 +52,34 @@ export function Layout({ children }: { children: React.ReactNode }) {
                         Log out
                     </button>
                 </div>
+            </>
+        );
+    }
+
+    return (
+        <div className="flex h-screen bg-gray-100 dark:bg-gray-900">
+            {/* Mobile backdrop */}
+            {sidebarOpen && (
+                <div
+                    className="fixed inset-0 z-30 bg-black/50 md:hidden"
+                    onClick={() => setSidebarOpen(false)}
+                />
+            )}
+
+            {/* Mobile sidebar overlay — separate from desktop, avoids fixed/static conflicts */}
+            {sidebarOpen && (
+                <aside className="fixed inset-y-0 left-0 z-40 w-56 bg-gray-900 dark:bg-gray-950 text-white flex flex-col md:hidden">
+                    <NavLinks onNavigate={() => setSidebarOpen(false)} />
+                </aside>
+            )}
+
+            {/* Desktop sidebar — stays in flex flow, no position tricks needed */}
+            <aside className="hidden md:flex md:flex-col w-56 flex-shrink-0 bg-gray-900 dark:bg-gray-950 text-white">
+                <NavLinks />
             </aside>
 
             {/* Main content */}
-            <main className="flex-1 overflow-auto min-w-0">
+            <main className="flex-1 overflow-auto min-w-0 min-h-0">
                 {/* Mobile top bar */}
                 <div className="md:hidden flex items-center gap-3 px-4 py-3 bg-gray-900 text-white sticky top-0 z-20">
                     <button

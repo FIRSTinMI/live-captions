@@ -17,10 +17,11 @@ function buildDisplayCaptions(captions: CaptionEntry[]): CaptionEntry[] {
 }
 
 function CaptionLog({ captions, inputs }: { captions: CaptionEntry[]; inputs: RemoteInput[] }) {
-    const bottomRef = useRef<HTMLDivElement>(null);
+    const containerRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
-        bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+        const el = containerRef.current;
+        if (el) el.scrollTop = el.scrollHeight;
     }, [captions.length]);
 
     if (captions.length === 0) {
@@ -34,7 +35,7 @@ function CaptionLog({ captions, inputs }: { captions: CaptionEntry[]; inputs: Re
     const displayCaptions = buildDisplayCaptions(captions);
 
     return (
-        <div className="max-h-56 overflow-y-auto font-mono text-sm leading-relaxed space-y-0.5 pr-1">
+        <div ref={containerRef} className="h-56 overflow-y-auto font-mono text-sm leading-relaxed space-y-0.5 pr-1">
             {displayCaptions.map((c, i) => {
                 const input = inputs.find(inp => inp.id === c.device);
                 const color = input?.color ?? '#9ca3af';
@@ -49,7 +50,6 @@ function CaptionLog({ captions, inputs }: { captions: CaptionEntry[]; inputs: Re
                     </div>
                 );
             })}
-            <div ref={bottomRef} />
         </div>
     );
 }

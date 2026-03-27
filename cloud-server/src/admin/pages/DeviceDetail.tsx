@@ -402,7 +402,7 @@ export function DeviceDetail() {
                                     </div>
                                     <div className="flex flex-col gap-1">
                                         <label className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Languages</label>
-                                        <input type="text" className={inpSm} value={input.languages.join(', ')}
+                                        <input type="text" className={inpSm} value={(input.languages ?? []).join(', ')}
                                             onChange={e => updateInput(idx, { languages: e.target.value.split(/[,\s]+/).map(l => l.trim()).filter(Boolean) })}
                                             placeholder="en-US" />
                                     </div>
