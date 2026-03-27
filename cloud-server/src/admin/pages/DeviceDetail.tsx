@@ -381,7 +381,11 @@ export function DeviceDetail() {
                                     </div>
                                     <div className="flex flex-col gap-1">
                                         <label className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">Device</label>
-                                        <select className={inpSm} value={input.device} onChange={e => updateInput(idx, { device: Number(e.target.value) })}>
+                                        <select className={inpSm} value={input.device} onChange={e => {
+                                                const id = Number(e.target.value);
+                                                const pd = physicalDevices.find(d => d.id === id);
+                                                updateInput(idx, { device: id, deviceName: pd?.name });
+                                            }}>
                                             {physicalDevices.length === 0 && <option value={input.device}>Device {input.device}</option>}
                                             {physicalDevices.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
                                         </select>

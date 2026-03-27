@@ -1,5 +1,5 @@
 import { RtAudio, RtAudioErrorType, RtAudioFormat, RtAudioStreamFlags, RtAudioStreamParameters } from 'audify';
-import BadWords from 'bad-words';
+import { Filter as BadWords } from 'bad-words';
 import { ConfigManager } from "./util/configManager";
 import { InputConfig } from "./types/Config";
 import { Frame } from "./types/Frame";
@@ -113,8 +113,19 @@ export class Speech<T extends GoogleV2 | GoogleV1 | April> {
             return;
         }
 
-        // Find the device we're listening to based on what was selected in the UI
-        const asio = this.rtAudio!.getDevices().filter(d => d.id === this.inputConfig.device)[0];
+        // Find the device we're listening to based on what was selected in the UI.
+        // Prefer name-based lookup since RtAudio device IDs are not stable across reboots
+        // or when USB devices are connected/disconnected.
+        const allDevices = this.rtAudio!.getDevices();
+        let asio = this.inputConfig.deviceName
+            ? allDevices.find(d => d.name === this.inputConfig.deviceName)
+            : undefined;
+        if (!asio) {
+            if (this.inputConfig.deviceName) {
+                console.warn(`Device "${this.inputConfig.deviceName}" not found by name, falling back to ID ${this.inputConfig.device}`);
+            }
+            asio = allDevices.find(d => d.id === this.inputConfig.device);
+        }
         if (!asio) return;
         console.log(
             `Connecting to ASIO device ${color(asio.name).bold.blue} with ${color(asio.inputChannels.toString()).bold.blue} channels, listening on channel ${color(this.inputConfig.channel.toString()).bold.blue}`

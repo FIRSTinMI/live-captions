@@ -9,7 +9,12 @@
       "Bash(find /c/Users/Filip/live-captions -maxdepth 3 -not -path */node_modules* -not -path */.git/* -type d)",
       "Bash(git -C /c/Users/Filip/live-captions log --oneline -10)",
       "Bash(npx drizzle-kit:*)",
-      "Bash(node -e \":*)"
+      "Bash(node -e \":*)",
+      "Bash(bun outdated:*)",
+      "Bash(grep -E \"\\\\.\\(ts|js|json\\)$\")",
+      "Bash(find /d/NextCloud/Robots/live-captions/src -type f -name *.ts)",
+      "Bash(bunx tsc:*)",
+      "Bash(bun run:*)"
     ]
   }
 }

@@ -40,6 +40,7 @@ export type TransformationsConfig = { regex: RegExp, replacement: string; }[];
 export interface InputConfig {
     id: number,
     device: number,
+    deviceName?: string,
     speaker?: string,
     channel: number,
     sampleRate: number,

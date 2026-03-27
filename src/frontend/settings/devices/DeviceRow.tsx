@@ -82,7 +82,11 @@ export function DeviceRow({ device, physicalDevices, volumeEntry, connected, onR
                     <label>Input Device</label>
                     <select
                         value={local.device}
-                        onChange={e => update({ device: parseInt(e.target.value) })}
+                        onChange={e => {
+                            const id = parseInt(e.target.value);
+                            const pd = physicalDevices.find(d => d.id === id);
+                            update({ device: id, deviceName: pd?.name });
+                        }}
                     >
                         <option value="">Default</option>
                         {physicalDevices.map(pd => (

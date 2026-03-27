@@ -4,6 +4,7 @@ import { getToken } from '../api';
 export type RemoteInput = {
     id: number;
     device: number;
+    deviceName?: string;
     speaker?: string;
     channel: number;
     sampleRate: number;
