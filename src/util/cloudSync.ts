@@ -66,6 +66,10 @@ export class CloudSync {
         if (this.errorQueue.length > 50) this.errorQueue.shift();
     }
 
+    public pushConfig() {
+        this.relaySend({ type: 'config', config: this.config.get() });
+    }
+
     public async connect(pin: string): Promise<{ deviceName: string }> {
         const result = await this.client.device.auth.mutate({ pin });
         this.config.server.cloud.deviceToken = result.token;
@@ -398,6 +402,8 @@ export class CloudSync {
         }
         this.config.save();
         console.log(color(`Cloud: applied ${settingsList.length} setting(s) from server`).cyan.toString());
+        // Ack to server so pushedSettings is cleared — prevents re-applying on every reconnect
+        this.relaySend({ type: 'config', config: this.config.get() });
     }
 
     private mergeSettings(settings: Record<string, unknown>) {

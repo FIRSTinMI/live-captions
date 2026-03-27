@@ -40,6 +40,7 @@ export function createAppRouter(deps: RouterDeps) {
                     deps.config.set(input.key, input.value);
                     deps.config.save();
                     displayCtrlBus.emit('event', { type: 'config' });
+                    deps.cloudSync.pushConfig();
                 }),
             setJson: publicProcedure
                 .input(z.object({ key: z.string(), value: z.any() }))
@@ -49,6 +50,7 @@ export function createAppRouter(deps: RouterDeps) {
                     }
                     deps.config.save();
                     displayCtrlBus.emit('event', { type: 'config' });
+                    deps.cloudSync.pushConfig();
                 }),
             setArray: publicProcedure
                 .input(z.object({ key: z.enum(['transcription.filter', 'transcription.phraseSets']), value: z.array(z.string()) }))
@@ -59,12 +61,14 @@ export function createAppRouter(deps: RouterDeps) {
                         deps.config.transcription.phraseSets = input.value;
                     }
                     deps.config.save();
+                    deps.cloudSync.pushConfig();
                 }),
             setInputs: publicProcedure
                 .input(z.array(z.any()))
                 .mutation(({ input }) => {
                     deps.config.transcription.inputs = input as any;
                     deps.config.save();
+                    deps.cloudSync.pushConfig();
                 }),
         }),
 

@@ -213,7 +213,7 @@ export function DeviceDetail() {
     }, [relayState.config, device]);
 
     useEffect(() => {
-        if (!transcriptionInitialized) {
+        if (!transcriptionInitialized || relayState.config) {
             const src = (relayState.config ?? (device?.pushedSettings ?? device?.settings)) as { transcription?: { engine?: string; inputs?: RemoteInput[] } } | null;
             if (src?.transcription) {
                 setEngine(src.transcription.engine ?? 'googlev2');
