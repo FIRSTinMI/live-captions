@@ -313,6 +313,7 @@ export class CloudSync {
             this.relaySend({ type: 'config', config: this.config.get() });
 
         } else if (type === 'restart') {
+            console.log('[RESTART] triggered via cloud relay restart command');
             this.restart();
 
         } else if (type === 'hide') {
@@ -326,7 +327,7 @@ export class CloudSync {
             displayCtrlBus.emit('event', { type: 'clear' });
 
         } else if (type === 'reloadDisplay') {
-            displayCtrlBus.emit('event', { type: 'config' });
+            displayCtrlBus.emit('event', { type: 'reload' });
 
         } else if (type === 'pushSettings') {
             const settings = msg.settings as Record<string, unknown>;

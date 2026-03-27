@@ -129,10 +129,9 @@ export class GoogleV1 {
 
     public write(pcm: Buffer) {
         if (this.dead || this.recognizeStream?.closed || this.recognizeStream?.destroyed) {
-            console.error('Tried to write to a dead GoogleV1 instance');
+            console.error('[RESTART] triggered from GoogleV1.write() - dead stream on input ' + this.inputId);
             this.recognizeStream?.destroy();
             this.speech?.close();
-            console.error('Attempting to restart server');
             this.restart();
             return;
         }

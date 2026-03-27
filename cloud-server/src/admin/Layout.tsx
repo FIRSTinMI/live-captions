@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { clearToken } from './api';
 
 export function Layout({ children }: { children: React.ReactNode }) {
     const location = useLocation();
     const navigate = useNavigate();
+    const [sidebarOpen, setSidebarOpen] = useState(false);
 
     function handleLogout() {
         clearToken();
@@ -22,8 +23,18 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
     return (
         <div className="flex h-screen bg-gray-100 dark:bg-gray-900">
+            {/* Mobile backdrop */}
+            {sidebarOpen && (
+                <div
+                    className="fixed inset-0 z-30 bg-black/50 md:hidden"
+                    onClick={() => setSidebarOpen(false)}
+                />
+            )}
+
             {/* Sidebar */}
-            <aside className="w-56 bg-gray-900 dark:bg-gray-950 text-white flex flex-col flex-shrink-0">
+            <aside className={`fixed inset-y-0 left-0 z-40 w-56 bg-gray-900 dark:bg-gray-950 text-white flex flex-col flex-shrink-0 transition-transform duration-200
+                md:static md:translate-x-0
+                ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
                 <div className="px-6 py-5 border-b border-gray-700 dark:border-gray-800">
                     <h1 className="text-lg font-bold">Live Captions</h1>
                     <p className="text-xs text-gray-400">Admin Panel</p>
@@ -36,6 +47,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                             <Link
                                 key={link.to}
                                 to={link.to}
+                                onClick={() => setSidebarOpen(false)}
                                 className={`block px-3 py-2 rounded text-sm font-medium transition-colors ${active ? 'bg-blue-600 text-white' : 'text-gray-300 hover:bg-gray-700'}`}
                             >
                                 {link.label}
@@ -54,8 +66,21 @@ export function Layout({ children }: { children: React.ReactNode }) {
             </aside>
 
             {/* Main content */}
-            <main className="flex-1 overflow-auto">
-                <div className="p-8">
+            <main className="flex-1 overflow-auto min-w-0">
+                {/* Mobile top bar */}
+                <div className="md:hidden flex items-center gap-3 px-4 py-3 bg-gray-900 text-white sticky top-0 z-20">
+                    <button
+                        onClick={() => setSidebarOpen(true)}
+                        className="p-1 rounded hover:bg-gray-700"
+                        aria-label="Open menu"
+                    >
+                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                        </svg>
+                    </button>
+                    <span className="text-sm font-semibold">Live Captions</span>
+                </div>
+                <div className="p-4 md:p-8">
                     {children}
                 </div>
             </main>

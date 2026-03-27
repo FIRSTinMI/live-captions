@@ -44,7 +44,8 @@ export class ConfigManager {
             'projects/829228050742/locations/global/phraseSets/fim-team-names',
             'projects/829228050742/locations/global/phraseSets/frc-terms'
         ],
-        engine: 'googlev2'
+        engine: 'googlev2',
+        watchdogEnabled: true,
     };
 
     public transformations: TransformationsConfig = [
@@ -210,6 +211,9 @@ export class ConfigManager {
                 break;
             case 'transcription.hidden':
                 this.display.hidden = value;
+                break;
+            case 'transcription.watchdogEnabled':
+                this.transcription.watchdogEnabled = value === 'true';
                 break;
             case 'server.cloud.deviceToken':
                 this.server.cloud.deviceToken = value === '' ? null : value;

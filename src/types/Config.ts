@@ -32,6 +32,7 @@ export interface TranscriptionConfig {
     inputs: InputConfig[],
     phraseSets: string[],
     engine: 'googlev1' | 'googlev2' | 'april';
+    watchdogEnabled: boolean;
 }
 
 export type TransformationsConfig = { regex: RegExp, replacement: string; }[];

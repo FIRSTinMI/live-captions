@@ -1,8 +1,8 @@
 import React from 'react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClient, QueryClientProvider, QueryCache, MutationCache } from '@tanstack/react-query';
 import { httpBatchLink } from '@trpc/client';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { trpc, getToken } from './api';
+import { trpc, getToken, clearToken } from './api';
 import { Login } from './pages/Login';
 import { Dashboard } from './pages/Dashboard';
 import { Devices } from './pages/Devices';
@@ -15,8 +15,17 @@ import { DeviceGroups } from './pages/DeviceGroups';
 import { DeviceGroupDetail } from './pages/DeviceGroupDetail';
 import { Layout } from './Layout';
 
+function handleAuthError(error: unknown) {
+    if ((error as any)?.data?.code === 'UNAUTHORIZED') {
+        clearToken();
+        window.location.href = '/admin/login';
+    }
+}
+
 const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: 1 } },
+    queryCache: new QueryCache({ onError: handleAuthError }),
+    mutationCache: new MutationCache({ onError: handleAuthError }),
 });
 
 const trpcClient = trpc.createClient({

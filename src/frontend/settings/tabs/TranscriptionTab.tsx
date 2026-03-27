@@ -138,6 +138,20 @@ export function TranscriptionTab({ config, physicalDevices, volumes, connected, 
                 </div>
             </div>
 
+            <div className={styles.row}>
+                <div className={styles.field}>
+                    <label>
+                        <input
+                            type="checkbox"
+                            defaultChecked={config.transcription.watchdogEnabled ?? true}
+                            onChange={e => setEngine.mutate({ key: 'transcription.watchdogEnabled', value: String(e.target.checked) })}
+                            style={{ marginRight: 6 }}
+                        />
+                        Watchdog (auto-restart if mic is active but no captions for ~45s)
+                    </label>
+                </div>
+            </div>
+
             <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginTop: 8 }}>
                 <button
                     className={`${styles.btn} ${styles.btnPrimary}`}

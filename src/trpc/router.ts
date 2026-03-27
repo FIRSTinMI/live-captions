@@ -79,6 +79,7 @@ export function createAppRouter(deps: RouterDeps) {
                     deps.config.display.hidden = input.value;
                     deps.config.save();
                     displayCtrlBus.emit('event', { type: 'hide', value: input.value });
+                    deps.cloudSync.pushConfig();
                 }),
             clear: publicProcedure
                 .mutation(() => {
@@ -88,6 +89,7 @@ export function createAppRouter(deps: RouterDeps) {
 
         server: router({
             restart: publicProcedure.mutation(() => {
+                console.log('[RESTART] triggered via TRPC server.restart mutation');
                 deps.restart();
             }),
         }),

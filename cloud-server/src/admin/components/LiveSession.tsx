@@ -1,6 +1,21 @@
 import React, { useEffect, useRef } from 'react';
 import type { RelayState, RemoteInput, CaptionEntry } from '../hooks/useDeviceRelay';
 
+function buildDisplayCaptions(captions: CaptionEntry[]): CaptionEntry[] {
+    const finals: CaptionEntry[] = [];
+    const latestPartial = new Map<number, CaptionEntry>();
+    for (const c of captions) {
+        if (c.isFinal) {
+            latestPartial.delete(c.device);
+            finals.push(c);
+        } else {
+            latestPartial.set(c.device, c);
+        }
+    }
+    for (const partial of latestPartial.values()) finals.push(partial);
+    return finals;
+}
+
 function CaptionLog({ captions, inputs }: { captions: CaptionEntry[]; inputs: RemoteInput[] }) {
     const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -16,9 +31,11 @@ function CaptionLog({ captions, inputs }: { captions: CaptionEntry[]; inputs: Re
         );
     }
 
+    const displayCaptions = buildDisplayCaptions(captions);
+
     return (
         <div className="max-h-56 overflow-y-auto font-mono text-sm leading-relaxed space-y-0.5 pr-1">
-            {captions.map((c, i) => {
+            {displayCaptions.map((c, i) => {
                 const input = inputs.find(inp => inp.id === c.device);
                 const color = input?.color ?? '#9ca3af';
                 const speaker = c.speaker || input?.speaker || `Input ${c.device}`;

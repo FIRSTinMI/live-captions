@@ -126,19 +126,23 @@ async function start() {
         restart: start,
         onDisplayConnect: () => {
             displaySubCount++;
+            console.log(`[WS] display client connected (displaySubCount=${displaySubCount})`);
             cancelPauseTimer();
             speechServices.forEach(s => s.unsuspend());
         },
         onDisplayDisconnect: () => {
             displaySubCount = Math.max(0, displaySubCount - 1);
+            console.log(`[WS] display client disconnected (displaySubCount=${displaySubCount})`);
             schedulePauseIfEmpty();
         },
         onSettingsConnect: () => {
             settingsSubCount++;
+            console.log(`[WS] settings client connected (settingsSubCount=${settingsSubCount})`);
             cancelPauseTimer();
         },
         onSettingsDisconnect: () => {
             settingsSubCount = Math.max(0, settingsSubCount - 1);
+            console.log(`[WS] settings client disconnected (settingsSubCount=${settingsSubCount})`);
             schedulePauseIfEmpty();
         },
     });

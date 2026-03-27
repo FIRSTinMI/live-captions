@@ -54,7 +54,8 @@ export interface AppConfig {
 export type DisplayControlEvent =
     | { type: 'clear' }
     | { type: 'hide'; value: boolean }
-    | { type: 'config' };
+    | { type: 'config' }
+    | { type: 'reload' };
 
 export interface MicStatusPayload {
     devices: { id: number; active: boolean }[];

@@ -196,7 +196,7 @@ export function DeviceDetail() {
 
     // Initialize display/transcription from relay config or offline settings
     useEffect(() => {
-        if (!displayInitialized) {
+        if (!displayInitialized || relayState.config) {
             const src = (relayState.config ?? (device?.pushedSettings ?? device?.settings)) as { display?: Partial<DisplayLocal> } | null;
             if (src?.display) {
                 setDisplay({
@@ -605,6 +605,20 @@ export function DeviceDetail() {
                             <option value="googlev2">Google V2</option>
                             <option value="april">April ASR</option>
                         </select>
+                    </div>
+                    <div className="flex items-center gap-2 mb-4">
+                        <input
+                            type="checkbox"
+                            id="watchdogEnabled"
+                            checked={(relayState.config?.transcription as any)?.watchdogEnabled ?? true}
+                            onChange={e => {
+                                if (relayState.online) relaySend({ type: 'set', key: 'transcription.watchdogEnabled', value: String(e.target.checked) });
+                                saveSettings.mutate({ deviceId, settings: { transcription: { watchdogEnabled: e.target.checked } } });
+                            }}
+                        />
+                        <label htmlFor="watchdogEnabled" className="text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
+                            Watchdog (auto-restart if mic active ~45s with no captions)
+                        </label>
                     </div>
                     <div className="flex items-center gap-3">
                         <button onClick={handleSaveTranscriptionEngine} disabled={saveSettings.isPending}

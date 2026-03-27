@@ -34,10 +34,10 @@ export function DisplayApp() {
     const [clearingWaitForFinal, setClearingWaitForFinal] = useState(false);
     const lcRef = useRef<HTMLDivElement>(null);
 
-    const { recordFrame, recordMicActive } = useWatchdog();
-
     // Apply URL param overrides to config
     const configQuery = trpc.config.get.useQuery(undefined, { staleTime: Infinity });
+
+    const { recordFrame, recordMicActive } = useWatchdog(configQuery.data?.transcription?.watchdogEnabled ?? true);
     const utils = trpc.useUtils();
 
     // Parse query and merge with server config - runs when data arrives
@@ -68,7 +68,7 @@ export function DisplayApp() {
     useEffect(() => {
         if (!config || !lcRef.current) return;
         applyPositionStyles(lcRef.current, config.display.position, config.display.align);
-        lcRef.current.style.maxHeight = config.display.lines * (config.display.size + 6) + 'px';
+        lcRef.current.style.maxHeight = config.display.lines * (config.display.size + 6) + 30 + 'px';
     }, [config]);
 
     // Subscriptions
@@ -93,7 +93,9 @@ export function DisplayApp() {
 
     trpc.displayControl.useSubscription(undefined, {
         onData: (event) => {
-            if (event.type === 'config') {
+            if (event.type === 'reload') {
+                window.location.reload();
+            } else if (event.type === 'config') {
                 utils.config.get.invalidate();
             } else if (event.type === 'hide') {
                 setHidden(event.value);

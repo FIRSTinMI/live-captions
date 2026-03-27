@@ -8,7 +8,8 @@ export interface MicStatusPayload {
 export type DisplayControlEvent =
     | { type: 'clear' }
     | { type: 'hide'; value: boolean }
-    | { type: 'config' };
+    | { type: 'config' }
+    | { type: 'reload' };
 
 class TypedEmitter<TEvents extends Record<string, any>> extends EventEmitter {
     emit<K extends keyof TEvents>(event: K & string, payload: TEvents[K]): boolean {

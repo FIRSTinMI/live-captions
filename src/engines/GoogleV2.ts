@@ -170,10 +170,9 @@ export class GoogleV2 {
     public write(pcm: Buffer) {
         if (this.dead) return; // intentionally paused, drop audio silently
         if (this.recognizeStream?.closed || this.recognizeStream?.destroyed) {
-            console.error('Tried to write to a dead GoogleV2 instance');
+            console.error('[RESTART] triggered from GoogleV2.write() - dead stream on input ' + this.inputId);
             this.recognizeStream?.destroy();
             this.speech?.close();
-            console.error('Attempting to restart server');
             this.restart();
             return;
         }
