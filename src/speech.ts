@@ -207,6 +207,7 @@ export class Speech<T extends GoogleV2 | GoogleV1 | April> {
                 // Ambient noise crept up - rise slowly
                 this.noiseFloor = AUTO_THRESHOLD_ALPHA_UP * this.volume + (1 - AUTO_THRESHOLD_ALPHA_UP) * this.noiseFloor;
             }
+            this.noiseFloor = Math.max(1, this.noiseFloor);
         }
         // When volume >= effectiveThreshold (someone speaking): hold the floor steady.
 
