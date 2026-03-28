@@ -29,7 +29,7 @@ export function Dashboard() {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const activeToday = devices?.filter(d => d.lastSeenAt && new Date(d.lastSeenAt) >= today).length ?? 0;
-    const totalMinutesThisMonth = usageSummary?.reduce((sum, u) => sum + u.minutesThisMonth, 0) ?? 0;
+    const totalMinutesThisWeek = usageSummary?.reduce((sum, u) => sum + u.minutesThisMonth, 0) ?? 0;
 
     return (
         <div>
@@ -38,7 +38,7 @@ export function Dashboard() {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
                 <StatCard label="Total Devices" value={totalDevices} />
                 <StatCard label="Active Today" value={activeToday} />
-                <StatCard label="Minutes This Month" value={totalMinutesThisMonth.toFixed(1)} />
+                <StatCard label="Minutes This Week" value={totalMinutesThisWeek.toFixed(1)} />
             </div>
 
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow">

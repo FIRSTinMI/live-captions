@@ -501,6 +501,12 @@ export function DeviceDetail() {
                             </div>
                         )}
                         <div>
+                            <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Client Version</label>
+                            <span className="font-mono text-sm text-gray-900 dark:text-white">
+                                {relayState.clientVersion ?? <span className="text-gray-400 dark:text-gray-500">Unknown (connect to report)</span>}
+                            </span>
+                        </div>
+                        <div>
                             <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Device PIN</label>
                             <div className="flex items-center gap-2">
                                 <span className="font-mono text-lg tracking-widest text-gray-900 dark:text-white">{device.pin || '------'}</span>

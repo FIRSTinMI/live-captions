@@ -5,6 +5,7 @@ export interface DeviceRelayState {
     physicalDevices: Array<{ id: number; name: string; inputChannels: number }>;
     volumes: Array<{ id: number; volume: number; threshold: number; state: number }>;
     online: boolean;
+    clientVersion: string | null;
 }
 
 class RelayManager {
@@ -80,6 +81,7 @@ class RelayManager {
         if (msg.type === 'hello') {
             if (msg.config !== undefined) s.config = msg.config;
             if (msg.physicalDevices) s.physicalDevices = msg.physicalDevices as typeof s.physicalDevices;
+            if (msg.version !== undefined) s.clientVersion = msg.version as string;
             if (msg.config !== undefined) this.configSaveHandler?.(deviceId, msg.config, 'hello');
             this.broadcast(deviceId, { type: 'hello', ...s, online: true });
         } else if (msg.type === 'config') {
@@ -101,7 +103,7 @@ class RelayManager {
 
     private getOrCreate(deviceId: number): DeviceRelayState {
         if (!this.state.has(deviceId)) {
-            this.state.set(deviceId, { config: null, physicalDevices: [], volumes: [], online: false });
+            this.state.set(deviceId, { config: null, physicalDevices: [], volumes: [], online: false, clientVersion: null });
         }
         return this.state.get(deviceId)!;
     }

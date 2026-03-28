@@ -118,5 +118,9 @@
     {
         "regex": "/ LG /gim",
         "replacement": " Algae "
+    },
+    {
+        "regex": "/ ebola /gim",
+        "replacement": " Blue "
     }
 ]

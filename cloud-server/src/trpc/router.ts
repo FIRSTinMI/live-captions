@@ -264,6 +264,7 @@ export function createRouter() {
                         hasApiKey: !!d.apiKeyId,
                         groupIds: d.groupMemberships.map(m => m.groupId),
                         online: relay.isOnline(d.id),
+                        clientVersion: relay.state.get(d.id)?.clientVersion ?? null,
                         lastSeenAt: d.lastSeenAt,
                         lastHeartbeatAt: d.lastHeartbeatAt,
                         todayMinutes: usageMap.get(d.id) ?? 0,
@@ -423,14 +424,19 @@ export function createRouter() {
 
                 usageSummary: adminProcedure.query(async () => {
                     const now = new Date();
-                    const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+                    // Week runs Tuesday–Monday; find the most recent Tuesday
+                    const day = now.getDay(); // 0=Sun,1=Mon,2=Tue,...,6=Sat
+                    const daysSinceTuesday = (day + 7 - 2) % 7; // days since last Tuesday
+                    const weekStart = new Date(now);
+                    weekStart.setDate(now.getDate() - daysSinceTuesday);
+                    weekStart.setHours(0, 0, 0, 0);
                     const rows = await db
                         .select({
                             deviceId: schema.usageLogs.deviceId,
                             total: sql<number>`sum(${schema.usageLogs.minutesUsed})`,
                         })
                         .from(schema.usageLogs)
-                        .where(gte(schema.usageLogs.recordedAt, firstOfMonth))
+                        .where(gte(schema.usageLogs.recordedAt, weekStart))
                         .groupBy(schema.usageLogs.deviceId);
                     return rows.map(r => ({ deviceId: r.deviceId, minutesThisMonth: Number(r.total) }));
                 }),

@@ -106,6 +106,7 @@ export function Devices() {
                             <th className="px-6 py-3 font-medium">Tag</th>
                             <th className="px-6 py-3 font-medium">Status</th>
                             <th className="px-6 py-3 font-medium">API Key</th>
+                            <th className="px-6 py-3 font-medium">Version</th>
                             <th className="px-6 py-3 font-medium">Last Seen</th>
                             <th className="px-6 py-3 font-medium">Last Heartbeat</th>
                             <th className="px-6 py-3 font-medium">Today (min)</th>
@@ -114,7 +115,7 @@ export function Devices() {
                     </thead>
                     <tbody>
                         {isLoading && (
-                            <tr><td colSpan={8} className="px-6 py-8 text-center text-gray-400">Loading...</td></tr>
+                            <tr><td colSpan={9} className="px-6 py-8 text-center text-gray-400">Loading...</td></tr>
                         )}
                         {devices?.map(d => (
                             <tr key={d.id} className="border-b border-gray-50 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700">
@@ -135,6 +136,9 @@ export function Devices() {
                                 <td className="px-6 py-3 text-gray-500 dark:text-gray-400 text-xs">
                                     {d.apiKeyTitle ?? <span className="text-gray-300 dark:text-gray-600">None</span>}
                                 </td>
+                                <td className="px-6 py-3 text-gray-500 dark:text-gray-400 text-xs font-mono">
+                                    {d.clientVersion ?? <span className="text-gray-300 dark:text-gray-600">—</span>}
+                                </td>
                                 <td className="px-6 py-3 text-gray-500 dark:text-gray-400">{relativeTime(d.lastSeenAt)}</td>
                                 <td className="px-6 py-3 text-gray-500 dark:text-gray-400">{relativeTime(d.lastHeartbeatAt)}</td>
                                 <td className="px-6 py-3 text-gray-700 dark:text-gray-300">{d.todayMinutes.toFixed(1)}</td>
@@ -147,7 +151,7 @@ export function Devices() {
                             </tr>
                         ))}
                         {!isLoading && !devices?.length && (
-                            <tr><td colSpan={8} className="px-6 py-8 text-center text-gray-400">No devices yet. Click "+ Add Device" to create one.</td></tr>
+                            <tr><td colSpan={9} className="px-6 py-8 text-center text-gray-400">No devices yet. Click "+ Add Device" to create one.</td></tr>
                         )}
                     </tbody>
                 </table>

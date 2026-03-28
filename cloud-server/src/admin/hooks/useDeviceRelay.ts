@@ -48,6 +48,7 @@ export type RelayState = {
     physicalDevices: PhysicalDevice[];
     volumes: VolumeEntry[];
     captions: CaptionEntry[];
+    clientVersion: string | null;
 };
 
 const INITIAL_STATE: RelayState = {
@@ -56,6 +57,7 @@ const INITIAL_STATE: RelayState = {
     physicalDevices: [],
     volumes: [],
     captions: [],
+    clientVersion: null,
 };
 
 export function useDeviceRelay(deviceId: number): [RelayState, (msg: unknown) => void] {
@@ -93,6 +95,7 @@ export function useDeviceRelay(deviceId: number): [RelayState, (msg: unknown) =>
                         physicalDevices: (msg.physicalDevices as PhysicalDevice[]) ?? [],
                         volumes: (msg.volumes as VolumeEntry[]) ?? [],
                         captions: s.captions,
+                        clientVersion: (msg.clientVersion as string) ?? null,
                     }));
                 } else if (msg.type === 'offline') {
                     setState(s => ({ ...s, online: false }));

@@ -47,7 +47,7 @@ export function DisplayTab({ config, onRefresh }: Props) {
                         type="text"
                         defaultValue={display.chromaKey}
                         onBlur={e => set.mutate({ key: 'display.chromaKey', value: e.target.value })}
-                        placeholder="#FF00FF"
+                        placeholder="rgba(0,0,0,0)"
                     />
                 </div>
             </div>

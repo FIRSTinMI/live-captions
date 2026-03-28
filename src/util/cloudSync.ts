@@ -188,6 +188,7 @@ export class CloudSync {
             // Send hello
             this.relaySend({
                 type: 'hello',
+                version: require('../../package.json').version as string,
                 config: this.config.get(),
                 physicalDevices: this.getPhysicalDevices(),
             });
