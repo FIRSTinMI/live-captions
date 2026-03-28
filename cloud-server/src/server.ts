@@ -33,7 +33,11 @@ export function createServer() {
     // Serve admin panel static files
     const adminDir = path.join(__dirname, 'public', 'admin');
     app.use('/admin', express.static(adminDir));
-    app.get('/admin/*', (_req, res) => {
+    app.get('/admin/*', (req, res) => {
+        // Only serve index.html for navigation requests, not missing assets
+        if (path.extname(req.path)) {
+            return res.status(404).send('Not found');
+        }
         res.sendFile(path.join(adminDir, 'index.html'));
     });
 
