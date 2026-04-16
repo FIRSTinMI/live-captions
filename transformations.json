@@ -122,5 +122,17 @@
     {
         "regex": "/ ebola /gim",
         "replacement": " Blue "
+    },
+    {
+        "regex": "/active foundation/gim",
+        "replacement": "Aptive Foundation"
+    },
+    {
+        "regex": "/hemlock semiconductor/gim",
+        "replacement": "Hemlock Semiconductor"
+    },
+    {
+        "regex": "/hemlock/gim",
+        "replacement": "Hemlock"
     }
 ]
