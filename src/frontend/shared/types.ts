@@ -46,10 +46,16 @@ export interface TranscriptionConfig {
     engine: 'googlev1' | 'googlev2' | 'april';
 }
 
+export interface YouTubeCaptionsConfig {
+    url: string | null;
+    enabled: boolean;
+}
+
 export interface AppConfig {
     display: DisplayConfig;
     server: ServerConfig;
     transcription: TranscriptionConfig;
+    youtubeCaptions: YouTubeCaptionsConfig;
 }
 
 export type DisplayControlEvent =

@@ -11,6 +11,7 @@ import { GoogleV1 } from './engines/GoogleV1';
 import { April, downloadDependencies } from './engines/April';
 import { createAppRouter } from './trpc/router';
 import { micBus, errorBus } from './util/eventBus';
+import { YouTubeCaptionPusher } from './util/youtubeCaptionPusher';
 
 // Fallback listener so Node.js doesn't crash if no other handler is registered
 // (e.g. when cloud sync init fails and subscribeErrors() is never called)
@@ -25,6 +26,7 @@ export const PROGRAM_FOLDER = process.platform === 'win32'
 
 let server: Server;
 let cloudSync: CloudSync | null = null;
+let youtubeCaptionPusher: YouTubeCaptionPusher | null = null;
 
 let speechServices: Speech<GoogleV1 | GoogleV2 | April>[] = [];
 let isStarting: boolean = false;
@@ -118,9 +120,16 @@ async function start() {
     cloudSync = new CloudSync(config, () => speechServices, () => rtAudio.getDevices(), start);
     await cloudSync.initialize();
 
+    if (!youtubeCaptionPusher) {
+        youtubeCaptionPusher = new YouTubeCaptionPusher(config);
+    } else {
+        youtubeCaptionPusher.reconcile();
+    }
+
     const appRouter = createAppRouter({
         config,
         cloudSync,
+        youtubeCaptionPusher,
         getSpeechServices: () => speechServices,
         getRtAudio: () => rtAudio,
         restart: start,

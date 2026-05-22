@@ -11,10 +11,15 @@ import { captionBus, micBus, displayCtrlBus, MicStatusPayload, DisplayControlEve
 import { Frame } from '../types/Frame';
 import { Context, createContext } from './context';
 import { CloudSync } from '../util/cloudSync';
+import { YouTubeCaptionPusher } from '../util/youtubeCaptionPusher';
+import { addBrowserInput, getInputs, overlayIn, setInputName, VmixUnreachableError } from '../util/vmixApi';
+
+const LIVE_CAPTIONS_INPUT_TITLE = 'Live Captions';
 
 export interface RouterDeps {
     config: ConfigManager;
     cloudSync: CloudSync;
+    youtubeCaptionPusher: YouTubeCaptionPusher;
     getSpeechServices: () => Speech<GoogleV1 | GoogleV2 | April>[];
     getRtAudio: () => RtAudio;
     restart: () => void;
@@ -115,6 +120,52 @@ export function createAppRouter(deps: RouterDeps) {
                     connected: !!deps.config.server.cloud.deviceToken,
                     deviceName: deps.config.server.cloud.deviceName,
                 };
+            }),
+        }),
+
+        vmix: router({
+            ensureLiveCaptionsInput: publicProcedure.mutation(async () => {
+                try {
+                    const existing = await getInputs();
+                    const found = existing.find(i => i.title === LIVE_CAPTIONS_INPUT_TITLE);
+                    if (found) {
+                        await overlayIn(8, found.key);
+                        return { status: 'exists' as const, title: found.title, key: found.key };
+                    }
+                    const url = `http://127.0.0.1:${deps.config.server.port}/`;
+                    const key = await addBrowserInput(url);
+                    await setInputName(key, LIVE_CAPTIONS_INPUT_TITLE);
+                    await overlayIn(8, key);
+                    return { status: 'created' as const, title: LIVE_CAPTIONS_INPUT_TITLE, key };
+                } catch (err) {
+                    if (err instanceof VmixUnreachableError) {
+                        return { status: 'unreachable' as const, error: err.message };
+                    }
+                    const message = err instanceof Error ? err.message : String(err);
+                    return { status: 'error' as const, error: message };
+                }
+            }),
+        }),
+
+        youtubeCaptions: router({
+            setUrl: publicProcedure
+                .input(z.object({ url: z.string().nullable() }))
+                .mutation(({ input }) => {
+                    deps.config.youtubeCaptions.url = input.url && input.url.trim() ? input.url.trim() : null;
+                    deps.config.save();
+                    deps.youtubeCaptionPusher.reconcile();
+                    deps.cloudSync.pushConfig();
+                }),
+            setEnabled: publicProcedure
+                .input(z.object({ enabled: z.boolean() }))
+                .mutation(({ input }) => {
+                    deps.config.youtubeCaptions.enabled = input.enabled;
+                    deps.config.save();
+                    deps.youtubeCaptionPusher.reconcile();
+                    deps.cloudSync.pushConfig();
+                }),
+            pushStatus: publicProcedure.query(() => {
+                return deps.youtubeCaptionPusher.getStatus();
             }),
         }),
 

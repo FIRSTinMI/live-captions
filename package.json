@@ -1,6 +1,6 @@
 {
     "name": "live-captions",
-    "version": "1.9.3",
+    "version": "1.10.0",
     "main": "./build/index.js",
     "bin": "./build/index.js",
     "scripts": {
@@ -8,6 +8,8 @@
         "start-gibberish": "tsc && node ./build/index.js --gibberish",
         "build:frontend": "vite build",
         "dev:frontend": "vite",
+        "dev:backend": "bun run ./src/index.ts --skip-update-check",
+        "dev": "bun run ./scripts/dev.ts",
         "dist": "npm run build:frontend && tsc && npx @yao-pkg/pkg .",
         "test": "bun test"
     },

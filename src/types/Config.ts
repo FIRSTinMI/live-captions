@@ -37,6 +37,11 @@ export interface TranscriptionConfig {
 
 export type TransformationsConfig = { regex: RegExp, replacement: string; }[];
 
+export interface YouTubeCaptionsConfig {
+    url: string | null;
+    enabled: boolean;
+}
+
 export interface InputConfig {
     id: number,
     device: number,
@@ -56,5 +61,6 @@ export interface JSONConfig {
     display: DisplayConfig,
     server: ServerConfig,
     transcription: TranscriptionConfig,
-    transformations: TransformationsConfig;
+    transformations: TransformationsConfig,
+    youtubeCaptions: YouTubeCaptionsConfig;
 }

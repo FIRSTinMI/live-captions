@@ -5,15 +5,17 @@ import { useVolumes, ConnectionStatus } from './useVolumes';
 import { DisplayTab } from './tabs/DisplayTab';
 import { TranscriptionTab } from './tabs/TranscriptionTab';
 import { ServerTab } from './tabs/ServerTab';
+import { VmixTab } from './tabs/VmixTab';
 import { AboutTab } from './tabs/AboutTab';
 import styles from './settings.module.css';
 
-type Tab = 'display' | 'transcription' | 'server' | 'about';
+type Tab = 'display' | 'transcription' | 'server' | 'vmix' | 'about';
 
 const TABS: { id: Tab; label: string }[] = [
     { id: 'display',       label: 'Display' },
     { id: 'transcription', label: 'Transcription' },
     { id: 'server',        label: 'Server' },
+    { id: 'vmix',          label: 'vMix/YouTube' },
     { id: 'about',         label: 'About' },
 ];
 
@@ -98,6 +100,9 @@ export function SettingsApp() {
                     )}
                     {activeTab === 'server' && (
                         <ServerTab config={configQuery.data as AppConfig} onRefresh={refresh} />
+                    )}
+                    {activeTab === 'vmix' && (
+                        <VmixTab config={configQuery.data as AppConfig} onRefresh={refresh} />
                     )}
                     {activeTab === 'about' && (
                         <AboutTab />

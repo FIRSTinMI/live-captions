@@ -1,5 +1,5 @@
 import { existsSync, readFileSync, writeFileSync } from 'fs';
-import { DisplayConfig, JSONConfig, ServerConfig, TranscriptionConfig, TransformationsConfig } from '../types/Config';
+import { DisplayConfig, JSONConfig, ServerConfig, TranscriptionConfig, TransformationsConfig, YouTubeCaptionsConfig } from '../types/Config';
 
 export class ConfigManager {
     private file: string;
@@ -46,6 +46,11 @@ export class ConfigManager {
         ],
         engine: 'googlev2',
         watchdogEnabled: true,
+    };
+
+    public youtubeCaptions: YouTubeCaptionsConfig = {
+        url: null,
+        enabled: false,
     };
 
     public transformations: TransformationsConfig = [
@@ -171,6 +176,7 @@ export class ConfigManager {
         }
 
         this.transcription = overloadConfig(this.transcription, json.transcription);
+        this.youtubeCaptions = overloadConfig(this.youtubeCaptions, json.youtubeCaptions);
         this.save();
     }
 
@@ -179,7 +185,8 @@ export class ConfigManager {
             display: this.display,
             server: this.server,
             transcription: this.transcription,
-            transformations: this.transformations
+            transformations: this.transformations,
+            youtubeCaptions: this.youtubeCaptions
         };
     }
 
@@ -220,6 +227,12 @@ export class ConfigManager {
                 break;
             case 'server.cloud.deviceName':
                 this.server.cloud.deviceName = value === '' ? null : value;
+                break;
+            case 'youtubeCaptions.url':
+                this.youtubeCaptions.url = value === '' ? null : value;
+                break;
+            case 'youtubeCaptions.enabled':
+                this.youtubeCaptions.enabled = value === 'true';
                 break;
         }
     }
