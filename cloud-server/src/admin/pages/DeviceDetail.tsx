@@ -184,6 +184,12 @@ export function DeviceDetail() {
     const [phraseMsg, setPhraseMsg] = useState('');
     const [phraseError, setPhraseError] = useState('');
 
+    // YouTube caption push
+    const [youtubeCaptionsUrl, setYoutubeCaptionsUrl] = useState('');
+    const [youtubeCaptionsEnabled, setYoutubeCaptionsEnabled] = useState(false);
+    const [youtubeInitialized, setYoutubeInitialized] = useState(false);
+    const [youtubeMsg, setYoutubeMsg] = useState('');
+
     // Initialize from device data
     useEffect(() => {
         if (!device) return;
@@ -223,6 +229,17 @@ export function DeviceDetail() {
         }
     }, [relayState.config, device]);
 
+    useEffect(() => {
+        if (!youtubeInitialized || relayState.config) {
+            const src = (relayState.config ?? (device?.pushedSettings ?? device?.settings)) as { youtubeCaptions?: { url?: string | null; enabled?: boolean } } | null;
+            if (src?.youtubeCaptions) {
+                setYoutubeCaptionsUrl(src.youtubeCaptions.url ?? '');
+                setYoutubeCaptionsEnabled(src.youtubeCaptions.enabled ?? false);
+                setYoutubeInitialized(true);
+            }
+        }
+    }, [relayState.config, device]);
+
     // ── Mutations ─────────────────────────────────────────────────────────────
     const createApiKey = trpc.admin.apiKeys.create.useMutation({
         onSuccess: (newKey) => {
@@ -255,10 +272,12 @@ export function DeviceDetail() {
             const isDisplay = 'display' in variables.settings;
             const isTranscription = 'transcription' in variables.settings && !('inputs' in (variables.settings.transcription as object));
             const isInputs = 'transcription' in variables.settings && 'inputs' in (variables.settings.transcription as object);
+            const isYoutube = 'youtubeCaptions' in variables.settings;
             const msg = relayState.online ? 'Pushed to device' : 'Saved';
             if (isDisplay) { setDisplayMsg(msg); setTimeout(() => setDisplayMsg(''), 2500); }
             else if (isTranscription) { setTranscriptionMsg(msg); setTimeout(() => setTranscriptionMsg(''), 2500); }
             else if (isInputs) { setInputsMsg(msg); setTimeout(() => setInputsMsg(''), 2500); }
+            else if (isYoutube) { setYoutubeMsg(msg); setTimeout(() => setYoutubeMsg(''), 2500); }
         },
     });
 
@@ -301,6 +320,15 @@ export function DeviceDetail() {
             relaySend({ type: 'setInputs', inputs });
             relaySend({ type: 'restart' });
         }
+    }
+
+    function handleSaveYoutubeCaptions() {
+        const payload = {
+            url: youtubeCaptionsUrl.trim() === '' ? null : youtubeCaptionsUrl.trim(),
+            enabled: youtubeCaptionsEnabled,
+        };
+        saveSettings.mutate({ deviceId, settings: { youtubeCaptions: payload } });
+        if (relayState.online) relaySend({ type: 'pushSettings', settings: { youtubeCaptions: payload } });
     }
 
     function updateInput(index: number, patch: Partial<RemoteInput>) {
@@ -636,6 +664,41 @@ export function DeviceDetail() {
                             {saveSettings.isPending ? 'Saving...' : relayState.online ? 'Save & Push' : 'Save (sync on next connection)'}
                         </button>
                         {transcriptionMsg && <span className="text-sm text-green-600 dark:text-green-400">{transcriptionMsg}</span>}
+                    </div>
+                </section>
+
+                {/* ── YouTube Caption Push ───────────────────────────── */}
+                <section>
+                    <h4 className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-3 pb-2 border-b border-gray-100 dark:border-gray-700">YouTube Caption Push</h4>
+                    <div className="flex flex-col gap-1 mb-3">
+                        <label className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">HTTP caption ingestion URL</label>
+                        <input
+                            type="text"
+                            className={inp}
+                            value={youtubeCaptionsUrl}
+                            onChange={e => setYoutubeCaptionsUrl(e.target.value)}
+                            placeholder="http://upload.youtube.com/closedcaption?cid=..."
+                        />
+                        <span className="text-xs text-gray-400">From YouTube Studio with Captions set to HTTP POST.</span>
+                    </div>
+                    <div className="flex items-center gap-2 mb-3">
+                        <input
+                            type="checkbox"
+                            id="youtubeCaptionsEnabled"
+                            checked={youtubeCaptionsEnabled}
+                            onChange={e => setYoutubeCaptionsEnabled(e.target.checked)}
+                            disabled={!youtubeCaptionsUrl.trim()}
+                        />
+                        <label htmlFor="youtubeCaptionsEnabled" className="text-sm text-gray-700 dark:text-gray-300 cursor-pointer">
+                            Enabled
+                        </label>
+                    </div>
+                    <div className="flex items-center gap-3">
+                        <button onClick={handleSaveYoutubeCaptions} disabled={saveSettings.isPending}
+                            className="bg-blue-600 text-white rounded px-4 py-2 text-sm font-medium hover:bg-blue-700 disabled:opacity-50">
+                            {saveSettings.isPending ? 'Saving...' : relayState.online ? 'Save & Push' : 'Save (sync on next connection)'}
+                        </button>
+                        {youtubeMsg && <span className="text-sm text-green-600 dark:text-green-400">{youtubeMsg}</span>}
                     </div>
                 </section>
 

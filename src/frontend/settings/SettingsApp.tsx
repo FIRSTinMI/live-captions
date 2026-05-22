@@ -84,6 +84,15 @@ export function SettingsApp() {
                                 {t.label}
                             </button>
                         ))}
+                        <a
+                            href="https://docs.fimav.us/docs/software-guides/captions/"
+                            target="_blank"
+                            rel="noreferrer"
+                            className={styles.tab}
+                            style={{ textDecoration: 'none' }}
+                        >
+                            Docs
+                        </a>
                     </div>
 
                     {activeTab === 'display' && (

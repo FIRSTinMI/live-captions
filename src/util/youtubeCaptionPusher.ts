@@ -1,5 +1,5 @@
 import { ConfigManager } from './configManager';
-import { captionBus } from './eventBus';
+import { captionBus, displayCtrlBus } from './eventBus';
 import { Frame } from '../types/Frame';
 
 const FLUSH_INTERVAL_MS = 500;
@@ -60,6 +60,9 @@ export class YouTubeCaptionPusher {
                 this.queue.splice(0, this.queue.length - MAX_QUEUE_DEPTH);
             }
         };
+        displayCtrlBus.on('event', e => {
+            if (e.type === 'config') this.reconcile();
+        });
         this.reconcile();
     }
 
