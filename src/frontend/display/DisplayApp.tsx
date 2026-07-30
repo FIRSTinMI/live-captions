@@ -15,6 +15,8 @@ function applyPositionStyles(el: HTMLElement, position: number, align: string) {
         case 1: el.style.top = '0'; break;
         case 2: el.style.bottom = '256px'; break;
         case 3: el.style.top = '256px'; break;
+        case 4: el.style.top = '76px'; break;      // just below a top bar (e.g. a scorebar overlay's header)
+        case 5: el.style.bottom = '76px'; break;   // just above a bottom bar
     }
     switch (align) {
         case 'left': el.style.left = '0'; break;
