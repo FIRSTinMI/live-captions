@@ -1,12 +1,48 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { trpc, setToken } from '../api';
+
+const OIDC_ERROR_MESSAGES: Record<string, string> = {
+    oidc_disabled: 'Authelia login is not configured.',
+    oidc_denied: 'Authelia login was cancelled.',
+    oidc_state: 'Authelia login expired. Please try again.',
+    oidc_forbidden: 'Your Authelia account is not an admin.',
+    oidc_failed: 'Authelia login failed. Please try again.',
+};
 
 export function Login() {
     const navigate = useNavigate();
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
+
+    const oidcEnabled = trpc.admin.oidcEnabled.useQuery(undefined, {
+        staleTime: Infinity,
+        retry: false,
+    });
+
+    // Handle the OIDC callback handoff: the server redirects here with the freshly
+    // minted admin JWT in the URL fragment (never sent to the server). Store it the
+    // same way the password login does, then continue into the panel. Also surface
+    // any ?error= reported by the OIDC callback.
+    useEffect(() => {
+        const hash = window.location.hash;
+        const tokenMatch = hash.match(/token=([^&]+)/);
+        if (tokenMatch) {
+            const token = decodeURIComponent(tokenMatch[1]);
+            // Strip the token from the URL before navigating.
+            window.history.replaceState(null, '', window.location.pathname + window.location.search);
+            setToken(token);
+            navigate('/admin/');
+            return;
+        }
+        const params = new URLSearchParams(window.location.search);
+        const err = params.get('error');
+        if (err) {
+            setError(OIDC_ERROR_MESSAGES[err] ?? 'Login failed. Please try again.');
+            window.history.replaceState(null, '', window.location.pathname);
+        }
+    }, [navigate]);
 
     const login = trpc.admin.login.useMutation({
         onSuccess: (data) => {
@@ -56,6 +92,22 @@ export function Login() {
                         {login.isPending ? 'Signing in...' : 'Sign in'}
                     </button>
                 </form>
+
+                {oidcEnabled.data?.enabled && (
+                    <>
+                        <div className="flex items-center gap-3 my-6">
+                            <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
+                            <span className="text-xs text-gray-400 uppercase tracking-wide">or</span>
+                            <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
+                        </div>
+                        <a
+                            href="/admin/oidc/login"
+                            className="block w-full text-center border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 rounded px-4 py-2 text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                        >
+                            Log in with Authelia
+                        </a>
+                    </>
+                )}
             </div>
         </div>
     );

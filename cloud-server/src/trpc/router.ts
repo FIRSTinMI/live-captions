@@ -11,6 +11,7 @@ import {
     decryptApiKey,
     getEncryptionKey,
 } from '../auth';
+import { isOidcEnabled } from '../auth/oidc';
 import { Context } from './context';
 import { relay } from '../relay';
 import {
@@ -147,6 +148,10 @@ export function createRouter() {
 
         // --- Admin routes ---
         admin: t.router({
+            // Lets the login page show the "Log in with Authelia" button only
+            // when OIDC is configured. Does not affect password login.
+            oidcEnabled: publicProcedure.query(() => ({ enabled: isOidcEnabled() })),
+
             login: publicProcedure
                 .input(z.object({ username: z.string(), password: z.string() }))
                 .mutation(async ({ input }) => {

@@ -10,6 +10,7 @@ import { createRouter } from './trpc/router';
 import { createContext } from './trpc/context';
 import { relay } from './relay';
 import { hashDeviceToken, verifyAdminToken } from './auth';
+import { registerOidcRoutes } from './auth/oidc';
 import { db, schema } from './db';
 import { eq } from 'drizzle-orm';
 
@@ -29,6 +30,11 @@ export function createServer() {
             }
         },
     }));
+
+    // Additive "Log in with Authelia" OIDC routes. Registered before the /admin
+    // static + SPA catch-all so they are handled server-side. Disabled (routes
+    // redirect back to the login page) when OIDC_CLIENT_SECRET is unset.
+    registerOidcRoutes(app);
 
     // Serve admin panel static files
     const adminDir = path.join(__dirname, 'public', 'admin');
