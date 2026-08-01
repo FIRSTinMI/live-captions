@@ -28,6 +28,8 @@ export function DisplayTab({ config, onRefresh }: Props) {
                         <option value="1">Top</option>
                         <option value="2">Bottom with space for audience display</option>
                         <option value="3">Top with space for audience display</option>
+                        <option value="4">Below top bar (72px)</option>
+                        <option value="5">Above bottom bar (72px)</option>
                     </select>
                 </div>
                 <div className={styles.field}>

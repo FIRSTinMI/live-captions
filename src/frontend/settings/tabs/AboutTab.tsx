@@ -8,6 +8,9 @@ export function AboutTab() {
         <div>
             <h2>About</h2>
             <p style={{ margin: '12px 0' }}>
+                <strong>Version:</strong> {__APP_VERSION__}
+            </p>
+            <p style={{ margin: '12px 0' }}>
                 <strong>Created By:</strong> <a href="https://filipkin.com" style={linkStyle}>Filip Kin</a><br />
                 <strong>Contributors:</strong> <a href="https://soren.thezaisers.me/" style={linkStyle}>Soren Zaiser</a>
             </p>

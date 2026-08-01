@@ -59,6 +59,7 @@ export function SettingsApp() {
         <div className={styles.container}>
             <div className={styles.appHeader}>
                 <span className={styles.appTitle}>Live Captions - Settings</span>
+                <span className={styles.appVersion}>v{__APP_VERSION__}</span>
                 <ConnectionBadge status={connected} />
             </div>
 
