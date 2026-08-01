@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync } from 'fs';
+import { existsSync, mkdirSync, appendFileSync } from 'fs';
 import { RtAudio, RtAudioApi } from 'audify';
 import { Server } from './server';
 import { Speech } from './speech';
@@ -31,10 +31,26 @@ let youtubeCaptionPusher: YouTubeCaptionPusher | null = null;
 let speechServices: Speech<GoogleV1 | GoogleV2 | April>[] = [];
 let isStarting: boolean = false;
 
+// The app runs as a windowless packaged exe, so anything printed to stderr on a
+// crash is invisible. Persist crashes to a log file in the program folder so a
+// silent quit can actually be diagnosed after the fact. Logging-only - we do NOT
+// swallow the error, so behavior is otherwise unchanged.
+function crashLog(kind: string, err: unknown): void {
+    const detail = err instanceof Error ? (err.stack ?? err.message) : String(err);
+    const line = `[${new Date().toISOString()}] ${kind}: ${detail}\n`;
+    try {
+        if (!existsSync(PROGRAM_FOLDER)) mkdirSync(PROGRAM_FOLDER, { recursive: true });
+        appendFileSync(PROGRAM_FOLDER + '/crash.log', line);
+    } catch { /* last resort - nothing we can do */ }
+    console.error(line);
+}
+process.on('uncaughtException', (err) => crashLog('uncaughtException', err));
+process.on('unhandledRejection', (err) => crashLog('unhandledRejection', err));
+
 if (!process.argv.includes('--skip-update-check')) {
-    update().then(start);
+    update().then(start).catch((err) => crashLog('startup', err));
 } else {
-    start();
+    start().catch((err) => crashLog('startup', err));
 }
 
 let volumeInterval: NodeJS.Timeout;
