@@ -34,6 +34,28 @@ It's recognition is not as good as Google's but atleast it'll work consistently.
 * Google v1 can support one language per-input. If you select multiples, it will default to the first one listed.
 * April ASR ignores the languge selection and only supports English.
 
+## YouTube Caption Push
+Captions can be sent straight to a YouTube live broadcast as real closed captions. Viewers turn them on with the CC button, so you don't have to burn the captions into the video where they cover the field for people who don't need them.
+
+1. In YouTube Studio, open the live broadcast and scroll to **Stream settings**. Turn on **Closed captions**, set **Captions source** to **POST captions to URL**, and copy the **Captions ingestion URL**.
+
+<img width="820" alt="YouTube Studio closed caption settings" src="docs/images/youtube-studio-captions.png" />
+
+2. Open the settings page [http://localhost:3000/settings.html](http://localhost:3000/settings.html) and go to the **vMix/YouTube** tab.
+3. Paste the URL into **YouTube HTTP caption ingestion URL** and click out of the field to save it.
+4. Check **Enabled** under **Push captions to YouTube**.
+
+<img width="560" alt="vMix/YouTube settings tab" src="docs/images/vmix-youtube-tab.png" />
+
+How it works:
+* Only final transcriptions are sent, not the partial results that show on the overlay while someone is still talking.
+* Captions are batched and POSTed every 500 ms with a timestamp per line and an incrementing `seq` number, the format YouTube's HTTP caption ingestion expects.
+* If YouTube rejects a push or the internet drops, the captions are queued and retried with backoff (1 s doubling up to 30 s). The queue holds the most recent 500 lines.
+* The URL and the toggle are saved in the config, so they survive a restart.
+* The **Push status** panel on the same tab shows whether the pusher is running, the last successful push, the queue depth and the last error from YouTube.
+* Devices connected to the cloud server can have the URL and toggle set remotely from the device page in the admin panel.
+* Twitch closed captions are not supported.
+
 ## First time setup for non FiM users
 This will walk through the steps to setup a google cloud account for non FiM users
 1. Visit https://console.cloud.google.com/ and open a new project
