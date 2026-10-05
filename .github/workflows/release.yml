@@ -41,6 +41,35 @@ jobs:
       - name: Compile TypeScript
         run: npx tsc --build
 
+      # Windows version info + manifest (winres/winres.json). pkg appends its
+      # payload to a prebuilt Node binary, so the resources go into that base
+      # binary before packaging; patching the finished exe would move the
+      # payload. pkg re-downloads a base whose hash changed unless
+      # PKG_NODE_PATH is set, and it also runs PKG_NODE_PATH to build
+      # bytecode, so it points at the stamped base (Node 22). An unsigned exe
+      # that identifies as Node.js is what Defender's ML detection flags.
+      - uses: actions/setup-go@v5
+        with:
+          go-version: stable
+          cache: false
+
+      - name: Stamp pkg's Node base binary
+        shell: pwsh
+        run: |
+          $env:PKG_CACHE_PATH = "$env:RUNNER_TEMP\pkg-cache"
+          "PKG_CACHE_PATH=$env:PKG_CACHE_PATH" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          $tmp = "$env:RUNNER_TEMP\pkg-fetch"
+          New-Item -ItemType Directory -Force $tmp | Out-Null
+          'console.log(1)' | Set-Content "$tmp\fetch.js"
+          npx @yao-pkg/pkg "$tmp\fetch.js" -t node22-win-x64 -o "$tmp\fetch.exe"
+          $base = (Get-ChildItem $env:PKG_CACHE_PATH -Recurse -Filter "fetched-*win-x64").FullName
+          if (-not $base) { throw "pkg base binary not found" }
+          go install github.com/tc-hib/go-winres@v0.3.3
+          $v = "${{ steps.version.outputs.value }}"
+          & "$(go env GOPATH)\bin\go-winres.exe" patch --no-backup --product-version $v --file-version $v $base
+          if ($LASTEXITCODE -ne 0) { throw "go-winres patch failed" }
+          "PKG_NODE_PATH=$base" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
       - name: Package executable
         run: npx @yao-pkg/pkg .
 
