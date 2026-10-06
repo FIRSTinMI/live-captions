@@ -6,9 +6,12 @@ import styles from '../settings.module.css';
 interface Props {
     config: AppConfig;
     onRefresh: () => void;
+    // Run by FIM-AV Assistant: it adds the vMix input and checks the
+    // overlay/output setup, so only the YouTube push is shown here.
+    managed?: boolean;
 }
 
-export function VmixTab({ config, onRefresh }: Props) {
+export function VmixTab({ config, onRefresh, managed = false }: Props) {
     const utils = trpc.useUtils();
     const setUrl = trpc.youtubeCaptions.setUrl.useMutation({
         onSuccess: () => { utils.youtubeCaptions.pushStatus.invalidate(); onRefresh(); },
@@ -55,6 +58,8 @@ export function VmixTab({ config, onRefresh }: Props) {
 
     return (
         <div>
+            {!managed && (
+                <>
             <div className={styles.row}>
                 <div className={styles.field}>
                     <label>Live Captions browser input</label>
@@ -93,6 +98,9 @@ export function VmixTab({ config, onRefresh }: Props) {
                     <li>Stream/record from Output 2.</li>
                 </ol>
             </div>
+
+                </>
+            )}
 
             <div className={styles.sectionHeader} style={{ marginTop: 24 }}>
                 <h3>YouTube caption push</h3>

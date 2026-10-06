@@ -38,6 +38,7 @@ export function SettingsApp() {
     );
 
     const configQuery = trpc.config.get.useQuery();
+    const managed = trpc.managed.useQuery().data === true;
     const devicesQuery = trpc.devices.list.useQuery();
     const utils = trpc.useUtils();
 
@@ -76,7 +77,7 @@ export function SettingsApp() {
             ) : (
                 <>
                     <div className={styles.tabs}>
-                        {TABS.map(t => (
+                        {TABS.map(t => (t.id === 'vmix' && managed ? { ...t, label: 'YouTube' } : t)).map(t => (
                             <button
                                 key={t.id}
                                 className={`${styles.tab} ${activeTab === t.id ? styles.tabActive : ''}`}
@@ -112,7 +113,7 @@ export function SettingsApp() {
                         <ServerTab config={configQuery.data as AppConfig} onRefresh={refresh} />
                     )}
                     {activeTab === 'vmix' && (
-                        <VmixTab config={configQuery.data as AppConfig} onRefresh={refresh} />
+                        <VmixTab config={configQuery.data as AppConfig} onRefresh={refresh} managed={managed} />
                     )}
                     {activeTab === 'about' && (
                         <AboutTab />

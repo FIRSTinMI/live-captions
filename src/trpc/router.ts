@@ -35,6 +35,9 @@ export function createAppRouter(deps: RouterDeps) {
     const publicProcedure = t.procedure;
 
     return router({
+        // Run by FIM-AV Assistant (FIMAV_MANAGED=1): the settings page hides
+        // the vMix setup AV Assistant does and names that tab "YouTube".
+        managed: publicProcedure.query(() => process.env.FIMAV_MANAGED === '1'),
         config: router({
             get: publicProcedure.query(() => {
                 return deps.config.get();
