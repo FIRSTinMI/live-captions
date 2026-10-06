@@ -1,5 +1,6 @@
 import { existsSync, readFileSync, writeFileSync } from 'fs';
 import { DisplayConfig, JSONConfig, ServerConfig, TranscriptionConfig, TransformationsConfig, YouTubeCaptionsConfig } from '../types/Config';
+import { configBus } from './eventBus';
 
 export class ConfigManager {
     private file: string;
@@ -158,6 +159,7 @@ export class ConfigManager {
             ...save,
             transformations: newTransformations
         }, null, 4));
+        configBus.emit('saved', save);
     }
 
     public load() {

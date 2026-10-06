@@ -1,5 +1,5 @@
 import { ConfigManager } from './configManager';
-import { captionBus, displayCtrlBus } from './eventBus';
+import { captionBus, configBus, displayCtrlBus, youtubeBus } from './eventBus';
 import { Frame } from '../types/Frame';
 
 const FLUSH_INTERVAL_MS = 500;
@@ -63,6 +63,18 @@ export class YouTubeCaptionPusher {
         displayCtrlBus.on('event', e => {
             if (e.type === 'config') this.reconcile();
         });
+        // Every config save (settings page, tRPC, cloud sync) can change the URL
+        // or enabled flag, so follow the saved config directly. Ignore saves from
+        // a ConfigManager this pusher is not using (e.g. a new one mid-restart).
+        configBus.on('saved', saved => {
+            if (saved.youtubeCaptions === this.config.youtubeCaptions) this.reconcile();
+        });
+        this.reconcile();
+    }
+
+    /** start() builds a new ConfigManager on every restart; follow it. */
+    public setConfig(config: ConfigManager) {
+        this.config = config;
         this.reconcile();
     }
 
@@ -74,6 +86,7 @@ export class YouTubeCaptionPusher {
         } else if (!shouldRun && this.flushTimer) {
             this.stop();
         }
+        youtubeBus.emit('change', 'state');
     }
 
     public getStatus(): PushStatus {
@@ -138,6 +151,7 @@ export class YouTubeCaptionPusher {
             this.consecutiveFailures = 0;
             this.nextAllowedFlush = 0;
             this.seq++;
+            youtubeBus.emit('change', 'success');
         } catch (err) {
             const message = err instanceof Error ? err.message : String(err);
             this.lastError = message;
@@ -150,6 +164,7 @@ export class YouTubeCaptionPusher {
             const backoff = Math.min(BACKOFF_BASE_MS * 2 ** (this.consecutiveFailures - 1), BACKOFF_MAX_MS);
             this.nextAllowedFlush = Date.now() + backoff;
             console.warn(`[youtubeCaptions] push failed (${message}); retry in ${backoff}ms`);
+            youtubeBus.emit('change', 'error');
         } finally {
             this.inFlight = false;
         }

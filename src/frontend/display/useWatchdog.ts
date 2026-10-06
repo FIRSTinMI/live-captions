@@ -11,6 +11,7 @@ export function useWatchdog(enabled: boolean) {
     const lastMicActiveTime = useRef(0);
     const pageLoadTime = useRef(Date.now());
     const restart = trpc.server.restart.useMutation();
+    const report = trpc.server.watchdogFired.useMutation();
 
     function recordFrame() {
         lastFrameTime.current = Date.now();
@@ -49,14 +50,24 @@ export function useWatchdog(enabled: boolean) {
             if (micActiveCallsSinceFrame.current < WATCHDOG_MIC_CALLS_THRESHOLD) return;
 
             const reloads = parseInt(sessionStorage.getItem('watchdogReloads') || '0');
+            const reason = `no captions for ${Math.round((now - lastFrameTime.current) / 1000)}s while mic active`;
             console.log(`[WATCHDOG] firing: lastFrame=${now - lastFrameTime.current}ms ago, micActiveCalls=${micActiveCallsSinceFrame.current}, reloads=${reloads}`);
             if (reloads < 1) {
                 sessionStorage.setItem('watchdogReloads', String(reloads + 1));
                 console.log('[WATCHDOG] reloading page');
-                window.location.reload();
+                // Report first (best effort), but never let the report hold up the reload.
+                let reloaded = false;
+                const reload = () => {
+                    if (reloaded) return;
+                    reloaded = true;
+                    window.location.reload();
+                };
+                report.mutate({ action: 'reload', reason }, { onSettled: reload });
+                setTimeout(reload, 1000);
             } else {
                 sessionStorage.setItem('watchdogReloads', '0');
                 console.log('[WATCHDOG] calling server.restart');
+                report.mutate({ action: 'restart', reason });
                 restart.mutate(undefined, {
                     onSettled: () => setTimeout(() => window.location.reload(), 3000),
                 });

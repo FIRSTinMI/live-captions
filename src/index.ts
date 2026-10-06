@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, appendFileSync } from 'fs';
 import { RtAudio, RtAudioApi } from 'audify';
 import { Server } from './server';
-import { Speech } from './speech';
+import { Speech, StreamingState } from './speech';
 import { ConfigManager } from './util/configManager';
 import { InputConfig } from './types/Config';
 import { updateBadWordsList, updateTransformations } from './util/downloadBadWordsFIM';
@@ -10,7 +10,8 @@ import { GoogleV2 } from './engines/GoogleV2';
 import { GoogleV1 } from './engines/GoogleV1';
 import { April, downloadDependencies } from './engines/April';
 import { createAppRouter } from './trpc/router';
-import { micBus, errorBus } from './util/eventBus';
+import { micBus, errorBus, engineBus } from './util/eventBus';
+import { AvEventHub } from './util/avEvents';
 import { YouTubeCaptionPusher } from './util/youtubeCaptionPusher';
 
 // Fallback listener so Node.js doesn't crash if no other handler is registered
@@ -30,6 +31,27 @@ let youtubeCaptionPusher: YouTubeCaptionPusher | null = null;
 
 let speechServices: Speech<GoogleV1 | GoogleV2 | April>[] = [];
 let isStarting: boolean = false;
+let currentConfig: ConfigManager | null = null;
+
+// Optional event stream for the FIM AV Assistant (GET /api/events). Created
+// once so connected clients survive a restart and see it happen.
+const avEvents = new AvEventHub({
+    version: require('../package.json').version as string,
+    getYouTubeStatus: () => youtubeCaptionPusher?.getStatus() ?? null,
+    getConfig: () => currentConfig?.get() ?? null,
+    getInputs: () => {
+        const inputs = (currentConfig?.transcription.inputs ?? []) as InputConfig[];
+        return inputs.map(i => {
+            const s = speechServices.find(s => s.inputConfig.id === i.id);
+            return {
+                id: i.id,
+                deviceName: i.deviceName ?? null,
+                speaker: i.speaker ?? null,
+                active: !!s && s.volume >= s.effectiveThreshold,
+            };
+        });
+    },
+});
 
 // The app runs as a windowless packaged exe, so anything printed to stderr on a
 // crash is invisible. Persist crashes to a log file in the program folder so a
@@ -63,6 +85,7 @@ async function start() {
         return;
     }
     isStarting = true;
+    engineBus.emit('state', { state: 'restarting', error: null });
     // Create program folder
     if (!existsSync(PROGRAM_FOLDER)) {
         mkdirSync(PROGRAM_FOLDER);
@@ -71,6 +94,7 @@ async function start() {
 
     // Generate/load config
     const config = new ConfigManager(PROGRAM_FOLDER + '/config.json');
+    currentConfig = config;
     try {
         await updateBadWordsList(config);
         await updateTransformations(config);
@@ -139,7 +163,7 @@ async function start() {
     if (!youtubeCaptionPusher) {
         youtubeCaptionPusher = new YouTubeCaptionPusher(config);
     } else {
-        youtubeCaptionPusher.reconcile();
+        youtubeCaptionPusher.setConfig(config);
     }
 
     const appRouter = createAppRouter({
@@ -173,7 +197,7 @@ async function start() {
     });
 
     // Start web server
-    server = new Server(config, rtAudio, appRouter);
+    server = new Server(config, rtAudio, appRouter, avEvents.handle);
     server.start();
 
 
@@ -207,6 +231,7 @@ async function start() {
     // For development testing simulating semi-realistic captions
     if (process.argv.includes('--gibberish')) {
         require('./util/developmentGibberish').gibberish(null, 2);
+        engineBus.emit('state', { state: 'running', error: null });
         isStarting = false;
         return;
     }
@@ -227,6 +252,17 @@ async function start() {
             speechServices.push(speech);
         }
         await new Promise((resolve) => setTimeout(resolve, 200));
+    }
+
+    const missingGoogleKey = engine !== 'april'
+        && (config.server.google.credentials.client_email === '' || config.server.google.credentials.private_key === '');
+    const engineErrored = speechServices.some(s => s.getState === StreamingState.ERRORED);
+    if (speechServices.length === 0) {
+        engineBus.emit('state', { state: 'stopped', error: null });
+    } else if (missingGoogleKey) {
+        engineBus.emit('state', { state: 'error', error: 'Google API credentials missing' });
+    } else if (!engineErrored) {
+        engineBus.emit('state', { state: 'running', error: null });
     }
 
     isStarting = false;

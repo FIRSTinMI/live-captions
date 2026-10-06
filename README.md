@@ -56,6 +56,32 @@ How it works:
 * Devices connected to the cloud server can have the URL and toggle set remotely from the device page in the admin panel.
 * Twitch closed captions are not supported.
 
+## Event stream (`/api/events`)
+`GET http://127.0.0.1:3000/api/events` is an optional [Server-Sent Events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events) stream used by the FIM AV Assistant to react to changes without polling. Live Captions works the same with no client connected, and an idle stream costs nothing.
+
+* Every message is one `data: <json>\n\n` line with a `type` field. There is no `event:` field.
+* A `: ping` comment is sent every 15 s so a dead connection is noticed.
+* Any number of clients can connect. The stream stays open across a server restart from the settings page.
+* Commands still go through tRPC (`youtubeCaptions.setUrl`, `youtubeCaptions.setEnabled`).
+
+| `type` | Fields | Sent when |
+| --- | --- | --- |
+| `hello` | `addon: "live-captions"`, `protocol: 1`, `version`, `youtube`, `engine`, `inputs`, `config` | Once, first, on connect. Holds the full current state, so no other read is needed. `youtube` and `engine` have the fields below; `inputs` is the array from the `inputs` message. |
+| `youtube` | `enabled`, `url`, `running`, `lastPushAt`, `lastError`, `queueDepth` (same as `youtubeCaptions.pushStatus`) | The URL or enabled flag changes (settings page, tRPC or cloud sync), the pusher starts or stops, every failed push, the first good push after a failure. Plain `lastPushAt` updates are sent at most once per 5 s. |
+| `engine` | `state`: `running`, `error`, `restarting` or `stopped`; `error`: string or `null` | The server (re)starts, the engines finish starting, an engine reports an error. `stopped` means no inputs are configured. |
+| `watchdog` | `action`: `reload` or `restart`; `reason` | The caption display's watchdog fires (no captions while a mic is active). |
+| `inputs` | `inputs`: array of `{id, deviceName, speaker, hearing}` | An input's `hearing` flag flips, or the input list changes. `hearing` is true when the level was above that input's threshold in the last 10 s. A flip is only sent after it has held for 3 s. |
+| `config` | `config`: the saved config, with `server.google` reduced to `{projectId, clientEmail, hasPrivateKey}` and `server.cloud` to `{connected, deviceName}` | The config is saved. |
+
+```
+$ curl -N http://127.0.0.1:3000/api/events
+data: {"type":"hello","addon":"live-captions","protocol":1,"version":"1.10.8","youtube":{...},"engine":{"state":"running","error":null},"inputs":[{"id":1,"deviceName":"Microphone (USB)","speaker":"Host","hearing":true}],"config":{...}}
+
+data: {"type":"inputs","inputs":[{"id":1,"deviceName":"Microphone (USB)","speaker":"Host","hearing":false}]}
+
+: ping
+```
+
 ## First time setup for non FiM users
 This will walk through the steps to setup a google cloud account for non FiM users
 1. Visit https://console.cloud.google.com/ and open a new project

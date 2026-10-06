@@ -7,7 +7,7 @@ import { Speech } from '../speech';
 import { GoogleV1 } from '../engines/GoogleV1';
 import { GoogleV2 } from '../engines/GoogleV2';
 import { April } from '../engines/April';
-import { captionBus, micBus, displayCtrlBus, MicStatusPayload, DisplayControlEvent } from '../util/eventBus';
+import { captionBus, micBus, displayCtrlBus, watchdogBus, MicStatusPayload, DisplayControlEvent } from '../util/eventBus';
 import { Frame } from '../types/Frame';
 import { Context, createContext } from './context';
 import { CloudSync } from '../util/cloudSync';
@@ -97,6 +97,14 @@ export function createAppRouter(deps: RouterDeps) {
                 console.log('[RESTART] triggered via TRPC server.restart mutation');
                 deps.restart();
             }),
+            // The display page's watchdog reports here before it reloads or
+            // restarts, so /api/events clients can see it fire.
+            watchdogFired: publicProcedure
+                .input(z.object({ action: z.enum(['reload', 'restart']), reason: z.string().max(500) }))
+                .mutation(({ input }) => {
+                    console.log(`[WATCHDOG] ${input.action}: ${input.reason}`);
+                    watchdogBus.emit('fired', input);
+                }),
         }),
 
         devices: router({

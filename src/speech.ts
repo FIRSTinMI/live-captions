@@ -8,7 +8,7 @@ import { GoogleV2 } from './engines/GoogleV2';
 import { GoogleV1 } from './engines/GoogleV1';
 import { April } from './engines/April';
 import { transform } from './util/transformer';
-import { captionBus } from './util/eventBus';
+import { captionBus, engineBus } from './util/eventBus';
 
 // Number of frames after silence is detected to continue streaming
 const THRESHOLD_CUTOFF_SMOOTHING = 10;
@@ -88,8 +88,9 @@ export class Speech<T extends GoogleV2 | GoogleV1 | April> {
 
         this.engine = new engine(config, input.sampleRate, input.id, input.speaker ?? "Unknown", input.languages ?? ['en-us'], this.restart);
 
-        this.engine.emitter.on('engineError', () => {
+        this.engine.emitter.on('engineError', (message?: string) => {
             this.state = StreamingState.ERRORED;
+            engineBus.emit('state', { state: 'error', error: message ?? `Engine error on input ${input.id}` });
         });
 
         this.engine.emitter.on('frame', (frame: Frame) => {

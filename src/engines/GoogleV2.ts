@@ -141,7 +141,7 @@ export class GoogleV2 {
                         err.toString().includes('does not contain a private_key field')) {
                         console.error(color('Google API Authentication Failed').bold.red.toString());
                         console.error(err.details);
-                        this.emitter.emit('engineError');
+                        this.emitter.emit('engineError', `Google API authentication failed: ${err.details ?? err.message}`);
                         errorBus.emit('error', {
                             message: `Google API authentication failed: ${err.details ?? err.message}`,
                             context: { code: err.code, inputId: this.inputId },
@@ -153,7 +153,7 @@ export class GoogleV2 {
                         this.resume();
                     } else {
                         console.error(err);
-                        this.emitter.emit('engineError');
+                        this.emitter.emit('engineError', err.details ?? err.message ?? String(err));
                         errorBus.emit('error', {
                             message: err.details ?? err.message ?? String(err),
                             context: { code: err.code, inputId: this.inputId },

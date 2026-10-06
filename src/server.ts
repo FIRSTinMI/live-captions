@@ -17,11 +17,16 @@ export class Server {
     private httpServer: HttpServer<typeof IncomingMessage, typeof ServerResponse>;
     private appRouter: AppRouter;
 
-    constructor(config: ConfigManager, rtAudio: RtAudio, appRouter: AppRouter) {
+    constructor(config: ConfigManager, rtAudio: RtAudio, appRouter: AppRouter, eventsHandler?: (req: IncomingMessage, res: ServerResponse) => void) {
         this.config = config;
         this.appRouter = appRouter;
 
         this.app = express();
+
+        // Optional Server-Sent Events stream for the FIM AV Assistant.
+        if (eventsHandler) {
+            this.app.get('/api/events', (req, res) => eventsHandler(req, res));
+        }
 
         this.app.use(express.static(path.join(__dirname, 'public')));
         this.app.use(bodyParser.json());
