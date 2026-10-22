@@ -10,6 +10,7 @@ import { createExpressMiddleware } from '@trpc/server/adapters/express';
 import { applyWSSHandler } from '@trpc/server/adapters/ws';
 import { AppRouter } from './trpc/router';
 import { createContext } from './trpc/context';
+import { embeddedStatic, isCompiled } from './util/embedded';
 
 export class Server {
     private config: ConfigManager;
@@ -28,7 +29,8 @@ export class Server {
             this.app.get('/api/events', (req, res) => eventsHandler(req, res));
         }
 
-        this.app.use(express.static(path.join(__dirname, 'public')));
+        // In the exe the frontend is embedded (scripts/compile.ts); __dirname there is the build machine's path.
+        this.app.use(isCompiled ? embeddedStatic('public') : express.static(path.join(__dirname, 'public')));
         this.app.use(bodyParser.json());
 
         this.app.use('/trpc', createExpressMiddleware({

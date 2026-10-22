@@ -10,7 +10,7 @@
         "dev:frontend": "vite",
         "dev:backend": "bun run ./src/index.ts --skip-update-check",
         "dev": "bun run ./scripts/dev.ts",
-        "dist": "npm run build:frontend && tsc && npx @yao-pkg/pkg .",
+        "dist": "npm run build:frontend && bun scripts/compile.ts",
         "test": "bun test"
     },
     "author": "",
@@ -40,24 +40,11 @@
         "@types/react": "^19.2.14",
         "@types/react-dom": "^19.2.3",
         "@vitejs/plugin-react": "^6.0.1",
-        "@yao-pkg/pkg": "^6.14.1",
         "bun-types": "1.3.11",
         "lorem-ipsum": "^2.0.8",
         "react": "^19.2.4",
         "react-dom": "^19.2.4",
         "typescript": "^6.0.2",
         "vite": "^8.0.3"
-    },
-    "pkg": {
-        "targets": [
-            "node22-windows-x64"
-        ],
-        "assets": [
-            "./build/public/**/*",
-            "./node_modules/audify/**/*",
-            "./dist/april-asr/april-asr.exe"
-        ],
-        "outputPath": "dist",
-        "entry": "./build/index.js"
     }
 }
