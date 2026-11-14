@@ -81,7 +81,11 @@ jobs:
         run: |
           go install github.com/tc-hib/go-winres@v0.3.3
           $v = "${{ steps.version.outputs.value }}"
-          & "$(go env GOPATH)\bin\go-winres.exe" patch --no-backup --product-version $v --file-version $v dist/live-captions.exe
+          # postject (previous step) injects into a copy of node.exe, which ships Authenticode-
+          # signed; the injection invalidates that signature without removing it, and go-winres
+          # refuses to patch a signed file. The signature is already broken, so remove it rather
+          # than leave a dangling invalid one (worse for AV heuristics than no signature at all).
+          & "$(go env GOPATH)\bin\go-winres.exe" patch --no-backup --authenticode=remove --product-version $v --file-version $v dist/live-captions.exe
           if ($LASTEXITCODE -ne 0) { throw "go-winres patch failed" }
 
       # Starts the stamped exe and checks that audify's addon loaded (its DLLs come
