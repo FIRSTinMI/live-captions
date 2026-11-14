@@ -181,7 +181,7 @@ export function createAppRouter(deps: RouterDeps) {
         }),
 
         volumes: publicProcedure.subscription(() => {
-            return observable<{ devices: { id: number; volume: number; threshold: number; state: number; }[] }>((emit) => {
+            return observable<{ devices: { id: number; volume: number; threshold: number; state: number; error?: string; }[] }>((emit) => {
                 deps.onSettingsConnect();
 
                 const interval = setInterval(() => {
@@ -192,6 +192,7 @@ export function createAppRouter(deps: RouterDeps) {
                             volume: Math.round(s.volume),
                             threshold: Math.round(s.effectiveThreshold),
                             state: s.getState,
+                            error: s.getLastError,
                         })),
                     });
                 }, 50);

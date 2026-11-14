@@ -1,12 +1,13 @@
 import { useState, useRef, useEffect } from 'react';
 import { trpc } from '../shared/trpc';
 
-export const enum StreamingState { ACTIVE = 0, PAUSED = 1, DESTROYED = 2 }
+export const enum StreamingState { ACTIVE = 0, PAUSED = 1, DESTROYED = 2, ERRORED = 3 }
 
 export interface VolumeEntry {
     volume: number;
     threshold: number;
     state: StreamingState;
+    error?: string;
 }
 
 export type ConnectionStatus = 'connecting' | 'connected' | 'disconnected';
@@ -34,7 +35,7 @@ export function useVolumes(): VolumesState {
         onData: (data) => {
             setConnected('connected');
             resetStaleTimer();
-            setVolumes(new Map(data.devices.map(d => [d.id, { volume: d.volume, threshold: d.threshold, state: d.state }])));
+            setVolumes(new Map(data.devices.map(d => [d.id, { volume: d.volume, threshold: d.threshold, state: d.state, error: d.error }])));
         },
         onError: () => {
             clearTimeout(staleTimerRef.current);

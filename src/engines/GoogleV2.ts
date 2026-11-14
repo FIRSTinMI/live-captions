@@ -27,6 +27,9 @@ export class GoogleV2 {
     private sampleRate: number;
     private restart: () => void;
     private languages: string[];
+    private streamRetries: number = 0;
+    private static readonly MAX_STREAM_RETRIES = 5;
+    private static readonly RETRY_BACKOFF_MS = [1000, 2000, 4000, 8000, 16000];
 
     constructor(config: ConfigManager, sampleRate: number, inputId: number, inputName: string, languages: string[], restart: () => void) {
         this.config = config;
@@ -81,6 +84,9 @@ export class GoogleV2 {
             if (frame.text.split(' ').length - this.lastFrame.text.split(' ').length < 0 && !frame.isFinal && !this.lastFrame.isFinal) return;
 
             this.lastFrame = frame;
+
+            // A real frame means the stream is healthy again.
+            this.streamRetries = 0;
 
             frame.text = frame.text.trim();
             this.emitter.emit('frame', frame);
@@ -152,13 +158,33 @@ export class GoogleV2 {
                         this.pause();
                         this.resume();
                     } else {
+                        // grpc-js builds its Error from the gRPC Status (code/name/details);
+                        // when the HTTP/2 stream dies before any status trailer arrives, those
+                        // are all undefined and err.toString() prints "undefined undefined:
+                        // undefined". Give a message that says what actually happened instead.
+                        const hasRealStatus = err.code !== undefined || !!err.details || !!err.message;
+                        const message = hasRealStatus
+                            ? (err.details ?? err.message ?? String(err))
+                            : 'Speech stream closed with no response from the server (connection dropped before a status was received)';
                         console.error(err);
-                        this.emitter.emit('engineError', err.details ?? err.message ?? String(err));
+                        this.emitter.emit('engineError', message);
                         errorBus.emit('error', {
-                            message: err.details ?? err.message ?? String(err),
+                            message,
                             context: { code: err.code, inputId: this.inputId },
                         });
-                        this.pause();
+
+                        if (this.streamRetries < GoogleV2.MAX_STREAM_RETRIES) {
+                            const delay = GoogleV2.RETRY_BACKOFF_MS[this.streamRetries];
+                            this.streamRetries += 1;
+                            console.log(color(`GoogleV2: retrying input ${this.inputId} in ${delay}ms (attempt ${this.streamRetries}/${GoogleV2.MAX_STREAM_RETRIES})`).yellow.toString());
+                            this.pause();
+                            // Safe even if destroy() runs during the wait: start() no-ops
+                            // once this.speech has been deleted.
+                            setTimeout(() => this.resume(), delay);
+                        } else {
+                            console.error(color(`GoogleV2: input ${this.inputId} exhausted ${GoogleV2.MAX_STREAM_RETRIES} retries, giving up until a manual restart`).bold.red.toString());
+                            this.pause();
+                        }
                     }
                 })
                 .on('data', (data: any) => this.handleRecognitionEvent(data));

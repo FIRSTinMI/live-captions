@@ -38,19 +38,23 @@ export function useWatchdog(enabled: boolean) {
             // Ignore during startup grace period
             if (now - pageLoadTime.current < WATCHDOG_GRACE_MS) return;
 
-            // Only fire if captions previously worked — if lastFrameTime is 0
-            // transcription never started this session and a restart won't help
-            if (lastFrameTime.current === 0) return;
+            // If a caption frame has never arrived this session, fall back to page-load
+            // time as the reference point — a stream that fails on its very first attempt
+            // (never worked, so lastFrameTime stays 0) is exactly as stuck as one that
+            // worked and then died, and deserves the same recovery.
+            const referenceTime = lastFrameTime.current || pageLoadTime.current;
 
             // Captions still flowing recently
-            if (now - lastFrameTime.current < WATCHDOG_TRIGGER_MS) return;
+            if (now - referenceTime < WATCHDOG_TRIGGER_MS) return;
 
             // Require sustained mic activity (~45s) to confirm it's a real stuck state,
             // not just a quiet period with an occasional throat-clear
             if (micActiveCallsSinceFrame.current < WATCHDOG_MIC_CALLS_THRESHOLD) return;
 
             const reloads = parseInt(sessionStorage.getItem('watchdogReloads') || '0');
-            const reason = `no captions for ${Math.round((now - lastFrameTime.current) / 1000)}s while mic active`;
+            const reason = lastFrameTime.current === 0
+                ? `no captions ever received, ${Math.round((now - referenceTime) / 1000)}s since page load, while mic active`
+                : `no captions for ${Math.round((now - referenceTime) / 1000)}s while mic active`;
             console.log(`[WATCHDOG] firing: lastFrame=${now - lastFrameTime.current}ms ago, micActiveCalls=${micActiveCallsSinceFrame.current}, reloads=${reloads}`);
             if (reloads < 1) {
                 sessionStorage.setItem('watchdogReloads', String(reloads + 1));

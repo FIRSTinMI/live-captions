@@ -304,6 +304,13 @@ body {
 .stateBadgeStreaming { background: var(--success-light); color: var(--success); }
 .stateBadgePaused    { background: var(--warning-light); color: var(--warning); }
 .stateBadgeStopped   { background: var(--danger-light);  color: var(--danger); }
+.stateBadgeError     { background: var(--danger);        color: #fff; }
+
+.deviceErrorText {
+    font-size: 12px;
+    color: var(--danger);
+    padding: 0 0 8px;
+}
 
 /* ── Volume / threshold section ── */
 .thresholdSection {

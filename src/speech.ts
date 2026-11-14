@@ -39,6 +39,7 @@ export class Speech<T extends GoogleV2 | GoogleV1 | April> {
     private silent: boolean = true;
     private framesSinceChange: number = 0;
     private state: StreamingState = StreamingState.ACTIVE;
+    private lastError?: string;
     private suspended: boolean = false;
     private noiseFloor: number = 0;
     private usageSeconds: number = 0;
@@ -46,6 +47,10 @@ export class Speech<T extends GoogleV2 | GoogleV1 | April> {
     // Getter for test compatibility
     public get getState(): StreamingState {
         return this.state;
+    }
+
+    public get getLastError(): string | undefined {
+        return this.lastError;
     }
 
     public getUsageMinutes(): number {
@@ -90,10 +95,19 @@ export class Speech<T extends GoogleV2 | GoogleV1 | April> {
 
         this.engine.emitter.on('engineError', (message?: string) => {
             this.state = StreamingState.ERRORED;
-            engineBus.emit('state', { state: 'error', error: message ?? `Engine error on input ${input.id}` });
+            this.lastError = message ?? `Engine error on input ${input.id}`;
+            engineBus.emit('state', { state: 'error', error: this.lastError });
         });
 
         this.engine.emitter.on('frame', (frame: Frame) => {
+            // A real frame means the engine's own retry got the stream back - stop
+            // treating this input as errored so processPCMBuffer resumes writing to it.
+            if (this.state === StreamingState.ERRORED) {
+                this.state = StreamingState.ACTIVE;
+                this.lastError = undefined;
+                engineBus.emit('state', { state: 'running', error: null });
+            }
+
             frame.text = transform(frame.text, config.transformations);
             try {
                 frame.text = this.filter.clean(frame.text);

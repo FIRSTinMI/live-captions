@@ -45,6 +45,7 @@ export function DeviceRow({ device, physicalDevices, volumeEntry, connected, onR
         : engineState === StreamingState.ACTIVE  ? { text: 'Streaming', cls: styles.stateBadgeStreaming }
         : engineState === StreamingState.PAUSED  ? { text: 'Paused',    cls: styles.stateBadgePaused }
         : engineState === StreamingState.DESTROYED ? { text: 'Stopped', cls: styles.stateBadgeStopped }
+        : engineState === StreamingState.ERRORED ? { text: 'Error',    cls: styles.stateBadgeError }
         : null;
 
     return (
@@ -58,7 +59,10 @@ export function DeviceRow({ device, physicalDevices, volumeEntry, connected, onR
                     {local.speaker || 'Unnamed device'}
                 </span>
                 {stateLabel && (
-                    <span className={`${styles.stateBadge} ${stateLabel.cls}`}>
+                    <span
+                        className={`${styles.stateBadge} ${stateLabel.cls}`}
+                        title={volumeEntry?.error}
+                    >
                         {stateLabel.text}
                     </span>
                 )}
@@ -66,6 +70,9 @@ export function DeviceRow({ device, physicalDevices, volumeEntry, connected, onR
                     Remove
                 </button>
             </div>
+            {engineState === StreamingState.ERRORED && volumeEntry?.error && (
+                <div className={styles.deviceErrorText}>{volumeEntry.error}</div>
+            )}
 
             <div className={styles.deviceFields}>
                 <div className={styles.field} style={{ minWidth: 130 }}>

@@ -26,11 +26,6 @@ jobs:
           node-version: '22'
           cache: 'npm'
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
-
       - name: Install dependencies
         run: npm ci
 
@@ -54,8 +49,23 @@ jobs:
           "value=$version" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
         shell: pwsh
 
-      - name: Compile executable
-        run: bun scripts/compile.ts bun-windows-x64 dist/live-captions.exe
+      # Node SEA replaces the old Bun --compile build (2026-11-13): Bun 1.4.4's grpc-js/http2
+      # client has an unexplained bug that kills Google Speech's streaming call on Windows
+      # (confirmed: identical Bun build is fine on Linux, only fails on Windows hardware) -
+      # see the Bun bug report. Node SEA needs the dependency graph pre-bundled into one CJS
+      # file (unlike Bun --compile, it can't resolve node_modules at runtime), then injects
+      # that bundle + the frontend/audify assets into a copy of node.exe via postject.
+      - name: Bundle for SEA
+        run: node --experimental-strip-types scripts/bundle-sea.ts
+
+      - name: Generate SEA assets manifest
+        run: node --experimental-strip-types scripts/build-sea-assets.ts
+
+      - name: Generate SEA blob
+        run: node --experimental-sea-config sea-config.json
+
+      - name: Create SEA executable
+        run: node scripts/make-sea-exe.cjs
 
       # Windows version info + manifest (winres/winres.json). An unsigned exe that
       # does not identify itself is what Defender's ML detection flags.
