@@ -157,6 +157,17 @@ export class GoogleV2 {
                         console.log(color(`${err.message}: ${err.code}.  Restarting...`).red.toString());
                         this.pause();
                         this.resume();
+                    } else if (err.code === 10 && /no more client requests/i.test(err.details ?? err.message ?? '')) {
+                        // ABORTED "Stream timed out after receiving no more client requests":
+                        // Google closes a stream that got no audio for ~10 s. That is the
+                        // silence gate doing its job (no audio is sent while nobody talks, so
+                        // silence is never billed), not a failure: pause, don't retry, and let
+                        // speech.ts reopen the stream when audio comes back. Before v1.11.3 the
+                        // catch-all below only paused, which handled this the same way; its
+                        // retry loop then turned every quiet mic into "exhausted 5 retries".
+                        console.log(color(`GoogleV2: input ${this.inputId} idle (no audio), pausing until audio returns`).yellow.toString());
+                        this.pause();
+                        this.emitter.emit('idle');
                     } else {
                         // grpc-js builds its Error from the gRPC Status (code/name/details);
                         // when the HTTP/2 stream dies before any status trailer arrives, those
@@ -167,12 +178,15 @@ export class GoogleV2 {
                             ? (err.details ?? err.message ?? String(err))
                             : 'Speech stream closed with no response from the server (connection dropped before a status was received)';
                         console.error(err);
-                        this.emitter.emit('engineError', message);
                         errorBus.emit('error', {
                             message,
                             context: { code: err.code, inputId: this.inputId },
                         });
 
+                        // Only a failure that outlasts the retries is an engine error. While
+                        // retrying, speech.ts keeps the input active so the new stream gets
+                        // audio; marking it errored here stopped all writes, so every retry
+                        // opened a stream with no audio and Google timed it out again.
                         if (this.streamRetries < GoogleV2.MAX_STREAM_RETRIES) {
                             const delay = GoogleV2.RETRY_BACKOFF_MS[this.streamRetries];
                             this.streamRetries += 1;
@@ -183,6 +197,7 @@ export class GoogleV2 {
                             setTimeout(() => this.resume(), delay);
                         } else {
                             console.error(color(`GoogleV2: input ${this.inputId} exhausted ${GoogleV2.MAX_STREAM_RETRIES} retries, giving up until a manual restart`).bold.red.toString());
+                            this.emitter.emit('engineError', message);
                             this.pause();
                         }
                     }

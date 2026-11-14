@@ -99,6 +99,18 @@ export class Speech<T extends GoogleV2 | GoogleV1 | April> {
             engineBus.emit('state', { state: 'error', error: this.lastError });
         });
 
+        // The engine closed an input's stream because it got no audio (silence).
+        // Back to PAUSED, so the next loud frame reopens it, and clear any error.
+        this.engine.emitter.on('idle', () => {
+            if (this.state === StreamingState.DESTROYED) return;
+            const wasErrored = this.state === StreamingState.ERRORED;
+            this.state = StreamingState.PAUSED;
+            if (wasErrored) {
+                this.lastError = undefined;
+                engineBus.emit('state', { state: 'running', error: null });
+            }
+        });
+
         this.engine.emitter.on('frame', (frame: Frame) => {
             // A real frame means the engine's own retry got the stream back - stop
             // treating this input as errored so processPCMBuffer resumes writing to it.
